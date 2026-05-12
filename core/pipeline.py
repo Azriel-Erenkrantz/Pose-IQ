@@ -15,13 +15,12 @@ class PosePipeline:
         logging.info("Initializing Real-Time 3D Pipeline...")
         self.camera = CameraStream()
         self.detector = PoseDetector()
-        self.rules = PostureRules()
-
         self.exercise_model = ExerciseModel()
         exercise = self.exercise_model.get_exercise(exercise_id)
         if not exercise:
             raise ValueError(f"Exercise '{exercise_id}' not found. Available: {self.exercise_model.list_exercises()}")
         self.state_machine = ExerciseStateMachine(exercise)
+        self.rules = PostureRules(exercise)
         logging.info(f"Exercise: {exercise.name}")
 
         self.current_state = None
@@ -67,13 +66,12 @@ class PosePipeline:
             if idx > 10: 
                 cv2.circle(frame, (int(pt.x), int(pt.y)), 4, (255, 255, 255), -1)
 
-    def draw_exercise_info(self, frame, sm_result):
+    def draw_exercise_info(self, frame, sm_result, posture_issues=None):
         h, w = frame.shape[:2]
 
         exercise_name = sm_result['exercise']
         phase = sm_result['phase']
         reps = sm_result['rep_count']
-        violations = sm_result['violations']
         started = sm_result['started']
 
         cv2.putText(frame, exercise_name, (10, 40),
@@ -91,11 +89,17 @@ class PosePipeline:
             cv2.putText(frame, "REP!", (w // 2 - 50, h // 2),
                         cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 4)
 
-        y_offset = 120
-        for joint, msg in violations.items():
-            cv2.putText(frame, f"{joint}: {msg}", (10, y_offset),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
-            y_offset += 25
+        if posture_issues:
+            y_offset = 120
+            for issue in posture_issues:
+                severity_color = {
+                    'high': (0, 0, 255),
+                    'medium': (0, 165, 255),
+                    'low': (0, 255, 255)
+                }.get(issue['severity'], (0, 0, 255))
+                cv2.putText(frame, issue['message'], (10, y_offset),
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.6, severity_color, 2)
+                y_offset += 30
 
     def draw_debug_angles(self, frame, landmarks, angles):
         mapping = {
@@ -125,18 +129,22 @@ class PosePipeline:
 
             sm_result = self.state_machine.update(angles if angles else {})
 
-            if landmarks and angles:
-                violation_joints = list(sm_result['violations'].keys())
-                posture_errors = [{'joint': j} for j in violation_joints]
-                self.draw_skeleton(frame, landmarks, posture_errors)
+            posture_issues = []
+            if landmarks and angles and sm_result['started']:
+                current_phase = self.state_machine.current_phase
+                posture_issues = self.rules.analyze(angles, current_phase)
+                self.draw_skeleton(frame, landmarks, posture_issues)
                 self.draw_debug_angles(frame, landmarks, angles)
 
                 if sm_result['transitioned']:
                     logging.info(f">> Phase: {sm_result['phase']}")
                 if sm_result['completed_rep']:
                     logging.info(f"Rep {sm_result['rep_count']} complete!")
+            elif landmarks and angles:
+                self.draw_skeleton(frame, landmarks, [])
+                self.draw_debug_angles(frame, landmarks, angles)
 
-            self.draw_exercise_info(frame, sm_result)
+            self.draw_exercise_info(frame, sm_result, posture_issues)
 
             cv2.imshow('Pose-IQ 3D Feedback', frame)
             if cv2.waitKey(1) & 0xFF == ord('q'): break

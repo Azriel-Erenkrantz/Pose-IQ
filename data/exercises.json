@@ -5,6 +5,12 @@
       "name": "Squat",
       "description": "A lower-body compound exercise targeting quads, glutes, and hamstrings",
       "muscle_groups": ["quadriceps", "glutes", "hamstrings", "core"],
+      "corrections": {
+        "right_knee": {"too_low": "Don't bend right knee too deep", "too_high": "Bend right knee more", "severity": "high"},
+        "left_knee": {"too_low": "Don't bend left knee too deep", "too_high": "Bend left knee more", "severity": "high"},
+        "spine": {"too_high": "Keep your back straight!", "severity": "high"},
+        "legs_spread": {"too_low": "Spread feet wider", "too_high": "Bring feet closer together", "severity": "medium"}
+      },
       "phases": [
         {
           "name": "standing",
@@ -50,6 +56,13 @@
       "name": "Plank",
       "description": "A core stability exercise performed in a push-up position",
       "muscle_groups": ["core", "shoulders", "chest", "back"],
+      "corrections": {
+        "right_elbow": {"too_low": "Open right elbow more", "too_high": "Bend right elbow to 90 degrees", "severity": "medium"},
+        "left_elbow": {"too_low": "Open left elbow more", "too_high": "Bend left elbow to 90 degrees", "severity": "medium"},
+        "spine": {"too_high": "Don't let your hips sag! Engage core", "severity": "high"},
+        "right_knee": {"too_low": "Straighten right leg", "severity": "medium"},
+        "left_knee": {"too_low": "Straighten left leg", "severity": "medium"}
+      },
       "phases": [
         {
           "name": "setup",
@@ -78,6 +91,11 @@
       "name": "Lunge",
       "description": "A unilateral lower-body exercise for quads, glutes, and balance",
       "muscle_groups": ["quadriceps", "glutes", "hamstrings", "core"],
+      "corrections": {
+        "right_knee": {"too_low": "Right knee too bent - don't go past 90 degrees", "too_high": "Lower your right knee more", "severity": "high"},
+        "left_knee": {"too_low": "Left knee too bent - don't go past 90 degrees", "too_high": "Lower your left knee more", "severity": "high"},
+        "spine": {"too_high": "Keep your torso upright!", "severity": "high"}
+      },
       "phases": [
         {
           "name": "standing",
@@ -122,6 +140,13 @@
       "name": "Bicep Curl",
       "description": "An isolation exercise for the biceps using arm flexion",
       "muscle_groups": ["biceps", "forearms"],
+      "corrections": {
+        "right_elbow": {"too_low": "Don't curl right arm too tight", "too_high": "Curl right arm more", "severity": "high"},
+        "left_elbow": {"too_low": "Don't curl left arm too tight", "too_high": "Curl left arm more", "severity": "high"},
+        "right_arm_body": {"too_high": "Keep right elbow close to your body!", "severity": "medium"},
+        "left_arm_body": {"too_high": "Keep left elbow close to your body!", "severity": "medium"},
+        "spine": {"too_high": "Don't lean back! Keep core tight", "severity": "high"}
+      },
       "phases": [
         {
           "name": "standing",
@@ -174,6 +199,13 @@
       "name": "Shoulder Press",
       "description": "An upper-body exercise pressing weight overhead for shoulder and tricep development",
       "muscle_groups": ["deltoids", "triceps", "upper_back"],
+      "corrections": {
+        "right_elbow": {"too_low": "Extend right arm more", "too_high": "Don't lock right elbow", "severity": "medium"},
+        "left_elbow": {"too_low": "Extend left arm more", "too_high": "Don't lock left elbow", "severity": "medium"},
+        "right_arm_body": {"too_low": "Raise right arm higher", "too_high": "Don't flare right arm out", "severity": "medium"},
+        "left_arm_body": {"too_low": "Raise left arm higher", "too_high": "Don't flare left arm out", "severity": "medium"},
+        "spine": {"too_high": "Don't arch your back! Keep core engaged", "severity": "high"}
+      },
       "phases": [
         {
           "name": "start",

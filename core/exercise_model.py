@@ -27,6 +27,7 @@ class Exercise:
     description: str
     muscle_groups: List[str]
     phases: List[Phase]
+    corrections: Dict[str, dict]
 
     def get_phase(self, name: str) -> Optional[Phase]:
         for phase in self.phases:
@@ -66,7 +67,8 @@ class ExerciseModel:
                 name=ex_data['name'],
                 description=ex_data['description'],
                 muscle_groups=ex_data['muscle_groups'],
-                phases=phases
+                phases=phases,
+                corrections=ex_data.get('corrections', {})
             )
             self.exercises[exercise.id] = exercise
 
