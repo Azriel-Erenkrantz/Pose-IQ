@@ -1,0 +1,225 @@
+{
+  "exercises": [
+    {
+      "id": "squat",
+      "name": "Squat",
+      "description": "A lower-body compound exercise targeting quads, glutes, and hamstrings",
+      "muscle_groups": ["quadriceps", "glutes", "hamstrings", "core"],
+      "phases": [
+        {
+          "name": "standing",
+          "order": 1,
+          "angles": {
+            "right_knee": {"min": 155, "max": 180},
+            "left_knee": {"min": 155, "max": 180},
+            "spine": {"min": 0, "max": 20},
+            "legs_spread": {"min": 15, "max": 50}
+          }
+        },
+        {
+          "name": "descending",
+          "order": 2,
+          "angles": {
+            "right_knee": {"min": 90, "max": 155},
+            "left_knee": {"min": 90, "max": 155},
+            "spine": {"min": 0, "max": 30}
+          }
+        },
+        {
+          "name": "hold",
+          "order": 3,
+          "angles": {
+            "right_knee": {"min": 70, "max": 100},
+            "left_knee": {"min": 70, "max": 100},
+            "spine": {"min": 0, "max": 30}
+          }
+        },
+        {
+          "name": "ascending",
+          "order": 4,
+          "angles": {
+            "right_knee": {"min": 90, "max": 155},
+            "left_knee": {"min": 90, "max": 155},
+            "spine": {"min": 0, "max": 30}
+          }
+        }
+      ]
+    },
+    {
+      "id": "plank",
+      "name": "Plank",
+      "description": "A core stability exercise performed in a push-up position",
+      "muscle_groups": ["core", "shoulders", "chest", "back"],
+      "phases": [
+        {
+          "name": "setup",
+          "order": 1,
+          "angles": {
+            "right_elbow": {"min": 80, "max": 100},
+            "left_elbow": {"min": 80, "max": 100},
+            "spine": {"min": 0, "max": 15}
+          }
+        },
+        {
+          "name": "hold",
+          "order": 2,
+          "angles": {
+            "right_elbow": {"min": 80, "max": 100},
+            "left_elbow": {"min": 80, "max": 100},
+            "spine": {"min": 0, "max": 15},
+            "right_knee": {"min": 160, "max": 180},
+            "left_knee": {"min": 160, "max": 180}
+          }
+        }
+      ]
+    },
+    {
+      "id": "lunge",
+      "name": "Lunge",
+      "description": "A unilateral lower-body exercise for quads, glutes, and balance",
+      "muscle_groups": ["quadriceps", "glutes", "hamstrings", "core"],
+      "phases": [
+        {
+          "name": "standing",
+          "order": 1,
+          "angles": {
+            "right_knee": {"min": 155, "max": 180},
+            "left_knee": {"min": 155, "max": 180},
+            "spine": {"min": 0, "max": 15}
+          }
+        },
+        {
+          "name": "descending",
+          "order": 2,
+          "angles": {
+            "right_knee": {"min": 90, "max": 155},
+            "left_knee": {"min": 90, "max": 155},
+            "spine": {"min": 0, "max": 20}
+          }
+        },
+        {
+          "name": "hold",
+          "order": 3,
+          "angles": {
+            "right_knee": {"min": 80, "max": 100},
+            "left_knee": {"min": 80, "max": 100},
+            "spine": {"min": 0, "max": 20}
+          }
+        },
+        {
+          "name": "ascending",
+          "order": 4,
+          "angles": {
+            "right_knee": {"min": 90, "max": 155},
+            "left_knee": {"min": 90, "max": 155},
+            "spine": {"min": 0, "max": 20}
+          }
+        }
+      ]
+    },
+    {
+      "id": "bicep_curl",
+      "name": "Bicep Curl",
+      "description": "An isolation exercise for the biceps using arm flexion",
+      "muscle_groups": ["biceps", "forearms"],
+      "phases": [
+        {
+          "name": "standing",
+          "order": 1,
+          "angles": {
+            "right_elbow": {"min": 155, "max": 180},
+            "left_elbow": {"min": 155, "max": 180},
+            "right_arm_body": {"min": 0, "max": 20},
+            "left_arm_body": {"min": 0, "max": 20},
+            "spine": {"min": 0, "max": 15}
+          }
+        },
+        {
+          "name": "curling",
+          "order": 2,
+          "angles": {
+            "right_elbow": {"min": 40, "max": 155},
+            "left_elbow": {"min": 40, "max": 155},
+            "right_arm_body": {"min": 0, "max": 25},
+            "left_arm_body": {"min": 0, "max": 25},
+            "spine": {"min": 0, "max": 15}
+          }
+        },
+        {
+          "name": "hold",
+          "order": 3,
+          "angles": {
+            "right_elbow": {"min": 30, "max": 50},
+            "left_elbow": {"min": 30, "max": 50},
+            "right_arm_body": {"min": 0, "max": 25},
+            "left_arm_body": {"min": 0, "max": 25},
+            "spine": {"min": 0, "max": 15}
+          }
+        },
+        {
+          "name": "lowering",
+          "order": 4,
+          "angles": {
+            "right_elbow": {"min": 40, "max": 155},
+            "left_elbow": {"min": 40, "max": 155},
+            "right_arm_body": {"min": 0, "max": 25},
+            "left_arm_body": {"min": 0, "max": 25},
+            "spine": {"min": 0, "max": 15}
+          }
+        }
+      ]
+    },
+    {
+      "id": "shoulder_press",
+      "name": "Shoulder Press",
+      "description": "An upper-body exercise pressing weight overhead for shoulder and tricep development",
+      "muscle_groups": ["deltoids", "triceps", "upper_back"],
+      "phases": [
+        {
+          "name": "start",
+          "order": 1,
+          "angles": {
+            "right_elbow": {"min": 80, "max": 100},
+            "left_elbow": {"min": 80, "max": 100},
+            "right_arm_body": {"min": 70, "max": 100},
+            "left_arm_body": {"min": 70, "max": 100},
+            "spine": {"min": 0, "max": 15}
+          }
+        },
+        {
+          "name": "pressing",
+          "order": 2,
+          "angles": {
+            "right_elbow": {"min": 100, "max": 170},
+            "left_elbow": {"min": 100, "max": 170},
+            "right_arm_body": {"min": 100, "max": 175},
+            "left_arm_body": {"min": 100, "max": 175},
+            "spine": {"min": 0, "max": 15}
+          }
+        },
+        {
+          "name": "hold",
+          "order": 3,
+          "angles": {
+            "right_elbow": {"min": 160, "max": 180},
+            "left_elbow": {"min": 160, "max": 180},
+            "right_arm_body": {"min": 160, "max": 180},
+            "left_arm_body": {"min": 160, "max": 180},
+            "spine": {"min": 0, "max": 15}
+          }
+        },
+        {
+          "name": "lowering",
+          "order": 4,
+          "angles": {
+            "right_elbow": {"min": 100, "max": 170},
+            "left_elbow": {"min": 100, "max": 170},
+            "right_arm_body": {"min": 100, "max": 175},
+            "left_arm_body": {"min": 100, "max": 175},
+            "spine": {"min": 0, "max": 15}
+          }
+        }
+      ]
+    }
+  ]
+}

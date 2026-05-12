@@ -3,22 +3,31 @@ import time
 import logging
 from camera_stream import CameraStream
 from pose_detector import PoseDetector
-from angle_calculator import AngleCalculator  
-from posture_rules import PostureRules        
+from angle_calculator import AngleCalculator
+from posture_rules import PostureRules
+from exercise_model import ExerciseModel
+from exercise_state_machine import ExerciseStateMachine
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 class PosePipeline:
-    def __init__(self):
-        logging.info("Initializing Real-Time 3D Pipeline with Debug Angles...")
+    def __init__(self, exercise_id: str = 'squat'):
+        logging.info("Initializing Real-Time 3D Pipeline...")
         self.camera = CameraStream()
         self.detector = PoseDetector()
-        self.rules = PostureRules() 
-        
-        self.current_state = None  
-        self.last_errors = []      
-        self.ready_counter = 0     
-        self.FRAMES_TO_READY = 10 
+        self.rules = PostureRules()
+
+        self.exercise_model = ExerciseModel()
+        exercise = self.exercise_model.get_exercise(exercise_id)
+        if not exercise:
+            raise ValueError(f"Exercise '{exercise_id}' not found. Available: {self.exercise_model.list_exercises()}")
+        self.state_machine = ExerciseStateMachine(exercise)
+        logging.info(f"Exercise: {exercise.name}")
+
+        self.current_state = None
+        self.last_errors = []
+        self.ready_counter = 0
+        self.FRAMES_TO_READY = 10
 
         self.SKELETON_CONNECTIONS = [
             (11, 12), (11, 13), (13, 15), (12, 14), (14, 16), 
@@ -58,7 +67,36 @@ class PosePipeline:
             if idx > 10: 
                 cv2.circle(frame, (int(pt.x), int(pt.y)), 4, (255, 255, 255), -1)
 
-    # הפונקציה החדשה שמציירת את המספרים על המסך
+    def draw_exercise_info(self, frame, sm_result):
+        h, w = frame.shape[:2]
+
+        exercise_name = sm_result['exercise']
+        phase = sm_result['phase']
+        reps = sm_result['rep_count']
+        violations = sm_result['violations']
+        started = sm_result['started']
+
+        cv2.putText(frame, exercise_name, (10, 40),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
+
+        phase_color = (0, 255, 255) if started else (128, 128, 128)
+        phase_text = f"Phase: {phase}" if started else "Get into starting position"
+        cv2.putText(frame, phase_text, (10, 80),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.8, phase_color, 2)
+
+        cv2.putText(frame, f"Reps: {reps}", (w - 180, 40),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+        if sm_result.get('completed_rep'):
+            cv2.putText(frame, "REP!", (w // 2 - 50, h // 2),
+                        cv2.FONT_HERSHEY_SIMPLEX, 2, (0, 255, 0), 4)
+
+        y_offset = 120
+        for joint, msg in violations.items():
+            cv2.putText(frame, f"{joint}: {msg}", (10, y_offset),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
+            y_offset += 25
+
     def draw_debug_angles(self, frame, landmarks, angles):
         mapping = {
             'right_knee': 26, 'left_knee': 25,
@@ -84,36 +122,21 @@ class PosePipeline:
 
             landmarks = self.detector.find_pose(frame)
             angles = AngleCalculator.get_body_angles(landmarks)
-            
-            is_ready = False
-            posture_errors = [] 
-            
+
+            sm_result = self.state_machine.update(angles if angles else {})
+
             if landmarks and angles:
-                posture_errors = self.rules.analyze_posture(angles)
-                is_ready = self.rules.is_starting_pose(angles)
-                
+                violation_joints = list(sm_result['violations'].keys())
+                posture_errors = [{'joint': j} for j in violation_joints]
                 self.draw_skeleton(frame, landmarks, posture_errors)
-                # קריאה לפונקציית הדיבאג החדשה
                 self.draw_debug_angles(frame, landmarks, angles)
 
-                if is_ready and not posture_errors:
-                    self.ready_counter += 1
-                    if self.ready_counter >= self.FRAMES_TO_READY:
-                        if self.current_state != 'READY':
-                            logging.info("🟩 READY!")
-                            self.current_state = 'READY'
-                            self.last_errors = []
-                else:
-                    self.ready_counter = 0
-                    if posture_errors:
-                        current_messages = [e['message'] for e in posture_errors]
-                        if self.current_state != 'ISSUES' or current_messages != [e['message'] for e in self.last_errors]:
-                            logging.warning(f"🟥 ISSUES: {posture_errors}")
-                            self.current_state = 'ISSUES'
-                            self.last_errors = posture_errors
+                if sm_result['transitioned']:
+                    logging.info(f">> Phase: {sm_result['phase']}")
+                if sm_result['completed_rep']:
+                    logging.info(f"Rep {sm_result['rep_count']} complete!")
 
-            cv2.putText(frame, f"Status: {'READY' if is_ready else 'ADJUSTING'}", (10, 40), 
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0) if is_ready else (0, 165, 255), 2) 
+            self.draw_exercise_info(frame, sm_result)
 
             cv2.imshow('Pose-IQ 3D Feedback', frame)
             if cv2.waitKey(1) & 0xFF == ord('q'): break
@@ -122,4 +145,6 @@ class PosePipeline:
         cv2.destroyAllWindows()
 
 if __name__ == "__main__":
-    PosePipeline().run()
+    import sys
+    exercise_id = sys.argv[1] if len(sys.argv) > 1 else 'squat'
+    PosePipeline(exercise_id).run()
