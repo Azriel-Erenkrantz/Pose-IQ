@@ -7,21 +7,47 @@ from angle_calculator import AngleCalculator
 from posture_rules import PostureRules
 from exercise_model import ExerciseModel
 from exercise_state_machine import ExerciseStateMachine
+from user_profile import UserProfile
+from onboarding import run_onboarding
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 class PosePipeline:
-    def __init__(self, exercise_id: str = 'squat'):
+    def __init__(self, exercise_id: str = None):
+        if UserProfile.exists():
+            self.profile = UserProfile.load()
+            logging.info(f"Welcome back, {self.profile.name}! (Level: {self.profile.fitness_level})")
+        else:
+            self.profile = run_onboarding()
+
         logging.info("Initializing Real-Time 3D Pipeline...")
         self.camera = CameraStream()
         self.detector = PoseDetector()
         self.exercise_model = ExerciseModel()
+
+        if exercise_id is None:
+            exercise_id = self._select_exercise()
+
         exercise = self.exercise_model.get_exercise(exercise_id)
         if not exercise:
             raise ValueError(f"Exercise '{exercise_id}' not found. Available: {self.exercise_model.list_exercises()}")
         self.state_machine = ExerciseStateMachine(exercise)
-        self.rules = PostureRules(exercise)
+        self.rules = PostureRules(exercise, self.profile)
         logging.info(f"Exercise: {exercise.name}")
+
+    def _select_exercise(self) -> str:
+        exercises = self.profile.preferred_exercises
+        if len(exercises) == 1:
+            return exercises[0]
+        print("\nSelect exercise:")
+        for i, ex_id in enumerate(exercises, 1):
+            ex = self.exercise_model.get_exercise(ex_id)
+            print(f"  {i}. {ex.name}")
+        while True:
+            choice = input("Choose: ").strip()
+            if choice.isdigit() and 1 <= int(choice) <= len(exercises):
+                return exercises[int(choice) - 1]
+            print(f"Please enter 1-{len(exercises)}")
 
         self.current_state = None
         self.last_errors = []
@@ -73,6 +99,10 @@ class PosePipeline:
         phase = sm_result['phase']
         reps = sm_result['rep_count']
         started = sm_result['started']
+
+        if self.profile:
+            cv2.putText(frame, f"{self.profile.name} ({self.profile.fitness_level})", (w - 350, h - 20),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (180, 180, 180), 1)
 
         cv2.putText(frame, exercise_name, (10, 40),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2)
@@ -154,5 +184,5 @@ class PosePipeline:
 
 if __name__ == "__main__":
     import sys
-    exercise_id = sys.argv[1] if len(sys.argv) > 1 else 'squat'
+    exercise_id = sys.argv[1] if len(sys.argv) > 1 else None
     PosePipeline(exercise_id).run()
