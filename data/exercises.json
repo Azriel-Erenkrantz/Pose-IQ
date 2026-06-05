@@ -15,6 +15,7 @@
         {
           "name": "standing",
           "order": 1,
+          "instruction": "Stand straight, feet shoulder-width apart",
           "angles": {
             "right_knee": {"min": 155, "max": 180},
             "left_knee": {"min": 155, "max": 180},
@@ -25,6 +26,7 @@
         {
           "name": "descending",
           "order": 2,
+          "instruction": "Squat down slowly",
           "angles": {
             "right_knee": {"min": 90, "max": 155},
             "left_knee": {"min": 90, "max": 155},
@@ -34,6 +36,7 @@
         {
           "name": "hold",
           "order": 3,
+          "instruction": "Hold the squat",
           "angles": {
             "right_knee": {"min": 70, "max": 100},
             "left_knee": {"min": 70, "max": 100},
@@ -43,6 +46,7 @@
         {
           "name": "ascending",
           "order": 4,
+          "instruction": "Rise back up",
           "angles": {
             "right_knee": {"min": 90, "max": 155},
             "left_knee": {"min": 90, "max": 155},
@@ -67,6 +71,7 @@
         {
           "name": "setup",
           "order": 1,
+          "instruction": "Get into push-up position, elbows bent to 90°",
           "angles": {
             "right_elbow": {"min": 80, "max": 100},
             "left_elbow": {"min": 80, "max": 100},
@@ -76,6 +81,7 @@
         {
           "name": "hold",
           "order": 2,
+          "instruction": "Hold the plank — stay rigid",
           "angles": {
             "right_elbow": {"min": 80, "max": 100},
             "left_elbow": {"min": 80, "max": 100},
@@ -100,6 +106,7 @@
         {
           "name": "standing",
           "order": 1,
+          "instruction": "Stand tall, feet together",
           "angles": {
             "right_knee": {"min": 155, "max": 180},
             "left_knee": {"min": 155, "max": 180},
@@ -109,6 +116,7 @@
         {
           "name": "descending",
           "order": 2,
+          "instruction": "Step forward and lower your body",
           "angles": {
             "right_knee": {"min": 90, "max": 155},
             "left_knee": {"min": 90, "max": 155},
@@ -118,6 +126,7 @@
         {
           "name": "hold",
           "order": 3,
+          "instruction": "Hold the lunge at 90°",
           "angles": {
             "right_knee": {"min": 80, "max": 100},
             "left_knee": {"min": 80, "max": 100},
@@ -127,6 +136,7 @@
         {
           "name": "ascending",
           "order": 4,
+          "instruction": "Push back up to standing",
           "angles": {
             "right_knee": {"min": 90, "max": 155},
             "left_knee": {"min": 90, "max": 155},
@@ -151,6 +161,7 @@
         {
           "name": "standing",
           "order": 1,
+          "instruction": "Arms at your sides, palms forward",
           "angles": {
             "right_elbow": {"min": 155, "max": 180},
             "left_elbow": {"min": 155, "max": 180},
@@ -162,6 +173,7 @@
         {
           "name": "curling",
           "order": 2,
+          "instruction": "Curl the weight up",
           "angles": {
             "right_elbow": {"min": 40, "max": 155},
             "left_elbow": {"min": 40, "max": 155},
@@ -173,6 +185,7 @@
         {
           "name": "hold",
           "order": 3,
+          "instruction": "Hold at the top — squeeze",
           "angles": {
             "right_elbow": {"min": 30, "max": 50},
             "left_elbow": {"min": 30, "max": 50},
@@ -184,6 +197,7 @@
         {
           "name": "lowering",
           "order": 4,
+          "instruction": "Lower the weight slowly",
           "angles": {
             "right_elbow": {"min": 40, "max": 155},
             "left_elbow": {"min": 40, "max": 155},
@@ -210,6 +224,7 @@
         {
           "name": "start",
           "order": 1,
+          "instruction": "Hold weights at shoulder height, elbows at 90°",
           "angles": {
             "right_elbow": {"min": 80, "max": 100},
             "left_elbow": {"min": 80, "max": 100},
@@ -221,6 +236,7 @@
         {
           "name": "pressing",
           "order": 2,
+          "instruction": "Press overhead",
           "angles": {
             "right_elbow": {"min": 100, "max": 170},
             "left_elbow": {"min": 100, "max": 170},
@@ -232,6 +248,7 @@
         {
           "name": "hold",
           "order": 3,
+          "instruction": "Hold at full extension",
           "angles": {
             "right_elbow": {"min": 160, "max": 180},
             "left_elbow": {"min": 160, "max": 180},
@@ -243,6 +260,7 @@
         {
           "name": "lowering",
           "order": 4,
+          "instruction": "Lower back to shoulders",
           "angles": {
             "right_elbow": {"min": 100, "max": 170},
             "left_elbow": {"min": 100, "max": 170},

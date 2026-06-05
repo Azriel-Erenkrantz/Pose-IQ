@@ -2,3 +2,5 @@ __pycache__/
 *.pyc
 *.task
 .claude/
+data/user_profile.json
+data/workout_history.json

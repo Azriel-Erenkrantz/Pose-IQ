@@ -1,6 +1,6 @@
 from typing import Dict, List, Optional
-from exercise_model import Exercise, Phase, AngleRange
-from user_profile import UserProfile
+from exercise.exercise_model import Exercise, Phase, AngleRange
+from user.user_profile import UserProfile
 
 
 class PostureRules:

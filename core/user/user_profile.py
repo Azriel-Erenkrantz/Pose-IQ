@@ -3,7 +3,7 @@ import os
 from dataclasses import dataclass, field, asdict
 from typing import List, Optional
 
-PROFILE_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'user_profile.json')
+PROFILE_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data', 'user_profile.json')
 
 FITNESS_LEVELS = {
     'beginner': {'label': 'Beginner', 'threshold_modifier': 1.3},
@@ -35,6 +35,7 @@ class UserProfile:
     fitness_level: str = "intermediate"
     limitations: List[str] = field(default_factory=list)
     preferred_exercises: List[str] = field(default_factory=list)
+    coach_style: str = "motivator"
 
     @property
     def threshold_modifier(self) -> float:

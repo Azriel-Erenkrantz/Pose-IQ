@@ -1,5 +1,6 @@
-from user_profile import UserProfile, FITNESS_LEVELS, LIMITATION_OPTIONS
-from exercise_model import ExerciseModel
+from user.user_profile import UserProfile, FITNESS_LEVELS, LIMITATION_OPTIONS
+from exercise.exercise_model import ExerciseModel
+from coaching.coach_messages import COACH_STYLES
 
 
 def run_onboarding() -> UserProfile:
@@ -57,18 +58,35 @@ def run_onboarding() -> UserProfile:
     if not preferred:
         preferred = available
 
+    print("\nCoach style:")
+    style_info = {
+        'tough':     'Direct and demanding — short commands, no fluff',
+        'calm':      'Gentle and patient — smooth, reassuring cues',
+        'motivator': 'Energetic and encouraging — hype you up',
+    }
+    for i, s in enumerate(COACH_STYLES, 1):
+        print(f"  {i}. {s.capitalize():12} — {style_info[s]}")
+    while True:
+        choice = input("Choose (1-3): ").strip()
+        if choice in ['1', '2', '3']:
+            coach_style = COACH_STYLES[int(choice) - 1]
+            break
+        print("Please enter 1, 2, or 3")
+
     profile = UserProfile(
         name=name,
         fitness_level=fitness_level,
         limitations=limitations,
-        preferred_exercises=preferred
+        preferred_exercises=preferred,
+        coach_style=coach_style,
     )
     profile.save()
 
     print(f"\nProfile saved for {name}!")
-    print(f"  Level: {FITNESS_LEVELS[fitness_level]['label']}")
-    print(f"  Limitations: {', '.join(limitations) if limitations else 'None'}")
-    print(f"  Exercises: {', '.join(preferred)}")
+    print(f"  Level:      {FITNESS_LEVELS[fitness_level]['label']}")
+    print(f"  Coach:      {coach_style.capitalize()}")
+    print(f"  Limitations:{' ' + ', '.join(limitations) if limitations else ' None'}")
+    print(f"  Exercises:  {', '.join(preferred)}")
     print()
 
     return profile

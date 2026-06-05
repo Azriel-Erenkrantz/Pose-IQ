@@ -18,6 +18,7 @@ class Phase:
     name: str
     order: int
     angles: Dict[str, AngleRange]
+    instruction: str = ""
 
 
 @dataclass
@@ -45,7 +46,7 @@ class Exercise:
 class ExerciseModel:
     def __init__(self, data_path: str = None):
         if data_path is None:
-            data_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'data', 'exercises.json')
+            data_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data', 'exercises.json')
         self.exercises: Dict[str, Exercise] = {}
         self._load(data_path)
 
@@ -60,7 +61,12 @@ class ExerciseModel:
                     joint: AngleRange(min=r['min'], max=r['max'])
                     for joint, r in phase_data['angles'].items()
                 }
-                phases.append(Phase(name=phase_data['name'], order=phase_data['order'], angles=angles))
+                phases.append(Phase(
+                    name=phase_data['name'],
+                    order=phase_data['order'],
+                    angles=angles,
+                    instruction=phase_data.get('instruction', '')
+                ))
 
             exercise = Exercise(
                 id=ex_data['id'],

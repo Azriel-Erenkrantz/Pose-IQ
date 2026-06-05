@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional
-from exercise_model import ExerciseModel, Exercise, Phase
+from exercise.exercise_model import ExerciseModel, Exercise, Phase
 
 
 class ExerciseStateMachine:
@@ -26,9 +26,10 @@ class ExerciseStateMachine:
             return self._result(violations={}, transitioned=False)
 
         if not self.started:
+            readiness = self._check_readiness(angles, self.current_phase)
             if self._angles_match_phase(angles, self.current_phase):
                 self.started = True
-            return self._result(violations={}, transitioned=False)
+            return self._result(violations={}, transitioned=False, readiness=readiness)
 
         violations = self._check_violations(angles, self.current_phase)
 
@@ -69,15 +70,31 @@ class ExerciseStateMachine:
                     violations[joint] = f"too high ({value:.0f}, expected {angle_range.min:.0f}-{angle_range.max:.0f})"
         return violations
 
-    def _result(self, violations: Dict[str, str], transitioned: bool, completed_rep: bool = False) -> dict:
+    def _check_readiness(self, angles: Dict[str, float], phase: Phase) -> Dict[str, str]:
+        """Returns all phase joints with status: None = OK, 'too low'/'too high' = not ready."""
+        status = {}
+        for joint, angle_range in phase.angles.items():
+            if joint in angles:
+                val = angles[joint]
+                status[joint] = None if angle_range.contains(val) else (
+                    "too low" if val < angle_range.min else "too high"
+                )
+        return status
+
+    def _result(self, violations: Dict[str, str], transitioned: bool,
+                completed_rep: bool = False, readiness: Dict[str, str] = None) -> dict:
         return {
             'exercise': self.exercise.name,
             'phase': self.current_phase.name,
+            'phase_index': self.current_phase_index,
+            'phase_count': len(self.exercise.phases),
+            'instruction': self.current_phase.instruction,
             'rep_count': self.rep_count,
             'violations': violations,
             'transitioned': transitioned,
             'completed_rep': completed_rep,
-            'started': self.started
+            'started': self.started,
+            'readiness': readiness or {},
         }
 
     def reset(self):
