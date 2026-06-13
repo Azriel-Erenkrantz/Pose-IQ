@@ -1,6 +1,6 @@
 import json
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Dict, List, Optional, Tuple
 
 
@@ -29,6 +29,12 @@ class Exercise:
     muscle_groups: List[str]
     phases: List[Phase]
     corrections: Dict[str, dict]
+    
+    # Joints that MUST be visible by the camera to start the exercise.
+    mandatory_start_joints: List[str] = field(default_factory=list)
+    
+    # Safety rules that apply continuously across all phases (e.g., straight back).
+    global_constraints: Dict[str, AngleRange] = field(default_factory=dict)
 
     def get_phase(self, name: str) -> Optional[Phase]:
         for phase in self.phases:
@@ -46,6 +52,7 @@ class Exercise:
 class ExerciseModel:
     def __init__(self, data_path: str = None):
         if data_path is None:
+            # Note: adjust path logic if project structure changes
             data_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'data', 'exercises.json')
         self.exercises: Dict[str, Exercise] = {}
         self._load(data_path)
@@ -68,13 +75,23 @@ class ExerciseModel:
                     instruction=phase_data.get('instruction', '')
                 ))
 
+            # Load global constraints from JSON
+            global_constraints = {}
+            if 'global_constraints' in ex_data:
+                global_constraints = {
+                    joint: AngleRange(min=r['min'], max=r['max'])
+                    for joint, r in ex_data['global_constraints'].items()
+                }
+
             exercise = Exercise(
                 id=ex_data['id'],
                 name=ex_data['name'],
                 description=ex_data['description'],
                 muscle_groups=ex_data['muscle_groups'],
                 phases=phases,
-                corrections=ex_data.get('corrections', {})
+                corrections=ex_data.get('corrections', {}),
+                mandatory_start_joints=ex_data.get('mandatory_start_joints', []), # TODO 2
+                global_constraints=global_constraints # TODO 3
             )
             self.exercises[exercise.id] = exercise
 
@@ -85,6 +102,10 @@ class ExerciseModel:
         return list(self.exercises.keys())
 
     def match_phase(self, exercise_id: str, current_angles: Dict[str, float]) -> Optional[Tuple[Phase, Dict[str, str]]]:
+        """
+        Used for Auto-Recovery to find the closest matching phase index.
+        Evaluates missing joints as errors to ensure accurate state guessing.
+        """
         exercise = self.get_exercise(exercise_id)
         if not exercise:
             return None
@@ -95,13 +116,15 @@ class ExerciseModel:
 
         for phase in exercise.phases:
             violations = {}
+            
             for joint, angle_range in phase.angles.items():
-                if joint in current_angles:
-                    if not angle_range.contains(current_angles[joint]):
-                        if current_angles[joint] < angle_range.min:
-                            violations[joint] = f"too low ({current_angles[joint]:.0f}, expected {angle_range.min:.0f}-{angle_range.max:.0f})"
-                        else:
-                            violations[joint] = f"too high ({current_angles[joint]:.0f}, expected {angle_range.min:.0f}-{angle_range.max:.0f})"
+                # Treat missing required joints as violations for accurate phase matching
+                if joint not in current_angles:
+                    violations[joint] = "missing (required by phase)"
+                elif not angle_range.contains(current_angles[joint]):
+                    val = current_angles[joint]
+                    direction = "too low" if val < angle_range.min else "too high"
+                    violations[joint] = f"{direction} ({val:.0f}, expected {angle_range.min:.0f}-{angle_range.max:.0f})"
 
             if len(violations) < best_violation_count:
                 best_violation_count = len(violations)
