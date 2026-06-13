@@ -1,0 +1,26 @@
+Pose-IQ Architecture Updates & TODOs
+--------------------------------------------------
+
+1. Fix the "Blind Camera" Bug (Vacuous Truth)
+- Problem: The `_angles_match_phase` function currently returns `True` (valid) even when the camera fails to detect the required joints, because it cannot prove an angle violation.
+- Solution: Change the validation paradigm. A missing joint must trigger an immediate failure.
+- Action Item: Add the condition `if joint not in angles: return False` inside the phase-matching loop.
+
+2. Enforce Mandatory Start Joints for Readiness
+- Problem: To prevent false starts, the system must ensure the camera sees all critical joints required for the starting position before beginning the exercise. 
+- Solution: Define a list of "mandatory joints" for the starting phase. During subsequent phases, the system will tolerate the occlusion of irrelevant joints.
+- Action Items:
+  A. Add a `mandatory_start_joints` field (array) to the exercise JSON.
+  B. Update `_check_readiness` to verify the presence of all joints in this list. If a joint is missing, return a `'missing'` status so the UI can prompt the user to step back into the frame.
+
+3. Prevent "Phase Amnesia" via Global Constraints
+- Problem: The monotonic state machine "forgets" critical safety rules (e.g., keeping a straight back) if they are not explicitly defined in the current phase's rules.
+- Solution: Separate the logic into phase-specific rules and continuous global safety rules.
+- Action Items:
+  A. Add a `global_constraints` dictionary to the exercise JSON.
+  B. Update `_check_violations` to evaluate both the current phase rules and the global constraints simultaneously on every frame.
+
+4. Implement Auto-Recovery (Sync)
+- Problem: Continuously running `match_phase` to guess the user's state can confuse the state machine during normal movement. However, without it, the system gets stuck if a user leaves the frame and returns in a different phase.
+- Solution: Keep the state machine monotonic and locked (0 -> 1 -> 2) during a continuous workout. Use `match_phase` exclusively as a fallback recovery mechanism.
+- Action Item: Trigger `model.match_phase` only after a prolonged disconnect (e.g., no joints detected for 3 seconds) to "guess" where the user returned, sync the `current_phase_index`, and resume counting from there.
