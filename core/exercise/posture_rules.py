@@ -1,10 +1,12 @@
 from typing import Dict, List, Optional
-from exercise.exercise_model import Exercise, Phase, AngleRange
+from exercise.exercise_model import Exercise, AngleRange
 from user.user_profile import UserProfile
 
 
 class PostureRules:
     FRAMES_TO_ALERT = 8
+    # TODO 2: Grace period for occlusions before alerting that a joint is missing
+    FRAMES_TO_MISSING = 5 
 
     def __init__(self, exercise: Exercise, profile: Optional[UserProfile] = None):
         self.exercise = exercise
@@ -30,27 +32,43 @@ class PostureRules:
             max=round(mid + adjusted_half, 1)
         )
 
-    def analyze(self, angles: Dict[str, float], phase: Phase) -> List[dict]:
+    def analyze(self, angles: Dict[str, float], active_rules: Dict[str, AngleRange]) -> List[dict]:
+        """
+        Evaluates the current angles against the active rules.
+        TODO 3: Now accepts 'active_rules' (merged global + phase constraints) instead of just phase.
+        """
         issues = []
-        if not angles or not phase:
+        if not active_rules:
             return issues
 
-        active_joints = set()
-
-        for joint, angle_range in phase.angles.items():
+        for joint, angle_range in active_rules.items():
+            # TODO 2: Handle extended occlusion (missing joints during exercise)
             if joint not in angles:
+                self.violation_counters[joint] = self.violation_counters.get(joint, 0) + 1
+                if self.violation_counters[joint] >= self.FRAMES_TO_MISSING:
+                    issues.append({
+                        'joint': joint,
+                        'severity': 'high',
+                        'message': f"Lost track of joint {joint}. Please make sure it is visible.",
+                        'direction': 'missing',
+                        'value': None,
+                        'expected_min': angle_range.min,
+                        'expected_max': angle_range.max
+                    })
                 continue
 
-            active_joints.add(joint)
             value = angles[joint]
             adjusted = self._adjust_range(joint, angle_range)
 
+            # Reset counter if the joint is within the valid range
             if adjusted.contains(value):
                 self.violation_counters[joint] = 0
                 continue
 
+            # Increment counter for incorrect angle
             self.violation_counters[joint] = self.violation_counters.get(joint, 0) + 1
 
+            # Wait until the error persists for enough frames before alerting
             if self.violation_counters[joint] < self.FRAMES_TO_ALERT:
                 continue
 
@@ -59,6 +77,7 @@ class PostureRules:
             message = correction.get(direction, f"{joint}: {direction} ({value:.0f}, expected {adjusted.min:.0f}-{adjusted.max:.0f})")
             severity = correction.get("severity", "medium")
 
+            # Apply leniency for joints with known physical limitations
             if joint in self.limited_joints:
                 severity = "low"
                 message = f"[Adapted] {message}"
@@ -72,8 +91,9 @@ class PostureRules:
                 'expected_max': adjusted.max
             })
 
+        # Clean up counters for joints that are no longer in the active rules
         for joint in list(self.violation_counters.keys()):
-            if joint not in active_joints:
+            if joint not in active_rules:
                 self.violation_counters[joint] = 0
 
         return issues
