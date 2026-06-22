@@ -13,25 +13,23 @@ Boundary map
 [Session layer]      →  LiveSessionOutput  →  [History / DB]
 [Recommendation]     →  ExerciseRecommendation  →  [UI]
 [User]               →  User, HealthStatus  →  [All parts]
-[UI screens]         →  DashboardData, SessionScreenData, HistoryScreenData
-
-Relationship to existing module models
----------------------------------------
-These types are the FUTURE unified state. Existing module-internal types
-(recommendation/models.py, user/user_profile.py, user/workout_history.py)
-remain in place until each module is unisolated and updated to import
-from here instead.
+[Auth]               →  RegisterRequest, LoginRequest, AuthToken
+[UI screens]         →  DashboardData, SessionScreenData, HistoryScreenData,
+                        ProfileSetupScreenData
 
 DB table mapping (one dataclass → one table)
 --------------------------------------------
-User                → users
-HealthStatus        → health_status
-Exercise            → exercises  (or seeded from catalog, not user-generated)
-LiveSessionOutput   → workout_sessions
-RepResult           → rep_records  (FK: session_id)
+User                   → users
+HealthStatus           → health_status
+Exercise               → exercises  (seeded, not user-generated)
+LiveSessionOutput      → workout_sessions
+RepResult              → rep_records  (FK: session_id)
+InjuryRisk             → injury_risks
+WeightRecommendation   → weight_recommendations
 ExerciseRecommendation → recommendations  (optional — can be computed on the fly)
-LiveFeedback        → ephemeral, not persisted
-ProgressMetrics     → computed view, not a table
+LiveFeedback           → ephemeral, not persisted
+ProgressMetrics        → computed view, not a table
+AuthToken              → auth_tokens  (or JWT — no table needed)
 """
 from __future__ import annotations
 
@@ -56,6 +54,28 @@ class FitnessLevel(str, Enum):
     ADVANCED     = "advanced"
 
 
+class TrainerPersonality(str, Enum):
+    TOUGH      = "tough"       # direct and demanding
+    CALM       = "calm"        # gentle and patient
+    MOTIVATING = "motivating"  # energetic and encouraging
+
+
+class Equipment(str, Enum):
+    DUMBBELLS        = "dumbbells"
+    RESISTANCE_BANDS = "resistance_bands"
+    NONE             = "none"
+
+
+class TargetGoal(str, Enum):
+    """High-level training goal selected during onboarding."""
+    LEGS       = "legs"
+    CARDIO     = "cardio"
+    ABS        = "abs"
+    ARMS       = "arms"
+    FULL_BODY  = "full_body"
+    OTHER      = "other"
+
+
 class ScoreTrend(str, Enum):
     IMPROVING = "improving"
     STABLE    = "stable"
@@ -70,13 +90,15 @@ class User:
     Who is using the app.
     Maps to core/user/UserProfile — will consolidate on unisolation.
     """
-    user_id: str
-    name: str
-    fitness_level: FitnessLevel          = FitnessLevel.INTERMEDIATE
-    limitations: List[str]               = field(default_factory=list)
-    preferred_exercises: List[str]       = field(default_factory=list)
-    coach_style: str                     = "motivator"
-    created_at: datetime                 = field(default_factory=datetime.now)
+    user_id:             str
+    name:                str
+    email:               str
+    fitness_level:       FitnessLevel        = FitnessLevel.INTERMEDIATE
+    trainer_personality: TrainerPersonality  = TrainerPersonality.MOTIVATING
+    target_goals:        List[TargetGoal]    = field(default_factory=list)
+    equipment:           List[Equipment]     = field(default_factory=list)
+    limitations:         List[str]           = field(default_factory=list)
+    created_at:          datetime            = field(default_factory=datetime.now)
 
     @property
     def threshold_modifier(self) -> float:
@@ -87,6 +109,33 @@ class User:
         }[self.fitness_level]
 
 
+# ── Auth ──────────────────────────────────────────────────────────────────────
+
+@dataclass
+class RegisterRequest:
+    name:                str
+    email:               str
+    password:            str                 # plaintext — hashed at service layer
+    fitness_level:       FitnessLevel        = FitnessLevel.INTERMEDIATE
+    trainer_personality: TrainerPersonality  = TrainerPersonality.MOTIVATING
+    target_goals:        List[TargetGoal]    = field(default_factory=list)
+    equipment:           List[Equipment]     = field(default_factory=list)
+    limitations:         List[str]           = field(default_factory=list)
+
+
+@dataclass
+class LoginRequest:
+    email:    str
+    password: str
+
+
+@dataclass
+class AuthToken:
+    user_id:    str
+    token:      str
+    expires_at: datetime
+
+
 # ── Health ─────────────────────────────────────────────────────────────────────
 
 @dataclass
@@ -95,9 +144,9 @@ class HealthStatus:
     User's body condition at a point in time.
     Maps to core/recommendation/models.HealthStatus — will consolidate on unisolation.
     """
-    user_id: str
-    ratings: Dict[BodyRegion, int]       # 1 = poor, 5 = fully healthy
-    recorded_at: datetime                = field(default_factory=datetime.now)
+    user_id:     str
+    ratings:     Dict[BodyRegion, int]    # 1 = poor, 5 = fully healthy
+    recorded_at: datetime                 = field(default_factory=datetime.now)
 
     def get(self, region: BodyRegion) -> int:
         return self.ratings.get(region, 3)
@@ -111,13 +160,13 @@ class Exercise:
     Unified exercise definition used across all parts.
     Maps to core/recommendation/models.CatalogExercise — will consolidate on unisolation.
     """
-    exercise_id: str
-    name: str
-    primary_region: BodyRegion
-    body_regions: List[BodyRegion]
+    exercise_id:     str
+    name:            str
+    primary_region:  BodyRegion
+    body_regions:    List[BodyRegion]
     base_difficulty: float               # 0–1, inherent difficulty of the movement
-    description: str
-    tags: List[str]                      = field(default_factory=list)
+    description:     str
+    tags:            List[str]           = field(default_factory=list)
 
 
 # ── Live session (boundary with the ML model) ─────────────────────────────────
@@ -128,10 +177,10 @@ class RepResult:
     Output of one completed rep.
     Produced by the ML model; consumed by session layer, history, and UI.
     """
-    rep_number: int
-    form_score: float                    # 0–100
-    error_joints: List[str]             # joints that violated form rules this rep
-    duration_seconds: float              = 0.0
+    rep_number:       int
+    form_score:       float              # 0–100
+    error_joints:     List[str]         # joints that violated form rules this rep
+    duration_seconds: float             = 0.0
 
 
 @dataclass
@@ -139,12 +188,11 @@ class LiveFeedback:
     """
     Real-time signal emitted frame-by-frame during a rep.
     Ephemeral — shown on screen, never stored.
-    This is the direct output of the ML model during exercise.
     """
-    timestamp: datetime
-    form_score: float                    # 0–100, instantaneous
+    timestamp:         datetime
+    form_score:        float             # 0–100, instantaneous
     active_violations: List[str]        # joints currently wrong
-    coaching_message: str               # "straighten your back", "slow down", etc.
+    coaching_message:  str              # e.g. "straighten your back"
 
 
 @dataclass
@@ -154,21 +202,15 @@ class LiveSessionOutput:
 
     The ML model fills this when ready.
     Until then, FakeSessionGenerator (in core/session/) produces it.
-
-    This is the single type that:
-      - The session layer receives from the ML model
-      - The history layer persists to the DB
-      - The recommendation layer reads (via bridge) to update scores
-      - The UI displays on the session summary screen
     """
-    session_id: str
-    exercise_id: str
-    exercise_name: str
-    user_id: str
-    date: datetime
-    reps: List[RepResult]
+    session_id:       str
+    exercise_id:      str
+    exercise_name:    str
+    user_id:          str
+    date:             datetime
+    reps:             List[RepResult]
     duration_seconds: float
-    overall_score: float                 # 0–100, avg form across all reps
+    overall_score:    float              # 0–100, avg form across all reps
 
     @property
     def total_reps(self) -> int:
@@ -176,7 +218,6 @@ class LiveSessionOutput:
 
     @property
     def weak_joints(self) -> List[str]:
-        """All joints that caused errors across any rep, deduplicated."""
         return list({j for rep in self.reps for j in rep.error_joints})
 
 
@@ -187,15 +228,49 @@ class ProgressMetrics:
     """
     Aggregated history for one exercise.
     Computed from LiveSessionOutput records — not stored as its own DB table.
-    What the progress / history UI screen displays.
     """
-    exercise_id: str
-    exercise_name: str
-    total_sessions: int
-    total_reps: int
-    avg_score_recent: float
-    score_trend: ScoreTrend
-    weak_joints: List[Tuple[str, int]]   # (joint_name, error_count)
+    exercise_id:       str
+    exercise_name:     str
+    total_sessions:    int
+    total_reps:        int
+    avg_score_recent:  float
+    score_trend:       ScoreTrend
+    weak_joints:       List[Tuple[str, int]]  # (joint_name, error_count)
+
+
+# ── Injury and safety ──────────────────────────────────────────────────────────
+
+@dataclass
+class InjuryRisk:
+    """
+    Risk assessment produced by the injury predictor component.
+    Based on compensation patterns, asymmetry, and joint stress over time.
+    """
+    user_id:                 str
+    risk_areas:              List[str]   # e.g. ["knee_right", "lower_back"]
+    compensation_patterns:   List[str]   # e.g. ["hip_shift_left"]
+    asymmetry_score:         float       # 0–1 (0 = symmetric, 1 = severe)
+    overall_risk:            float       # 0–1
+    recommendation:          str
+    assessed_at:             datetime    = field(default_factory=datetime.now)
+
+    @property
+    def has_warning(self) -> bool:
+        return self.overall_risk >= 0.4
+
+
+# ── Weight recommendation ──────────────────────────────────────────────────────
+
+@dataclass
+class WeightRecommendation:
+    """
+    Dynamic load recommendation for one exercise, based on performance analysis.
+    """
+    exercise_id:            str
+    exercise_name:          str
+    recommended_weight_kg:  float
+    reasoning:              str
+    confidence:             float        # 0–1
 
 
 # ── Recommendation ─────────────────────────────────────────────────────────────
@@ -206,28 +281,39 @@ class ExerciseRecommendation:
     One ranked recommendation produced by the recommendation engine.
     Maps to core/recommendation/models.ExerciseRecommendation — will consolidate on unisolation.
     """
-    exercise: Exercise
-    score: float                         # 0–1 final blended score
-    reason: str
-    scenario: str                        # health scenario name
-    personal_score: float
+    exercise:        Exercise
+    score:           float               # 0–1 final blended score
+    reason:          str
+    scenario:        str                 # health scenario name
+    personal_score:  float
     community_score: Optional[float]
-    feedback_score: Optional[float]
+    feedback_score:  Optional[float]
 
 
 # ── UI screen data contracts ───────────────────────────────────────────────────
 
 @dataclass
+class ProfileSetupScreenData:
+    """
+    Static options the onboarding screen needs to render its pickers.
+    Returned by the API; mobile app renders these as selectable lists.
+    """
+    fitness_levels:       List[FitnessLevel]
+    trainer_personalities: List[TrainerPersonality]
+    target_goals:         List[TargetGoal]
+    equipment_options:    List[Equipment]
+    limitation_options:   List[str]      # free-text body part limitations
+
+
+@dataclass
 class DashboardData:
-    """
-    Everything the main dashboard screen needs to render.
-    Assembled by the app layer from all isolated parts.
-    """
-    user: User
-    health_status: HealthStatus
-    recommendations: List[ExerciseRecommendation]
-    recent_sessions: List[LiveSessionOutput]
+    """Everything the main dashboard screen needs to render."""
+    user:             User
+    health_status:    HealthStatus
+    recommendations:  List[ExerciseRecommendation]
+    recent_sessions:  List[LiveSessionOutput]
     progress_summary: List[ProgressMetrics]
+    injury_risk:      Optional[InjuryRisk]  = None
 
 
 @dataclass
@@ -236,18 +322,16 @@ class SessionScreenData:
     Everything the live exercise screen needs.
     live_feedback is None between reps; populated frame-by-frame during a rep.
     """
-    user: User
-    exercise: Exercise
+    user:           User
+    exercise:       Exercise
     completed_reps: List[RepResult]
-    live_feedback: Optional[LiveFeedback]  = None
-    session_id: str                        = field(default_factory=lambda: str(uuid.uuid4()))
+    live_feedback:  Optional[LiveFeedback]  = None
+    session_id:     str                     = field(default_factory=lambda: str(uuid.uuid4()))
 
 
 @dataclass
 class HistoryScreenData:
-    """
-    Everything the history / progress screen needs.
-    """
-    user: User
+    """Everything the history / progress screen needs."""
+    user:     User
     sessions: List[LiveSessionOutput]
-    metrics: Dict[str, ProgressMetrics]   # keyed by exercise_id
+    metrics:  Dict[str, ProgressMetrics]    # keyed by exercise_id
