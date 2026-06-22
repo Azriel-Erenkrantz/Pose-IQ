@@ -63,6 +63,9 @@ WEIGHT_PERSONAL   = 0.60
 WEIGHT_COMMUNITY  = 0.25
 WEIGHT_FEEDBACK   = 0.15
 
+VARIETY_LOOKBACK  = 5     # how many recent sessions to inspect for repetition
+VARIETY_PENALTY   = 0.50  # maximum score reduction when exercise dominates recent history
+
 
 # ── Scenario detection ──────────────────────────────────────────────────────
 
@@ -187,6 +190,29 @@ def _feedback_score(
     return round(sum(matched) / len(matched), 3) if matched else None
 
 
+def _variety_multiplier(
+    exercise: CatalogExercise,
+    history: List[ExercisePerformanceRecord],
+) -> float:
+    """
+    Demotes exercises done too frequently in recent sessions.
+
+    Looks at the last VARIETY_LOOKBACK sessions across all exercises.
+    Returns 1.0 when the exercise hasn't been done recently.
+    Returns (1 - VARIETY_PENALTY) when it was done every recent session.
+    Applied as a multiplier on the blended score so it stays independent
+    of both rule-based and ML scoring logic.
+    """
+    recent_ids = [
+        r.exercise_id
+        for r in sorted(history, key=lambda r: r.timestamp, reverse=True)[:VARIETY_LOOKBACK]
+    ]
+    times = recent_ids.count(exercise.exercise_id)
+    if times == 0:
+        return 1.0
+    return round(1.0 - VARIETY_PENALTY * (times / VARIETY_LOOKBACK), 3)
+
+
 def _blend(personal: float, community: Optional[float], feedback: Optional[float]) -> float:
     """Weighted average; redistributes weights when signals are absent."""
     components: List[Tuple[float, float]] = [(personal, WEIGHT_PERSONAL)]
@@ -223,6 +249,7 @@ def recommend(
         c_score = _community_score(ex, community, health)
         f_score = _feedback_score(ex, feedbacks)
         final = _blend(p_score, c_score, f_score)
+        final = round(final * _variety_multiplier(ex, history), 3)
 
         results.append(ExerciseRecommendation(
             exercise=ex,

@@ -29,7 +29,7 @@ from core.recommendation.models import (
     ExercisePerformanceRecord, HealthScenario, HealthStatus,
 )
 from core.recommendation.recommender import (
-    ADJACENT, detect_scenario, recommend,
+    ADJACENT, detect_scenario, recommend, _variety_multiplier,
 )
 from core.recommendation.catalog import CATALOG, COMMUNITY_DATA
 from core.recommendation.fake_data import (
@@ -180,13 +180,14 @@ class TestCatalogFilter(unittest.TestCase):
 
 class TestBlend(unittest.TestCase):
 
-    def test_no_community_no_feedback_score_equals_personal(self):
-        # When community and feedback are absent, the blend is just personal_score
+    def test_no_community_no_feedback_score_equals_personal_times_variety(self):
+        # Without community or feedback, score = personal_score × variety_multiplier
         sc = scenario_all_healthy()
         recs = recommend(CATALOG, sc.target_region, sc.health, sc.history, [], [])
         for rec in recs:
             if rec.community_score is None and rec.feedback_score is None:
-                self.assertEqual(rec.score, rec.personal_score)
+                variety = _variety_multiplier(rec.exercise, sc.history)
+                self.assertEqual(rec.score, round(rec.personal_score * variety, 3))
 
     def test_community_signal_changes_final_score(self):
         sc = scenario_all_healthy()
@@ -320,6 +321,8 @@ import tempfile
 import uuid
 from datetime import timedelta
 
+from core.recommendation.recommender import _variety_multiplier, VARIETY_LOOKBACK, VARIETY_PENALTY
+
 from core.recommendation.ml_ranker import (
     MIN_SESSIONS_TOTAL, _feature_vector, _satisfaction_score,
     has_enough_data, model_exists, train, predict,
@@ -353,6 +356,96 @@ def _make_records(
             health_snapshot=health_map,
         ))
     return records
+
+
+class TestVariety(unittest.TestCase):
+
+    def _history_of(self, exercise_ids):
+        """Build a fake history with one record per exercise_id in order (oldest first)."""
+        health = {U: 5, C: 5, L: 5}
+        records = []
+        for i, ex_id in enumerate(exercise_ids):
+            records.append(ExercisePerformanceRecord(
+                id=str(uuid.uuid4()),
+                exercise_id=ex_id,
+                user_id="u",
+                session_id=f"s{i}",
+                timestamp=datetime.now() - timedelta(days=len(exercise_ids) - i),
+                difficulty_score=0.5,
+                form_quality_score=0.8,
+                completion_rate=1.0,
+                violations=[],
+                reps_completed=8,
+                sets_completed=3,
+                health_snapshot=health,
+            ))
+        return records
+
+    def _ex(self, exercise_id):
+        return CatalogExercise(exercise_id, exercise_id, U, [U], 0.5, "test")
+
+    # ── Multiplier function ───────────────────────────────────────────────────
+
+    def test_no_penalty_when_not_done_recently(self):
+        history = self._history_of(["push_up", "bicep_curl", "tricep_dip"])
+        self.assertEqual(_variety_multiplier(self._ex("shoulder_press"), history), 1.0)
+
+    def test_no_penalty_when_no_history(self):
+        self.assertEqual(_variety_multiplier(self._ex("push_up"), []), 1.0)
+
+    def test_full_penalty_when_done_every_recent_session(self):
+        history = self._history_of(["push_up"] * VARIETY_LOOKBACK)
+        expected = round(1.0 - VARIETY_PENALTY, 3)
+        self.assertEqual(_variety_multiplier(self._ex("push_up"), history), expected)
+
+    def test_partial_penalty_proportional_to_frequency(self):
+        # done 1 out of VARIETY_LOOKBACK recent sessions
+        history = self._history_of(
+            ["push_up"] + ["bicep_curl"] * (VARIETY_LOOKBACK - 1)
+        )
+        expected = round(1.0 - VARIETY_PENALTY * (1 / VARIETY_LOOKBACK), 3)
+        self.assertEqual(_variety_multiplier(self._ex("push_up"), history), expected)
+
+    def test_only_lookback_window_is_considered(self):
+        # push_up done many times long ago but not in the recent window
+        old = self._history_of(["push_up"] * 10)
+        for r in old:
+            r.timestamp = datetime.now() - timedelta(days=100)
+        recent = self._history_of(["bicep_curl"] * VARIETY_LOOKBACK)
+        self.assertEqual(_variety_multiplier(self._ex("push_up"), old + recent), 1.0)
+
+    # ── Effect on final recommendation score ─────────────────────────────────
+
+    def test_overused_exercise_scores_lower_than_fresh_alternative(self):
+        health = HealthStatus("u", {U: 5, C: 5, L: 5})
+        # push_up done every recent session; shoulder_press not done at all
+        history = self._history_of(["push_up"] * VARIETY_LOOKBACK)
+        recs = recommend(CATALOG, U, health, history, [], [])
+        push_up        = _rec_by_id(recs, "push_up")
+        shoulder_press = _rec_by_id(recs, "shoulder_press")
+        # shoulder_press has no history (personal_score=0.5, variety=1.0)
+        # push_up has no history either but variety multiplier < 1.0
+        self.assertGreater(shoulder_press.score, push_up.score)
+
+    def test_variety_does_not_penalise_exercises_done_in_different_region(self):
+        health = HealthStatus("u", {U: 5, C: 5, L: 5})
+        # squat (LOWER) done every session — should not penalise UPPER exercises
+        history = self._history_of(["squat"] * VARIETY_LOOKBACK)
+        recs = recommend(CATALOG, U, health, history, [], [])
+        for rec in recs:
+            self.assertEqual(rec.score, rec.personal_score,
+                             f"{rec.exercise.name} should have no variety penalty")
+
+    def test_variety_multiplier_is_swappable(self):
+        """VARIETY_PENALTY is monkeypatchable — changing it affects scores immediately."""
+        import core.recommendation.recommender as m
+        original = m.VARIETY_PENALTY
+        try:
+            m.VARIETY_PENALTY = 0.0   # disable variety entirely
+            history = self._history_of(["push_up"] * VARIETY_LOOKBACK)
+            self.assertEqual(_variety_multiplier(self._ex("push_up"), history), 1.0)
+        finally:
+            m.VARIETY_PENALTY = original
 
 
 class TestMLRanker(unittest.TestCase):
