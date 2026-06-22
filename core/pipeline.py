@@ -14,6 +14,7 @@ from user.workout_plan import WorkoutPlan
 from coaching.voice_coach import VoiceCoach
 from ml.data_collector import DataCollector
 from ml.predictor import FormPredictor
+# Recommendation engine integration: see recommendation/bridge.py when ready to wire up.
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 
