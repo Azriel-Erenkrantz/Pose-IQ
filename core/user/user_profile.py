@@ -1,5 +1,6 @@
 import json
 import os
+import uuid
 from dataclasses import dataclass, field, asdict
 from typing import List, Optional
 
@@ -36,6 +37,16 @@ class UserProfile:
     limitations: List[str] = field(default_factory=list)
     preferred_exercises: List[str] = field(default_factory=list)
     coach_style: str = "motivator"
+    # Stable anonymous id, required to attribute collected training data to a
+    # specific user for the per-user adaptive layer. Generated lazily.
+    user_id: str = ""
+
+    def ensure_user_id(self, path: str = None) -> str:
+        """Generate and persist a stable user_id on first use."""
+        if not self.user_id:
+            self.user_id = uuid.uuid4().hex[:12]
+            self.save(path)
+        return self.user_id
 
     @property
     def threshold_modifier(self) -> float:

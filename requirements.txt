@@ -1,0 +1,12 @@
+# Pose-IQ dependencies (Python 3.12)
+opencv-python==4.13.0.92
+mediapipe==0.10.33
+numpy==2.2.5
+pandas==2.2.3
+scikit-learn==1.6.1
+joblib==1.5.1
+SQLAlchemy==2.0.51
+
+# Database driver — only needed when DATABASE_URL points at PostgreSQL (prod).
+# Dev runs on SQLite, which needs no extra driver.
+# psycopg[binary]>=3.2

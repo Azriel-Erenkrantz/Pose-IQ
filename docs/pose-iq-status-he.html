@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pose-IQ — מסמך סטטוס לפגישת חיתוך מצב</title>
+<style>
+  :root { --accent:#1f6feb; --accent2:#0a7d4c; --warn:#a15c00; --bg:#fbfcfe; --line:#dfe3e8; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: "Segoe UI", "Arial Hebrew", Arial, sans-serif;
+    line-height: 1.75; color:#1b1f24; background:var(--bg);
+    max-width: 980px; margin: 0 auto; padding: 32px 28px 80px;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  @media print {
+    body { padding: 0; background:#fff; }
+    .print-note { display:none; }
+    h2 { break-after: avoid; }
+    table, .box, .flow, .arch { break-inside: avoid; }
+  }
+  @page { margin: 14mm; }
+  h1 { font-size: 2em; border-bottom: 3px solid var(--accent); padding-bottom:.3em; margin-bottom:.2em; }
+  h2 { font-size: 1.45em; color: var(--accent); margin-top: 1.9em; border-bottom:1px solid var(--line); padding-bottom:.25em; }
+  h3 { font-size: 1.15em; color:#24292f; margin-top: 1.3em; }
+  p, li { font-size: 1.02em; }
+  .lead { font-size: 1.08em; color:#3a414a; }
+  code, .mono { font-family: "Consolas","Courier New",monospace; direction:ltr; unicode-bidi:isolate;
+    background:#eef1f5; padding:1px 6px; border-radius:5px; font-size:.92em; }
+  table { border-collapse: collapse; width:100%; margin: .8em 0 1.4em; background:#fff; }
+  th, td { border:1px solid var(--line); padding:8px 11px; text-align:right; vertical-align:top; font-size:.97em; }
+  th { background:#eef3fb; color:#16324f; }
+  td .mono { background:#f3f5f8; }
+  .box { border-radius:10px; padding:14px 18px; margin:1.1em 0; border:1px solid var(--line); }
+  .box.ok { background:#eefaf2; border-color:#bfe6cf; }
+  .box.think { background:#fff7e9; border-color:#f0d9a8; }
+  .box.miss { background:#fdeef0; border-color:#f0c2c8; }
+  .box h3 { margin-top:0; }
+  .tag { display:inline-block; font-size:.78em; padding:1px 8px; border-radius:20px; color:#fff; margin-inline-start:6px; vertical-align:middle; }
+  .tag.new { background:var(--accent2); }
+  .tag.exp { background:var(--warn); }
+  ul { padding-inline-start: 0; padding-inline-end: 1.3em; }
+  .muted { color:#6a7280; font-size:.9em; }
+  .toc { background:#fff; border:1px solid var(--line); border-radius:10px; padding:10px 22px; }
+  .toc ol { margin:.3em 0; }
+  hr { border:none; border-top:1px dashed var(--line); margin:2em 0; }
+  .print-note { background:#eef3fb; border:1px solid #cdddf5; border-radius:8px; padding:8px 14px; font-size:.9em; color:#2b4a6f; }
+  /* ── flow / architecture diagrams ── */
+  .flow { display:flex; flex-direction:column; align-items:center; gap:0; margin:1.3em 0; }
+  .node { background:#eef3fb; border:1.5px solid #cdddf5; border-radius:10px; padding:9px 16px;
+    font-weight:600; color:#16324f; text-align:center; max-width:560px; }
+  .node.alt { background:#eefaf2; border-color:#bfe6cf; color:#0a5c39; }
+  .node.ml  { background:#fff7e9; border-color:#f0d9a8; color:#7a4a00; }
+  .node.row { display:flex; gap:10px; max-width:none; background:none; border:none; padding:4px 0; }
+  .node.row > span { background:#eefaf2; border:1.5px solid #bfe6cf; border-radius:10px; padding:8px 14px; color:#0a5c39; font-weight:600; }
+  .arrow { color:#8a96a3; font-size:1.35em; line-height:1.05; padding:2px 0; }
+  .arch { display:flex; gap:12px; align-items:stretch; flex-wrap:wrap; margin:1.3em 0; }
+  .col { flex:1 1 250px; border:1.5px solid var(--line); border-radius:12px; padding:0 0 12px; background:#fff; overflow:hidden; }
+  .col h4 { margin:0; padding:10px 12px; color:#fff; text-align:center; font-size:1.04em; }
+  .col.client h4 { background:var(--accent); }
+  .col.server h4 { background:var(--accent2); }
+  .col ul { margin:.7em 0 0; }
+  .between { display:flex; flex-direction:column; justify-content:center; align-items:center; color:#586069; font-weight:700; min-width:70px; text-align:center; }
+  .between .big { font-size:1.7em; line-height:1; }
+  .between small { font-weight:500; color:#8a96a3; }
+</style>
+</head>
+<body>
+
+<h1>Pose-IQ — מסמך סטטוס</h1>
+<p class="muted">מסמך פנימי להכנה לפגישת חיתוך מצב עם המנחה · עודכן ביוני 2026</p>
+<p class="print-note">לקריאה: פתח בדפדפן. לשיתוף/הדפסה: <code>Ctrl + P</code> ← "שמירה כ-PDF".</p>
+
+<p class="lead">
+Pose-IQ היא מערכת אימון כושר חכמה בזמן אמת. המצלמה מצלמת את המתאמן, המערכת מזהה את
+שלד הגוף, מודדת זוויות במפרקים, מזהה את שלב התרגיל וסופרת חזרות, נותנת משוב מיידי על
+טעויות יציבה (ויזואלי + קולי), שומרת היסטוריית אימונים ומפיקה המלצות מותאמות אישית.
+בנוסף נבנתה שכבת <strong>למידת מכונה</strong> שלומדת מתוך סרטוני הדגמה, ולאחרונה נוספה
+<strong>שכבת מסד נתונים</strong> כהכנה למעבר למוצר רב-משתמשים.
+</p>
+
+<div class="toc">
+<strong>תוכן העניינים</strong>
+<ol>
+  <li>סקירה כללית וסטאק טכנולוגי</li>
+  <li>מבנה התיקיות והקבצים — תפקיד כל רכיב</li>
+  <li>זרימת המערכת (ארכיטקטורה)</li>
+  <li>שכבת למידת המכונה (ML)</li>
+  <li>שכבת מסד הנתונים (DB)</li>
+  <li>מה כבר עובד והושג</li>
+  <li>התלבטויות להמשך</li>
+  <li>מה עוד חסר — צעדים הבאים</li>
+</ol>
+</div>
+
+<h2>1. סקירה כללית וסטאק טכנולוגי</h2>
+<p>
+כיום המערכת רצה כ<strong>אפליקציית דסקטופ מקומית בפייתון</strong>: נפתח חלון <code>OpenCV</code>
+שמציג את וידאו המצלמה עם שלד מצויר, מד-זוויות, מונה חזרות, רשימת מוכנוּת ותיבות שגיאה.
+</p>
+<table>
+  <tr><th>תחום</th><th>טכנולוגיה</th></tr>
+  <tr><td>שפה</td><td><code>Python 3.12</code></td></tr>
+  <tr><td>ראייה ממוחשבת / מצלמה</td><td><code>OpenCV</code></td></tr>
+  <tr><td>זיהוי פוז (שלד)</td><td><code>MediaPipe Pose Landmarker</code> (33 נקודות גוף)</td></tr>
+  <tr><td>חישוב מספרי</td><td><code>NumPy</code></td></tr>
+  <tr><td>למידת מכונה</td><td><code>scikit-learn</code>, <code>pandas</code>, <code>joblib</code></td></tr>
+  <tr><td>משוב קולי</td><td><code>pyttsx3</code> (טקסט-לדיבור)</td></tr>
+  <tr><td>מסד נתונים <span class="tag new">חדש</span></td><td><code>SQLAlchemy</code> + <code>SQLite</code> (פיתוח) / <code>PostgreSQL</code> (ייצור)</td></tr>
+</table>
+<p>חמישה תרגילים מוגדרים כיום: <strong>סקוואט, פלאנק, לאנג', בייספ קרל, לחיצת כתפיים</strong>.
+המערכת עוקבת אחר <strong>8 זוויות גוף</strong>: ברך ימין/שמאל, מרפק ימין/שמאל, זווית זרוע-גוף
+ימין/שמאל, גב (spine) ופיסוק רגליים (legs_spread).</p>
+
+<h2>2. מבנה התיקיות והקבצים — תפקיד כל רכיב</h2>
+<p>כל הקוד תחת <code>core/</code>, מחולק לתת-חבילות לפי אחריות. הנתונים תחת <code>data/</code>.</p>
+
+<h3>core/detection/ — ראייה ממוחשבת וזיהוי</h3>
+<table>
+  <tr><th>קובץ</th><th>תפקיד</th></tr>
+  <tr><td><code>camera_stream.py</code></td><td>עטיפה למצלמה דרך OpenCV: פתיחה, קריאת פריימים, חישוב FPS.</td></tr>
+  <tr><td><code>pose_detector.py</code></td><td>טוען את מודל ה-MediaPipe (מוריד אוטומטית בפעם הראשונה), מקבל פריים ומחזיר את 33 נקודות השלד עם קואורדינטות ורמת נראוּת (visibility).</td></tr>
+  <tr><td><code>angle_calculator.py</code></td><td>הופך נקודות שלד ל-8 זוויות גוף, באמצעות חישוב זווית תלת-ממדית (arccos של מכפלה סקלרית) בין שלשות מפרקים.</td></tr>
+</table>
+
+<h3>core/exercise/ — מודל התרגיל ולוגיקת המצב</h3>
+<table>
+  <tr><th>קובץ</th><th>תפקיד</th></tr>
+  <tr><td><code>exercise_model.py</code></td><td>טוען את הגדרות התרגילים מ-<code>exercises.json</code> למבני נתונים (תרגיל ← שלבים ← טווחי-זווית). כולל <code>match_phase</code> שמנחש את השלב הקרוב ביותר (לשחזור אוטומטי).</td></tr>
+  <tr><td><code>exercise_state_machine.py</code></td><td>מכונת המצבים של חזרה: בודקת מוכנוּת לפני התחלה, מזהה מעברים בין שלבים (לאחר 5 פריימים יציבים), סופרת חזרות, ומבצעת <em>שחזור אוטומטי</em> אם המתאמן יצא מהפריים ~3 שניות וחזר.</td></tr>
+  <tr><td><code>posture_rules.py</code></td><td>מנוע החוקים: משווה זוויות בפועל מול הטווחים המותרים, מייצר התראות יציבה עם חומרה והודעת תיקון. מתאים את הסף לפי רמת הכושר ולפי מגבלות פיזיות אישיות (מרחיב טווח למפרק פגיע), עם השהיית-זמן (debounce) למניעת התראות שווא.</td></tr>
+</table>
+
+<h3>core/user/ — פרופיל, היסטוריה ותכנון</h3>
+<table>
+  <tr><th>קובץ</th><th>תפקיד</th></tr>
+  <tr><td><code>user_profile.py</code></td><td>פרופיל המשתמש: שם, רמת כושר, מגבלות, תרגילים מועדפים, סגנון מאמן, ומזהה יציב (user_id). שומר ל-JSON.</td></tr>
+  <tr><td><code>onboarding.py</code></td><td>אשף הקמת פרופיל אינטראקטיבי במסך הראשון (שאלות על שם/רמה/מגבלות/העדפות).</td></tr>
+  <tr><td><code>workout_history.py</code></td><td>שמירת סשני אימון (חזרות, מפרקים שגויים, ציון פורם, משך), וחישוב מדדי התקדמות: ממוצע אחרון, מגמה (משתפר/יורד/יציב), ומפרקים חלשים.</td></tr>
+  <tr><td><code>workout_plan.py</code></td><td>מנוע ההמלצות: מדרג תרגילים לסשן, מתאים יעד חזרות לפי הרמה והמגמה, וממליץ על תרגילים מתקנים לאזורים החלשים. כולל מיפוי מגבלה ← תרגילים שעלולים להזיק.</td></tr>
+</table>
+
+<h3>core/coaching/ — משוב קולי</h3>
+<table>
+  <tr><th>קובץ</th><th>תפקיד</th></tr>
+  <tr><td><code>coach_messages.py</code></td><td>מאגר משפטים ב-3 סגנונות מאמן (קשוח / רגוע / מוטיבטור), לכל אירוע: התחלה, מעבר שלב, סיום חזרה, שגיאת מפרק, עידוד, סיום סשן.</td></tr>
+  <tr><td><code>voice_coach.py</code></td><td>הקראת המשובים בקול (TTS) ב-thread רקע, עם cooldown לכל סוג הודעה כדי לא להציף את המתאמן.</td></tr>
+</table>
+
+<h3>core/ml/ — שכבת למידת המכונה</h3>
+<table>
+  <tr><th>קובץ</th><th>תפקיד</th></tr>
+  <tr><td><code>data_collector.py</code></td><td>אוסף "תמונת מצב" של הזוויות בכל פריים במהלך אימון חי, ושומר ל-CSV (סכמה אחידה). מקור-אמת יחיד לשורת נתונים.</td></tr>
+  <tr><td><code>video_extractor.py</code></td><td>חילוץ לא-מקוון: עובר על סרטוני הדגמה ומפיק את אותה סכמת CSV, כך שסרטונים ואימונים חיים מזינים צינור-אימון אחד.</td></tr>
+  <tr><td><code>features.py</code></td><td>הנדסת מאפיינים: הופך חלון של ~25 פריימים לוקטור מאפיינים קבוע (5 אגרגציות לכל מפרק = 40 מאפיינים). אותו קוד משמש באימון ובחיזוי החי — כדי שלא ייווצר פער.</td></tr>
+  <tr><td><code>trainer.py</code></td><td>מאמן את "ראשי" המודל: זיהוי תרגיל, זיהוי שלב, ואיכות-פורם. שומר את המודלים ומדווח דיוק.</td></tr>
+  <tr><td><code>store.py</code></td><td>שמירה/טעינה של מודלים מאומנים (מקור-אמת יחיד לנתיבי הקבצים + רישום).</td></tr>
+  <tr><td><code>predictor.py</code></td><td>חיזוי בזמן אמת: מחזיק חלון מתגלגל של פריימים, מריץ את המודל ומחזיר תחזית + ביטחון. מוכן לחיבור לאפליקציה.</td></tr>
+</table>
+
+<h3>core/db/ — שכבת מסד הנתונים <span class="tag new">חדש</span></h3>
+<table>
+  <tr><th>קובץ</th><th>תפקיד</th></tr>
+  <tr><td><code>database.py</code></td><td>חיבור ה-DB: engine + sessions. אגנוסטי למסד — פיתוח על SQLite, ייצור על PostgreSQL, החלפה דרך משתנה-סביבה אחד בלבד.</td></tr>
+  <tr><td><code>models.py</code></td><td>טבלאות ה-ORM: משתמשים ← סשנים ← חזרות ← שגיאות-מפרק. כולל עמודת <code>weight_kg</code> חדשה (לקראת המלצות משקל).</td></tr>
+  <tr><td><code>repositories.py</code></td><td>שכבת גישה לנתונים: שמירת סשן, שליפת היסטוריה, וחישוב "מפרקים חלשים" כשאילתת <code>GROUP BY</code> יחידה.</td></tr>
+  <tr><td><code>migrate_json.py</code></td><td>הגירה חד-פעמית של ה-JSON הקיים אל מסד הנתונים (אידמפוטנטית — לא משכפלת).</td></tr>
+</table>
+
+<h3>קבצים ראשיים ותיקיית הנתונים</h3>
+<table>
+  <tr><th>נתיב</th><th>תפקיד</th></tr>
+  <tr><td><code>core/pipeline.py</code></td><td><strong>המנצח (orchestrator)</strong>: מחבר את כל החלקים — מצלמה ← זיהוי ← זוויות ← מכונת מצבים ← חוקים ← משוב ויזואלי/קולי ← איסוף ML ← היסטוריה. מכאן מריצים את האפליקציה.</td></tr>
+  <tr><td><code>data/exercises.json</code></td><td>הגדרת כל התרגילים: שלבים, טווחי-זווית, הודעות תיקון, אילוצים גלובליים. <em>הלב של המערכת — דאטה, לא קוד.</em></td></tr>
+  <tr><td><code>data/user_profile.json</code> / <code>workout_history.json</code></td><td>אחסון מקומי קיים (יוחלף בהדרגה במסד הנתונים).</td></tr>
+  <tr><td><code>data/videos/</code></td><td>סרטוני הדגמה לאימון ה-ML (~191MB; מחוץ ל-git).</td></tr>
+  <tr><td><code>data/models/</code>, <code>data/video_data.csv</code>, <code>data/poseiq.db</code></td><td>תוצרים שנוצרים אוטומטית (מודלים, דאטה מחולץ, מסד מקומי).</td></tr>
+  <tr><td><code>requirements.txt</code></td><td>רשימת התלויות (נוצרה כעת).</td></tr>
+</table>
+
+<h2>3. זרימת המערכת (ארכיטקטורה)</h2>
+<p>בכל פריים מהמצלמה רצה השרשרת הבאה:</p>
+<ol>
+  <li><strong>מצלמה</strong> (<code>camera_stream</code>) → פריים.</li>
+  <li><strong>זיהוי פוז</strong> (<code>pose_detector</code>) → 33 נקודות שלד.</li>
+  <li><strong>חישוב זוויות</strong> (<code>angle_calculator</code>) → 8 זוויות גוף.</li>
+  <li><strong>מכונת מצבים</strong> (<code>exercise_state_machine</code>) → בודקת מוכנוּת/מעבר שלב, סופרת חזרות.</li>
+  <li><strong>מנוע חוקים</strong> (<code>posture_rules</code>) → רשימת התראות יציבה (מפרק, חומרה, הודעת תיקון), מותאמת לפרופיל.</li>
+  <li><strong>משוב</strong>: ציור שלד צבעוני + HUD (<code>pipeline</code>) ומשוב קולי (<code>voice_coach</code>).</li>
+  <li><strong>איסוף ML</strong> (<code>data_collector</code>) → שומר את הפריים לאימון עתידי.</li>
+  <li>בסיום סשן → <strong>היסטוריה</strong> (<code>workout_history</code>) ו<strong>המלצות</strong> (<code>workout_plan</code>).</li>
+</ol>
+
+<div class="flow">
+  <div class="node">📷 מצלמה</div>
+  <div class="arrow">↓</div>
+  <div class="node">🦴 זיהוי שלד — MediaPipe (33 נקודות)</div>
+  <div class="arrow">↓</div>
+  <div class="node">📐 חישוב 8 זוויות גוף</div>
+  <div class="arrow">↓</div>
+  <div class="node">🔄 מכונת מצבים — זיהוי שלב + ספירת חזרות</div>
+  <div class="arrow">↓</div>
+  <div class="node">📋 מנוע חוקים — התראות יציבה מותאמות לפרופיל</div>
+  <div class="arrow">↓</div>
+  <div class="node row">
+    <span class="alt">🟢 משוב: שלד צבעוני + HUD + קול</span>
+    <span>🧠 איסוף ML לכל פריים</span>
+  </div>
+  <div class="arrow">↓</div>
+  <div class="node alt">💾 בסיום סשן: היסטוריה + מדדי התקדמות + המלצות</div>
+</div>
+
+<h2>4. שכבת למידת המכונה (ML)</h2>
+<p>הרעיון: מהזוויות הגולמיות לומדים דפוסים. הצינור: <strong>איסוף → חילוץ מסרטונים → מאפיינים → אימון → חיזוי</strong>.
+מאמנים שלושה "ראשים" עצמאיים:</p>
+<table>
+  <tr><th>ראש</th><th>מה הוא עושה</th><th>דיוק נוכחי</th></tr>
+  <tr><td>זיהוי תרגיל</td><td>מזהה איזה תרגיל מבוצע</td><td><strong>~98%</strong></td></tr>
+  <tr><td>זיהוי שלב</td><td>מזהה את שלב התנועה (עמידה/ירידה/דחיפה...)</td><td><strong>~90%</strong></td></tr>
+  <tr><td>איכות-פורם <span class="tag exp">ניסיוני</span></td><td>מסמן סטייה מפורם תקין</td><td>ראה הערה ↓</td></tr>
+</table>
+
+<h3>המודלים הספציפיים — משפחת ה"יער" (Forest)</h3>
+<p>שני המודלים שבשימוש שייכים לאותה משפחה — <strong>אנסמבל של עצי החלטה</strong> (decision trees), ומכאן השם "יער":</p>
+<p><strong>1) Random Forest (יער אקראי)</strong> — לזיהוי תרגיל ושלב.<br>
+<em>מה זה:</em> מאות עצי החלטה, כל אחד מאומן על תת-קבוצה אקראית של הנתונים והמאפיינים; כל עץ "מצביע" והרוב מנצח. האקראיות מקטינה התאמת-יתר (overfitting).<br>
+<em>למה דווקא הוא:</em></p>
+<ul>
+  <li>עובד מצוין על דאטה טבלאי <strong>קטן</strong> (יש לנו ~200 חלונות) — לא דורש כמויות עתק.</li>
+  <li>לא דורש נירמול מאפיינים; תופס קשרים לא-לינאריים בין 40 המאפיינים.</li>
+  <li>מחזיר <strong>הסתברויות</strong> → רמת ביטחון לתצוגה; מהיר בחיזוי → מתאים לזמן אמת.</li>
+</ul>
+<p><strong>2) Isolation Forest (יער בידוד)</strong> — לאיכות-פורם (זיהוי חריגות).<br>
+<em>מה זה:</em> גם יער של עצים, אך בנוי כדי <strong>לבודד חריגות</strong>: פיצולים אקראיים מבודדים דגימה חריגה (פורם שגוי) במעט צעדים — מסלול קצר ← חריגה; פורם תקין דורש יותר פיצולים.<br>
+<em>למה דווקא הוא:</em> מושלם למצב של "<strong>רק דוגמאות נכונות</strong>" — לומד את מעטפת ה"נכון" ומסמן סטיות, בלי אף דוגמת "רע". אותה משפחה, אותם יתרונות: מהיר, ללא נירמול, ומחזיר ציון חריגוּת.</p>
+
+<div class="box think">
+<h3>נקודה חשובה להצגה: אין עדיין דוגמאות של פורם "שגוי"</h3>
+<p>
+כרגע יש רק סרטוני ביצוע <strong>נכון</strong>. מסווג טוב/רע רגיל דורש שתי מחלקות, ולכן
+המערכת נופלת אוטומטית ל-<strong>זיהוי חריגות (one-class)</strong>: לומדים את מעטפת ה"נכון"
+לכל תרגיל, וכל סטייה ממנה מסומנת כחשודה. כך מתקבל סיגנל-פורם גם בלי דוגמאות שגויות.
+כשנוסיף סרטוני פורם שגוי — נשדרג למסווג בינארי אמיתי, ללא שינוי בצד החי.
+</p>
+<p class="muted">בנוסף: חלק מסרטוני ההדגמה מהאינטרנט כוללים קטעי הסבר (מדריך עומד ומדבר) שמזהמים מעט את הדאטה — נטופל בעתיד ע"י חיתוך.</p>
+</div>
+
+<p>שכבת ה-ML <strong>חוברה לאפליקציה החיה</strong>: זיהוי תרגיל/שלב רצים חי, ואיכות-הפורם מוצגת
+כרגע רק במצב debug (מקש <code>d</code>) — בכוונה, עד שהדאטה תנוקה, כדי לא להציג אזהרות שווא.</p>
+
+<p class="muted">האימון בוצע בספריית <code>scikit-learn</code> — עם <code>pandas</code> לעיבוד הנתונים
+ו-<code>joblib</code> לשמירת המודלים. אותו <code>features.py</code> מחשב את המאפיינים גם באימון
+וגם בחיזוי החי, כדי שלא ייווצר פער ביניהם.</p>
+
+<div class="box">
+<h3>למה צריך גם חוקים קשיחים וגם מודלי ML? (שאלה צפויה)</h3>
+<p>הם עושים עבודות <strong>שונות ומשלימות</strong>, לא מתחרות:</p>
+<ul>
+  <li><strong>שני המודלים</strong> מבצעים <em>זיהוי</em> (איזה תרגיל, איזה שלב) ו<em>סימון חריגה</em>
+      ("הפורם נראה חריג") — אבל אינם אומרים <strong>מה</strong> שגוי ו<strong>איך</strong> לתקן.</li>
+  <li><strong>החוקים</strong> נותנים בדיוק את זה: משוב <strong>ספציפי, מוסבר ופעיל</strong>
+      ("הגב מעל 30°, יישר אותו"), אכיפת <strong>בטיחות</strong> (אילוצים גלובליים),
+      ו<strong>בסיס שעובד מהיום הראשון</strong> ללא דאטה ובלי טעויות-מודל.</li>
+  <li>החוקים אפילו <strong>מאמנים</strong> את ה-ML: התיוג החלש (ציון הפורם) מגיע ממנוע החוקים.</li>
+</ul>
+<p>בקיצור: החוקים הם השדרה הדטרמיניסטית והמוסברת (תיקון בזמן אמת + בטיחות + בסיס המלצות),
+וה-ML מוסיף יכולות שקשה לחוקים — זיהוי תרגיל/שלב חסין מתוך תנועה גולמית, וסיגנל-פורם הוליסטי
+שתופס דפוסים עדינים. <strong>שילוב</strong> חוקים + ML הוא הסטנדרט במערכות אמיתיות.</p>
+</div>
+
+<h2>5. שכבת מסד הנתונים (DB)</h2>
+<p>היום הכול נשמר בקבצי JSON מקומיים, למשתמש יחיד. כדי לתמוך במשתמשים אמיתיים, היסטוריה
+לאורך זמן והמלצות — נדרש מסד נתונים אמיתי. נבנתה שכבה ראשונית:</p>
+<ul>
+  <li><strong>בחירת מסד: PostgreSQL</strong> (יחסי) ולא Mongo — הנתונים יחסיים מובהקים (משתמשים ← סשנים ← חזרות ← שגיאות), וכל האנליטיקות הן אגרגציות SQL.</li>
+  <li><strong>אגנוסטי למסד:</strong> מפתחים על SQLite מקומית, בייצור מצביעים על Postgres (Supabase/Neon, חינמי) ע"י שינוי משתנה-סביבה אחד — אין צורך להתקין Postgres עכשיו.</li>
+  <li><strong>הוגרו</strong> נתוני הפרופיל הקיימים; שאילתת "מפרקים חלשים" אומתה כ-<code>GROUP BY</code> יחיד.</li>
+  <li>נוספה עמודת <code>weight_kg</code> לקראת המלצות משקל.</li>
+</ul>
+
+<h2>6. מה כבר עובד והושג</h2>
+<div class="box ok">
+<ul>
+  <li>זיהוי שלד בזמן אמת + חישוב 8 זוויות גוף.</li>
+  <li>5 תרגילים מוגדרים, עם זיהוי שלב, ספירת חזרות ושחזור אוטומטי מאיבוד מעקב.</li>
+  <li>מנוע חוקי יציבה עם משוב מיידי, מותאם לרמת כושר ולמגבלות פיזיות.</li>
+  <li>משוב ויזואלי (שלד צבעוני + HUD) ומשוב קולי ב-3 סגנונות.</li>
+  <li>פרופיל משתמש, היסטוריית אימונים, מדדי התקדמות והמלצות תרגילים מותאמות.</li>
+  <li>שכבת ML מלאה: זיהוי תרגיל (~98%) ושלב (~90%), + זיהוי חריגות לפורם, מחוברת לאפליקציה.</li>
+  <li>שכבת מסד נתונים ראשונית (סכמה + הגירה + שאילתות), מוכנה ל-Postgres.</li>
+</ul>
+</div>
+
+<h2>7. התלבטויות להמשך</h2>
+<div class="box think">
+<h3>א. React Native מול אפליקציית ווב <span class="muted">(להחלטה עם המנחה)</span></h3>
+<p>היעד: שהמערכת תרוץ כאפליקציה למשתמשים אמיתיים. השאלה אם ללכת ל-<strong>React Native</strong>
+(מובייל) או ל<strong>אפליקציית ווב</strong>.</p>
+<p><strong>אילוץ מכריע:</strong> זיהוי הפוז רץ על וידאו חי — חייב לרוץ <strong>בצד הלקוח</strong>
+(אי אפשר לשדר מצלמה גולמית לשרת בזמן אמת). לכן <strong>צד-השרת זהה בשני המקרים</strong> (API דק + DB),
+וההבדל הוא רק בלקוח.</p>
+<p><strong>ההשלכה ל-RN:</strong> צינור הזמן-אמת הנוכחי בפייתון <em>אינו עובר</em> כפי שהוא — הוא הופך
+ל"מפרט ייחוס", ויש לכתוב מחדש את לולאת הזמן-אמת ב-TypeScript על המכשיר. עם זאת,
+<code>exercises.json</code> והלוגיקה הדטרמיניסטית עוברים בקלות, וכל צד-השרת ממחזר את הפייתון הקיים.</p>
+
+<div class="arch">
+  <div class="col client">
+    <h4>לקוח — RN (מובייל) או ווב</h4>
+    <ul>
+      <li>מצלמה + זיהוי פוז (על המכשיר)</li>
+      <li>זוויות + מכונת מצבים + חוקים</li>
+      <li>משוב בזמן אמת + שלד</li>
+    </ul>
+  </div>
+  <div class="between">
+    <span class="big">⇇</span>
+    <small>נתונים מסוכמים<br>בלבד · API</small>
+  </div>
+  <div class="col server">
+    <h4>שרת — FastAPI + PostgreSQL</h4>
+    <ul>
+      <li>חשבונות ואימות</li>
+      <li>היסטוריה + המלצות</li>
+      <li>אימון ML + חיזוי לפי חלון</li>
+    </ul>
+  </div>
+</div>
+<p class="muted">צד-השרת זהה בשני המסלולים — ההחלטה RN/ווב משנה רק את הלקוח.</p>
+</div>
+<div class="box think">
+<h3>ב. המודל ללמידת המשתמש — ומה עד שהוא מוכן</h3>
+<p><strong>מה הוא יחזה:</strong> את ההמלצה האישית לסשן הבא — בעיקר <strong>המשקל/העומס</strong>
+המתאים ורמת הקושי (יעד חזרות), על בסיס היסטוריית המשתמש (ציוני פורם אחרונים, מגמה, נפח, מפרקים חלשים).</p>
+<p><strong>איזה מודל ולמה:</strong> זו בעיית <strong>רגרסיה על דאטה טבלאי</strong> עם מאפיינים מהונדסים
+מההיסטוריה. הבחירה הטבעית: <strong>עצי החלטה מועצמים (Gradient Boosting — XGBoost/LightGBM)</strong>,
+או <strong>Random Forest Regressor</strong> מאותה משפחה כמו היום. למה:</p>
+<ul>
+  <li>חזקים במיוחד לחיזוי טבלאי (סטנדרט בתעשייה).</li>
+  <li><strong>מוסברים</strong> — אפשר להראות אילו גורמים השפיעו על ההמלצה (feature importance); חשוב לאמון המשתמש ולהגנה האקדמית.</li>
+  <li>עובדים עם כמות דאטה סבירה, בלי רשת נוירונים כבדה; ועקביים עם הסטאק הקיים.</li>
+</ul>
+<p><strong>כמה דאטה נצטרך:</strong> מודל אישי משמעותי דורש <strong>היסטוריה לאורך זמן פר-משתמש</strong> —
+בסדר גודל של <strong>עשרות סשנים למשתמש</strong>, ולמודל חוצה-משתמשים <strong>מאות–אלפי סשנים</strong>
+בסך הכול. בתחילת הדרך אין כמות כזו, ולכן מודל מאומן עדיין לא יכה חוקים פשוטים.</p>
+<p><strong>מה עושים עד אז — החוקים שכבר קיימים אצלנו:</strong></p>
+<ul>
+  <li><strong>דירוג תרגילים:</strong> ניקוד — מועדף (+3), מכוון לאזור חלש (+2), זקוק לתרגול אם ציון אחרון &lt; 70 (+2), גיוון (+1); תרגיל שמתנגש עם מגבלה פיזית נפסל.</li>
+  <li><strong>התאמת קושי:</strong> יעד חזרות בסיסי לפי רמה (8/12/16); ציון≥85 ומגמה משתפרת → +3 חזרות וטווחים מחמירים; ציון&lt;60 או מגמה יורדת → −3 חזרות וטווחים מקלים.</li>
+  <li><strong>המלצות מתקנות:</strong> תרגילים שמחזקים את המפרקים החלשים (לפי ספירת שגיאות).</li>
+  <li><strong>התאמת ספי-יציבה:</strong> לפי רמת כושר (×1.3 / 1.0 / 0.85) ולפי מגבלות (הרחבת טווח ×1.4 והורדת חומרה).</li>
+  <li><strong>המלצת משקל (חוק overload מתוכנן):</strong> הושג יעד החזרות עם פורם טוב → להציע +2.5 ק"ג; הפורם נפגע / היעד לא הושג → לשמור או להפחית.</li>
+</ul>
+</div>
+
+<h2>8. מה עוד חסר — צעדים הבאים</h2>
+<div class="box miss">
+<ul>
+  <li><strong>סרטוני פורם שגוי</strong> → לשדרג את ראש האיכות למסווג בינארי אמיתי.</li>
+  <li><strong>מעקב משקלים</strong> → האפליקציה עדיין לא קולטת משקל; נדרש לפני המלצת משקל (העמודה כבר קיימת בסכמה).</li>
+  <li><strong>צד-שרת (FastAPI)</strong> → לעטוף את הלוגיקה ב-API לחשבונות, היסטוריה והמלצות.</li>
+  <li><strong>הקמת מסד ייצור</strong> (Postgres מנוהל) + הגירה.</li>
+  <li><strong>צד-לקוח</strong> → לאחר ההחלטה: RN (מובייל) או ווב; כולל מימוש זיהוי הפוז על המכשיר.</li>
+  <li><strong>אנליטיקות מתקדמות</strong> → נפח אימון, רצפים, זיהוי פלאטו לאורך זמן.</li>
+  <li><strong>אחסון/דיפלוי</strong> → העלאת השרת והמסד לענן כדי שמשתמשים אמיתיים יוכלו להשתמש.</li>
+  <li><strong>פלאנק</strong> → עדיין מדולג; להוסיף סרטונים ולכלול אותו.</li>
+</ul>
+</div>
+
+<hr>
+<p class="muted">מסמך זה מתאר את מצב הפרויקט נכון למועד הכתיבה ונועד להכנה לפגישת חיתוך המצב.</p>
+
+</body>
+</html>

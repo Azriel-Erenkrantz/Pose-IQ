@@ -12,6 +12,8 @@ from user.onboarding import run_onboarding
 from user.workout_history import WorkoutHistory, new_session, rep_form_score, RepRecord, JOINT_TO_MUSCLE
 from user.workout_plan import WorkoutPlan
 from coaching.voice_coach import VoiceCoach
+from ml.data_collector import DataCollector
+from ml.predictor import FormPredictor
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 
@@ -52,13 +54,24 @@ class PosePipeline:
         exercise = self.exercise_model.get_exercise(exercise_id)
         if not exercise:
             raise ValueError(f"Exercise '{exercise_id}' not found. Available: {self.exercise_model.list_exercises()}")
-        self.state_machine = ExerciseStateMachine(exercise)
+        self.exercise = exercise
+        self.state_machine = ExerciseStateMachine(exercise, self.exercise_model)
         self.rules = PostureRules(exercise, self.profile)
         logging.info(f"Exercise: {exercise.name}")
 
         self.history = WorkoutHistory()
         self.plan = WorkoutPlan(self.profile, self.history)
         self.session = new_session(exercise.id, exercise.name)
+        # PI-46/81: collect per-frame angles, tagged with a stable user_id, for ML training.
+        self.collector = DataCollector(user_id=self.profile.ensure_user_id())
+        # PI-87: live ML heads. Each loads its saved model or no-ops (available=False)
+        # if it hasn't been trained yet (e.g. plank). Quality is one-class, per exercise.
+        # predict_every throttles inference to keep the loop responsive.
+        self.ml_exercise = FormPredictor('exercise', predict_every=5)
+        self.ml_phase = FormPredictor('phase', predict_every=5)
+        self.ml_quality = FormPredictor(f'quality_{exercise.id}', predict_every=5)
+        self._ml_pred: dict = {}
+        self._ml_last_form = None
         self.coach = VoiceCoach(style=self.profile.coach_style)
         self.coach.on_welcome(self.profile.name, exercise.name)
         self._current_rep_errors: set = set()
@@ -296,6 +309,41 @@ class PosePipeline:
                 cv2.putText(frame, f"{joint[:5]}:{int(angle)}", (int(pt.x) + 10, int(pt.y) - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.42, (0, 220, 220), 1)
 
+    def draw_ml_debug(self, frame):
+        """PI-87: experimental ML signals overlay (toggle with 'd'). Kept out of the
+        main HUD on purpose — the quality head is one-class on un-trimmed 'good' data,
+        so it's a developer signal until the training set is cleaned."""
+        preds = self._ml_pred
+        if not preds:
+            return
+
+        rows = []
+        ex = preds.get('exercise')
+        if ex:
+            rows.append((f"ex: {ex['label']} {ex['confidence']:.0%}", (190, 220, 190)))
+        ph = preds.get('phase')
+        if ph:
+            rows.append((f"phase: {ph['label']} {ph['confidence']:.0%}", (190, 220, 190)))
+        q = preds.get('quality')
+        if q:
+            c = (0, 210, 120) if q['label'] == 'good' else (60, 120, 255)
+            rows.append((f"form: {q['label']} ({q['score']:+.2f})", c))
+        if not rows:
+            return
+
+        h, w = frame.shape[:2]
+        pad, rh = 10, 22
+        bw, bh = 250, 24 + len(rows) * rh
+        x0, y0 = w - bw - 8, 100
+        self._draw_panel(frame, x0, y0, x0 + bw, y0 + bh)
+        cv2.putText(frame, "ML (experimental)", (x0 + pad, y0 + 18),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.42, (160, 160, 160), 1)
+        y = y0 + 18 + rh
+        for text, c in rows:
+            cv2.putText(frame, text, (x0 + pad, y),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.48, c, 1)
+            y += rh
+
     def run(self):
         logging.info("Starting pipeline loop. Press 'q' to exit.")
         session_start = time.time()
@@ -313,7 +361,33 @@ class PosePipeline:
             posture_issues = []
             if landmarks and angles and sm_result['started']:
                 current_phase = self.state_machine.current_phase
-                posture_issues = self.rules.analyze(angles, current_phase)
+                # Merge global safety constraints with the current phase rules (mirrors
+                # ExerciseStateMachine._get_active_rules) — analyze() expects the merged dict.
+                active_rules = {**self.exercise.global_constraints, **current_phase.angles}
+                posture_issues = self.rules.analyze(angles, active_rules)
+
+                # PI-46/81: snapshot this frame for ML training (collector samples internally).
+                self.collector.collect(
+                    exercise_id=self.exercise.id,
+                    rep_number=sm_result['rep_count'],
+                    phase_name=sm_result['phase'],
+                    phase_index=sm_result['phase_index'],
+                    angles=angles,
+                    in_phase=(len(posture_issues) == 0),
+                    quality_score=max(0, 100 - len(posture_issues) * 15),
+                )
+
+                # PI-87: feed the live ML heads (each keeps its own rolling buffer).
+                self._ml_pred = {
+                    'exercise': self.ml_exercise.update(angles),
+                    'phase': self.ml_phase.update(angles),
+                    'quality': self.ml_quality.update(angles),
+                }
+                q = self._ml_pred.get('quality')
+                if q and q['label'] != self._ml_last_form:
+                    self._ml_last_form = q['label']
+                    logging.info(f"[ML] form -> {q['label']} (score {q['score']:+.2f})")
+
                 self.draw_skeleton(frame, landmarks, posture_issues)
                 self.draw_debug_angles(frame, landmarks, angles)
 
@@ -354,6 +428,7 @@ class PosePipeline:
 
             if self._show_debug and landmarks and angles:
                 self.draw_debug_angles(frame, landmarks, angles)
+                self.draw_ml_debug(frame)
 
             self.draw_hud(frame, sm_result, posture_issues, time.time() - session_start)
 
@@ -366,6 +441,7 @@ class PosePipeline:
 
         self.session.duration_seconds = round(time.time() - session_start, 1)
         self.session.total_reps = self.state_machine.rep_count
+        self.collector.finish()          # PI-46/81: flush remaining buffered rows
         self.camera.cap.release()
         cv2.destroyAllWindows()
 
