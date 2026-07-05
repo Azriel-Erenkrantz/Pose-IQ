@@ -30,9 +30,11 @@ class Exercise:
     phases: List[Phase]
     corrections: Dict[str, dict]
     
+    # TODO 2: Mandatory Start Joints
     # Joints that MUST be visible by the camera to start the exercise.
     mandatory_start_joints: List[str] = field(default_factory=list)
     
+    # TODO 3: Global Constraints
     # Safety rules that apply continuously across all phases (e.g., straight back).
     global_constraints: Dict[str, AngleRange] = field(default_factory=dict)
 
@@ -75,7 +77,7 @@ class ExerciseModel:
                     instruction=phase_data.get('instruction', '')
                 ))
 
-            # Load global constraints from JSON
+            # TODO 3: Load global constraints from JSON
             global_constraints = {}
             if 'global_constraints' in ex_data:
                 global_constraints = {
@@ -118,7 +120,7 @@ class ExerciseModel:
             violations = {}
             
             for joint, angle_range in phase.angles.items():
-                # Treat missing required joints as violations for accurate phase matching
+                # TODO 1/4: Treat missing required joints as violations for accurate phase matching
                 if joint not in current_angles:
                     violations[joint] = "missing (required by phase)"
                 elif not angle_range.contains(current_angles[joint]):
