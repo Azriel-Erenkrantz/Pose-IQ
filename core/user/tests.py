@@ -6,17 +6,17 @@ Run from the project root:
     # or
     python -m unittest core.user.tests
 """
-import os
-import shutil
-import tempfile
 import unittest
 from datetime import datetime, timedelta
 from unittest.mock import patch
+
+import mongomock
 
 from core.app_model import (
     BodyRegion,
     Equipment,
     FitnessLevel,
+    HealthStatus,
     LiveSessionOutput,
     LoginRequest,
     RegisterRequest,
@@ -60,25 +60,28 @@ def _session(exercise_id='squat', exercise_name='Squat',
     )
 
 
-# ── Mixin: patch _USERS_PATH to a temp file ────────────────────────────────────
+# ── Mixin: replace MongoDB with an in-process mongomock database ───────────────
 
-class TempStoreMixin:
+class MongoMockMixin:
     def setUp(self):
-        self.tmpdir = tempfile.mkdtemp()
-        self._patcher = patch.object(
-            service, '_USERS_PATH',
-            os.path.join(self.tmpdir, 'users.json'),
-        )
-        self._patcher.start()
+        self._mock_db = mongomock.MongoClient()['poseiq_test']
+        # Wipe all collections for test isolation
+        for name in self._mock_db.list_collection_names():
+            self._mock_db.drop_collection(name)
+
+        self._patch_svc = patch('core.user.service.get_db', return_value=self._mock_db)
+        self._patch_wh  = patch('core.user.workout_history.get_db', return_value=self._mock_db)
+        self._patch_svc.start()
+        self._patch_wh.start()
 
     def tearDown(self):
-        self._patcher.stop()
-        shutil.rmtree(self.tmpdir)
+        self._patch_svc.stop()
+        self._patch_wh.stop()
 
 
 # ── Auth tests ─────────────────────────────────────────────────────────────────
 
-class TestRegister(TempStoreMixin, unittest.TestCase):
+class TestRegister(MongoMockMixin, unittest.TestCase):
 
     def test_returns_auth_token(self):
         token = service.register(_req())
@@ -111,8 +114,15 @@ class TestRegister(TempStoreMixin, unittest.TestCase):
         self.assertIn(TargetGoal.LEGS, user.target_goals)
         self.assertIn(Equipment.DUMBBELLS, user.equipment)
 
+    def test_password_is_not_stored_in_plaintext(self):
+        token = service.register(_req(email='pw@x.com', password='my_secret_pw'))
+        doc = service.get_db().users.find_one({'_id': token.user_id})
+        self.assertIsNone(doc.get('password'))
+        self.assertIn('password_hash', doc)
+        self.assertNotEqual(doc['password_hash'], 'my_secret_pw')
 
-class TestLogin(TempStoreMixin, unittest.TestCase):
+
+class TestLogin(MongoMockMixin, unittest.TestCase):
 
     def setUp(self):
         super().setUp()
@@ -136,20 +146,34 @@ class TestLogin(TempStoreMixin, unittest.TestCase):
         t2 = service.login(LoginRequest(email='login@x.com', password='correct'))
         self.assertNotEqual(t1.token, t2.token)
 
-    def test_password_is_not_stored_in_plaintext(self):
-        # Read the raw JSON file and confirm the password is not visible
-        import json
-        with open(service._USERS_PATH) as f:
-            raw = json.load(f)
-        for user_data in raw.values():
-            self.assertNotIn('password', user_data)
-            self.assertIn('password_hash', user_data)
-            self.assertNotEqual(user_data['password_hash'], 'correct')
+
+class TestVerifyToken(MongoMockMixin, unittest.TestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.token = service.register(_req(email='verify@x.com'))
+
+    def test_valid_token_returns_user_id(self):
+        uid = service.verify_token(self.token.token)
+        self.assertEqual(uid, self.token.user_id)
+
+    def test_unknown_token_returns_none(self):
+        self.assertIsNone(service.verify_token('not-a-real-token'))
+
+    def test_expired_token_returns_none(self):
+        # Manually insert an already-expired token
+        db = service.get_db()
+        db.tokens.insert_one({
+            '_id': 'expired-tok',
+            'user_id': self.token.user_id,
+            'expires_at': datetime.now() - timedelta(hours=1),
+        })
+        self.assertIsNone(service.verify_token('expired-tok'))
 
 
 # ── User CRUD tests ────────────────────────────────────────────────────────────
 
-class TestGetUser(TempStoreMixin, unittest.TestCase):
+class TestGetUser(MongoMockMixin, unittest.TestCase):
 
     def setUp(self):
         super().setUp()
@@ -169,7 +193,7 @@ class TestGetUser(TempStoreMixin, unittest.TestCase):
         self.assertIsInstance(user, User)
 
 
-class TestUpdateUser(TempStoreMixin, unittest.TestCase):
+class TestUpdateUser(MongoMockMixin, unittest.TestCase):
 
     def setUp(self):
         super().setUp()
@@ -187,11 +211,11 @@ class TestUpdateUser(TempStoreMixin, unittest.TestCase):
         self.assertEqual(service.get_user(self.token.user_id).fitness_level, FitnessLevel.ADVANCED)
 
     def test_update_preserves_password_hash(self):
-        import json
-        hash_before = json.load(open(service._USERS_PATH))[self.token.user_id]['password_hash']
+        db = service.get_db()
+        hash_before = db.users.find_one({'_id': self.token.user_id})['password_hash']
         self.user.name = 'Changed'
         service.update_user(self.user)
-        hash_after = json.load(open(service._USERS_PATH))[self.token.user_id]['password_hash']
+        hash_after = db.users.find_one({'_id': self.token.user_id})['password_hash']
         self.assertEqual(hash_before, hash_after)
 
     def test_unknown_user_returns_false(self):
@@ -203,7 +227,7 @@ class TestUpdateUser(TempStoreMixin, unittest.TestCase):
 
 # ── Health status tests ────────────────────────────────────────────────────────
 
-class TestHealthStatus(unittest.TestCase):
+class TestHealthStatus(MongoMockMixin, unittest.TestCase):
 
     def test_covers_all_body_regions(self):
         status = service.get_health_status('any-id')
@@ -217,6 +241,45 @@ class TestHealthStatus(unittest.TestCase):
     def test_get_returns_correct_rating(self):
         status = service.get_health_status('any-id')
         self.assertEqual(status.get(BodyRegion.UPPER), 5)
+
+
+class TestHealthStatusPersistence(MongoMockMixin, unittest.TestCase):
+
+    def setUp(self):
+        super().setUp()
+        self.token = service.register(_req(email='health@x.com'))
+
+    def test_save_and_retrieve(self):
+        health = HealthStatus(
+            user_id=self.token.user_id,
+            ratings={BodyRegion.UPPER: 3, BodyRegion.CORE: 4, BodyRegion.LOWER: 2},
+        )
+        self.assertTrue(service.save_health_status(self.token.user_id, health))
+        retrieved = service.get_health_status(self.token.user_id)
+        self.assertEqual(retrieved.ratings[BodyRegion.UPPER], 3)
+        self.assertEqual(retrieved.ratings[BodyRegion.CORE], 4)
+        self.assertEqual(retrieved.ratings[BodyRegion.LOWER], 2)
+
+    def test_unknown_user_returns_false(self):
+        health = HealthStatus(user_id='ghost', ratings={r: 5 for r in BodyRegion})
+        self.assertFalse(service.save_health_status('ghost', health))
+
+    def test_update_does_not_overwrite_profile(self):
+        health = HealthStatus(
+            user_id=self.token.user_id,
+            ratings={BodyRegion.UPPER: 2, BodyRegion.CORE: 5, BodyRegion.LOWER: 5},
+        )
+        service.save_health_status(self.token.user_id, health)
+        user = service.get_user(self.token.user_id)
+        self.assertEqual(user.email, 'health@x.com')
+
+    def test_second_save_overwrites_first(self):
+        h1 = HealthStatus(user_id=self.token.user_id, ratings={r: 3 for r in BodyRegion})
+        h2 = HealthStatus(user_id=self.token.user_id, ratings={r: 5 for r in BodyRegion})
+        service.save_health_status(self.token.user_id, h1)
+        service.save_health_status(self.token.user_id, h2)
+        retrieved = service.get_health_status(self.token.user_id)
+        self.assertTrue(all(v == 5 for v in retrieved.ratings.values()))
 
 
 # ── Profile setup options tests ────────────────────────────────────────────────
@@ -327,7 +390,7 @@ class TestFakeInjuryRisk(unittest.TestCase):
 
 # ── Progress computation tests ─────────────────────────────────────────────────
 
-class TestProgressComputation(TempStoreMixin, unittest.TestCase):
+class TestProgressComputation(MongoMockMixin, unittest.TestCase):
 
     def test_empty_history_returns_empty_list(self):
         token = service.register(_req(email='empty@x.com'))
@@ -381,7 +444,6 @@ class TestProgressComputation(TempStoreMixin, unittest.TestCase):
         self.assertEqual(metrics[0].score_trend.value, 'stable')
 
     def test_total_reps_counted_correctly(self):
-        # Each _session() creates 1 rep
         sessions = [_session(days_ago=i) for i in range(4)]
         with patch.object(service, 'get_history', return_value=sessions):
             metrics = service.get_progress('u1')

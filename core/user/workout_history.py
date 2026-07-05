@@ -1,14 +1,9 @@
-import json
-import os
 import uuid
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Dict, List, Optional, Tuple
 
-HISTORY_PATH = os.path.join(
-    os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-    'data', 'workout_history.json'
-)
+from core.db import get_db
 
 JOINT_TO_MUSCLE = {
     'right_knee': 'Quadriceps / Right Knee',
@@ -50,35 +45,51 @@ class WorkoutSession:
 
 
 class WorkoutHistory:
-    def __init__(self, path: str = None):
-        self.path = path or HISTORY_PATH
-        self.sessions: List[WorkoutSession] = self._load()
+    def __init__(self, user_id: str):
+        self.user_id = user_id
 
-    def _load(self) -> List[WorkoutSession]:
-        if not os.path.exists(self.path):
-            return []
-        with open(self.path, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        sessions = []
-        for s in data.get('sessions', []):
-            rep_records = [RepRecord(**r) for r in s.get('rep_records', [])]
-            s_data = {k: v for k, v in s.items() if k != 'rep_records'}
-            sessions.append(WorkoutSession(**s_data, rep_records=rep_records))
-        return sessions
+    def _doc_to_session(self, doc: dict) -> WorkoutSession:
+        reps = [RepRecord(**r) for r in doc.get('rep_records', [])]
+        date = doc['date']
+        if isinstance(date, datetime):
+            date = date.isoformat()
+        return WorkoutSession(
+            session_id       = str(doc['_id']),
+            date             = date,
+            exercise_id      = doc['exercise_id'],
+            exercise_name    = doc['exercise_name'],
+            total_reps       = doc['total_reps'],
+            rep_records      = reps,
+            duration_seconds = doc.get('duration_seconds', 0.0),
+            overall_score    = doc.get('overall_score', 0.0),
+        )
 
     def save_session(self, session: WorkoutSession):
         session.calculate_score()
-        self.sessions.append(session)
-        os.makedirs(os.path.dirname(self.path), exist_ok=True)
-        with open(self.path, 'w', encoding='utf-8') as f:
-            json.dump({'sessions': [asdict(s) for s in self.sessions]}, f, indent=2, ensure_ascii=False)
+        get_db().sessions.insert_one({
+            '_id':             session.session_id,
+            'user_id':         self.user_id,
+            'date':            session.date,
+            'exercise_id':     session.exercise_id,
+            'exercise_name':   session.exercise_name,
+            'total_reps':      session.total_reps,
+            'rep_records':     [{'rep_number': r.rep_number, 'error_joints': r.error_joints, 'form_score': r.form_score} for r in session.rep_records],
+            'duration_seconds': session.duration_seconds,
+            'overall_score':   session.overall_score,
+        })
 
     def get_sessions(self, exercise_id: str = None, limit: int = None) -> List[WorkoutSession]:
-        result = self.sessions
+        query: dict = {'user_id': self.user_id}
         if exercise_id:
-            result = [s for s in result if s.exercise_id == exercise_id]
-        result = sorted(result, key=lambda s: s.date, reverse=True)
-        return result[:limit] if limit else result
+            query['exercise_id'] = exercise_id
+        cursor = get_db().sessions.find(query).sort('date', -1)
+        if limit:
+            cursor = cursor.limit(limit)
+        return [self._doc_to_session(doc) for doc in cursor]
+
+    @property
+    def sessions(self) -> List[WorkoutSession]:
+        return self.get_sessions()
 
     def get_progress_metrics(self, exercise_id: str) -> dict:
         sessions = self.get_sessions(exercise_id)

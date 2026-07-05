@@ -191,13 +191,14 @@ class Exercise:
     Unified exercise definition used across all parts.
     Maps to core/recommendation/models.CatalogExercise — will consolidate on unisolation.
     """
-    exercise_id:     str
-    name:            str
-    primary_region:  BodyRegion
-    body_regions:    List[BodyRegion]
-    base_difficulty: float               # 0–1, inherent difficulty of the movement
-    description:     str
-    tags:            List[str]           = field(default_factory=list)
+    exercise_id:        str
+    name:               str
+    primary_region:     BodyRegion
+    body_regions:       List[BodyRegion]
+    base_difficulty:    float               # 0–1, inherent difficulty of the movement
+    description:        str
+    tags:               List[str]           = field(default_factory=list)
+    equipment_required: List[Equipment]     = field(default_factory=list)
 
 
 # ── Live session (boundary with the ML model) ─────────────────────────────────

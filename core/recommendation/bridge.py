@@ -16,12 +16,14 @@ from typing import Dict, List, Optional
 from ..app_model import (
     BodyRegion,
     CommunityRecord,
+    Equipment,
     Exercise,
     ExercisePerformanceRecord,
     ExerciseRecommendation,
     HealthStatus,
     LiveSessionOutput,
     RecommendationSession,
+    TargetGoal,
     User,
     UserFeedback,
 )
@@ -39,32 +41,62 @@ _JOINT_TO_REGION: Dict[str, BodyRegion] = {
     'left_elbow':     BodyRegion.UPPER,
 }
 
+# Maps user goal → body region to train. First matching goal wins.
+_GOAL_TO_REGION: Dict[TargetGoal, BodyRegion] = {
+    TargetGoal.LEGS:      BodyRegion.LOWER,
+    TargetGoal.CARDIO:    BodyRegion.LOWER,
+    TargetGoal.ABS:       BodyRegion.CORE,
+    TargetGoal.ARMS:      BodyRegion.UPPER,
+    TargetGoal.FULL_BODY: BodyRegion.LOWER,
+    TargetGoal.OTHER:     BodyRegion.LOWER,
+}
+
+
+def _region_for_goals(goals: List[TargetGoal]) -> BodyRegion:
+    for g in goals:
+        if g in _GOAL_TO_REGION:
+            return _GOAL_TO_REGION[g]
+    return BodyRegion.LOWER
+
+
+def _has_equipment(user_equipment: List[Equipment], required: List[Equipment]) -> bool:
+    """True when the user owns at least one of the required equipment types, or none required."""
+    if not required:
+        return True
+    return any(eq in user_equipment for eq in required)
+
 
 def recommend_for_user(
     user: User,
     health: HealthStatus,
     sessions: List[LiveSessionOutput],
-    target_region: BodyRegion,
+    target_region: Optional[BodyRegion] = None,
     community: Optional[List[CommunityRecord]] = None,
     feedbacks: Optional[List[UserFeedback]] = None,
 ) -> List[ExerciseRecommendation]:
     """
     Main entry point for the API.
 
-    Converts user data → rec engine inputs, applies limitation filter,
-    then delegates to recommend().
+    - Derives target_region from user's goals when not provided.
+    - Excludes exercises the user can't do (equipment, limitations).
+    - Converts session history to performance records.
+    - Delegates scoring to recommend().
     """
+    if target_region is None:
+        target_region = _region_for_goals(user.target_goals)
+
     history = [from_live_session(s) for s in sessions]
 
-    # Exclude exercises whose primary region is affected by the user's limitations.
     limited_regions = {
         _JOINT_TO_REGION[j]
         for j in user.limited_joints
         if j in _JOINT_TO_REGION
     }
+
     exercises = [
         e for e in CATALOG
         if e.primary_region not in limited_regions
+        and _has_equipment(user.equipment, e.equipment_required)
     ]
 
     return recommend(

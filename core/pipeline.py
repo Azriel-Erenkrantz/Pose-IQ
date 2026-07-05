@@ -55,7 +55,7 @@ class PosePipeline:
         self.rules = PostureRules(exercise, user.threshold_modifier, user.limited_joints)
         logging.info(f"Exercise: {exercise.name}")
 
-        self.history = WorkoutHistory()
+        self.history = WorkoutHistory(user_id=user.user_id)
         self.session = new_session(exercise.id, exercise.name)
         # PI-46/81: collect per-frame angles, tagged with a stable user_id, for ML training.
         self.collector = DataCollector(user_id=user.user_id)

@@ -22,9 +22,12 @@ from functools import wraps
 from typing import Any
 
 from flask import Flask, jsonify, request
+from flask_cors import CORS
 
 from core.app_model import (
+    BodyRegion,
     DashboardData,
+    HealthStatus,
     HistoryScreenData,
     LoginRequest,
     RegisterRequest,
@@ -35,8 +38,10 @@ from core.app_model import (
 )
 from core.user import service
 from core.user import fake_data
+from core.recommendation.bridge import recommend_for_user
 
 app = Flask(__name__)
+CORS(app)
 
 
 # ── Serialization ──────────────────────────────────────────────────────────────
@@ -171,6 +176,22 @@ def get_health(user_id: str):
     return ok(service.get_health_status(user_id))
 
 
+@app.put("/api/user/<user_id>/health")
+@require_auth
+def update_health(user_id: str):
+    body = request.get_json(silent=True) or {}
+    try:
+        ratings = {BodyRegion(k): int(v) for k, v in body.items()}
+    except (ValueError, TypeError) as e:
+        return err(f"Invalid ratings: {e}")
+    if not all(1 <= v <= 5 for v in ratings.values()):
+        return err("Each rating must be between 1 and 5")
+    health = HealthStatus(user_id=user_id, ratings=ratings)
+    if not service.save_health_status(user_id, health):
+        return err("User not found", 404)
+    return ok(health)
+
+
 @app.get("/api/user/<user_id>/history")
 @require_auth
 def get_history(user_id: str):
@@ -190,11 +211,15 @@ def get_dashboard(user_id: str):
     if user is None:
         return err("User not found", 404)
 
+    health   = service.get_health_status(user_id)
+    sessions = service.get_history(user_id)
+    recs     = recommend_for_user(user, health, sessions)
+
     dashboard = DashboardData(
         user             = user,
-        health_status    = service.get_health_status(user_id),
-        recommendations  = [],   # wired in when recommendation module unisolates
-        recent_sessions  = service.get_history(user_id)[:5],
+        health_status    = health,
+        recommendations  = recs,
+        recent_sessions  = sessions[:5],
         progress_summary = service.get_progress(user_id),
         injury_risk      = None,
     )

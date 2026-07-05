@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List, Optional
 import uuid
 
-from ..app_model import BodyRegion, Exercise, CommunityRecord
+from ..app_model import BodyRegion, Equipment, Exercise, CommunityRecord
 
 # ---------------------------------------------------------------------------
 # Exercise catalog
@@ -12,75 +12,53 @@ from ..app_model import BodyRegion, Exercise, CommunityRecord
 # existing data/exercises.json used by the pose-detection system.
 # ---------------------------------------------------------------------------
 
+_D  = [Equipment.DUMBBELLS]
+_RB = [Equipment.RESISTANCE_BANDS]
+_BW: list = []  # bodyweight — no equipment needed
+
 CATALOG: List[Exercise] = [
     # ── UPPER ────────────────────────────────────────────────────────────
-    Exercise(
-        "bicep_curl", "Bicep Curl",
-        BodyRegion.UPPER, [BodyRegion.UPPER],
-        0.30, "Dumbbell bicep curl", ["pull", "arms"],
-    ),
-    Exercise(
-        "shoulder_press", "Shoulder Press",
-        BodyRegion.UPPER, [BodyRegion.UPPER, BodyRegion.CORE],
-        0.60, "Overhead shoulder press", ["push", "shoulders"],
-    ),
-    Exercise(
-        "push_up", "Push-up",
-        BodyRegion.UPPER, [BodyRegion.UPPER, BodyRegion.CORE],
-        0.40, "Classic push-up", ["push", "chest"],
-    ),
-    Exercise(
-        "tricep_dip", "Tricep Dip",
-        BodyRegion.UPPER, [BodyRegion.UPPER],
-        0.50, "Parallel bar tricep dip", ["push", "arms"],
-    ),
+    Exercise("bicep_curl",     "Bicep Curl",
+             BodyRegion.UPPER, [BodyRegion.UPPER],
+             0.30, "Dumbbell bicep curl",      ["pull", "arms"],      _D),
+    Exercise("shoulder_press", "Shoulder Press",
+             BodyRegion.UPPER, [BodyRegion.UPPER, BodyRegion.CORE],
+             0.60, "Overhead shoulder press",  ["push", "shoulders"], _D),
+    Exercise("push_up",        "Push-up",
+             BodyRegion.UPPER, [BodyRegion.UPPER, BodyRegion.CORE],
+             0.40, "Classic push-up",          ["push", "chest"],     _BW),
+    Exercise("tricep_dip",     "Tricep Dip",
+             BodyRegion.UPPER, [BodyRegion.UPPER],
+             0.50, "Parallel bar tricep dip",  ["push", "arms"],      _BW),
     # ── CORE ─────────────────────────────────────────────────────────────
-    Exercise(
-        "plank", "Plank",
-        BodyRegion.CORE, [BodyRegion.CORE, BodyRegion.UPPER],
-        0.35, "Static plank hold", ["isometric", "core"],
-    ),
-    Exercise(
-        "crunch", "Crunch",
-        BodyRegion.CORE, [BodyRegion.CORE],
-        0.25, "Basic abdominal crunch", ["core", "abs"],
-    ),
-    Exercise(
-        "russian_twist", "Russian Twist",
-        BodyRegion.CORE, [BodyRegion.CORE],
-        0.50, "Seated oblique rotation", ["core", "obliques"],
-    ),
-    Exercise(
-        "leg_raise", "Leg Raise",
-        BodyRegion.CORE, [BodyRegion.CORE, BodyRegion.LOWER],
-        0.55, "Lying or hanging leg raise", ["core", "hip flexors"],
-    ),
+    Exercise("plank",          "Plank",
+             BodyRegion.CORE, [BodyRegion.CORE, BodyRegion.UPPER],
+             0.35, "Static plank hold",        ["isometric", "core"], _BW),
+    Exercise("crunch",         "Crunch",
+             BodyRegion.CORE, [BodyRegion.CORE],
+             0.25, "Basic abdominal crunch",   ["core", "abs"],       _BW),
+    Exercise("russian_twist",  "Russian Twist",
+             BodyRegion.CORE, [BodyRegion.CORE],
+             0.50, "Seated oblique rotation",  ["core", "obliques"],  _BW),
+    Exercise("leg_raise",      "Leg Raise",
+             BodyRegion.CORE, [BodyRegion.CORE, BodyRegion.LOWER],
+             0.55, "Lying or hanging leg raise", ["core", "hip flexors"], _BW),
     # ── LOWER ────────────────────────────────────────────────────────────
-    Exercise(
-        "squat", "Squat",
-        BodyRegion.LOWER, [BodyRegion.LOWER, BodyRegion.CORE],
-        0.45, "Bodyweight or barbell squat", ["legs", "glutes"],
-    ),
-    Exercise(
-        "lunge", "Lunge",
-        BodyRegion.LOWER, [BodyRegion.LOWER],
-        0.40, "Forward or reverse lunge", ["legs", "glutes"],
-    ),
-    Exercise(
-        "deadlift", "Deadlift",
-        BodyRegion.LOWER, [BodyRegion.LOWER, BodyRegion.CORE, BodyRegion.UPPER],
-        0.80, "Conventional deadlift", ["legs", "back", "full body"],
-    ),
-    Exercise(
-        "calf_raise", "Calf Raise",
-        BodyRegion.LOWER, [BodyRegion.LOWER],
-        0.20, "Standing calf raise", ["legs", "calves"],
-    ),
-    Exercise(
-        "glute_bridge", "Glute Bridge",
-        BodyRegion.LOWER, [BodyRegion.LOWER, BodyRegion.CORE],
-        0.30, "Lying hip extension", ["glutes", "core"],
-    ),
+    Exercise("squat",          "Squat",
+             BodyRegion.LOWER, [BodyRegion.LOWER, BodyRegion.CORE],
+             0.45, "Bodyweight or barbell squat", ["legs", "glutes"],  _BW),
+    Exercise("lunge",          "Lunge",
+             BodyRegion.LOWER, [BodyRegion.LOWER],
+             0.40, "Forward or reverse lunge",    ["legs", "glutes"],  _BW),
+    Exercise("deadlift",       "Deadlift",
+             BodyRegion.LOWER, [BodyRegion.LOWER, BodyRegion.CORE, BodyRegion.UPPER],
+             0.80, "Conventional deadlift",       ["legs", "back"],    _D),
+    Exercise("calf_raise",     "Calf Raise",
+             BodyRegion.LOWER, [BodyRegion.LOWER],
+             0.20, "Standing calf raise",         ["legs", "calves"],  _BW),
+    Exercise("glute_bridge",   "Glute Bridge",
+             BodyRegion.LOWER, [BodyRegion.LOWER, BodyRegion.CORE],
+             0.30, "Lying hip extension",         ["glutes", "core"],  _BW),
 ]
 
 
