@@ -8,9 +8,7 @@ from exercise.posture_rules import PostureRules
 from exercise.exercise_model import ExerciseModel
 from exercise.exercise_state_machine import ExerciseStateMachine
 from user.user_profile import UserProfile
-from user.onboarding import run_onboarding
 from user.workout_history import WorkoutHistory, new_session, rep_form_score, RepRecord, JOINT_TO_MUSCLE
-from user.workout_plan import WorkoutPlan
 from coaching.voice_coach import VoiceCoach
 from ml.data_collector import DataCollector
 from ml.predictor import FormPredictor
@@ -42,7 +40,8 @@ class PosePipeline:
             self.profile = UserProfile.load()
             logging.info(f"Welcome back, {self.profile.name}! (Level: {self.profile.fitness_level})")
         else:
-            self.profile = run_onboarding()
+            logging.error("No user profile found. Create your account via the Pose-IQ mobile app.")
+            raise SystemExit(1)
 
         logging.info("Initializing Real-Time 3D Pipeline...")
         self.camera = CameraStream()
@@ -61,7 +60,6 @@ class PosePipeline:
         logging.info(f"Exercise: {exercise.name}")
 
         self.history = WorkoutHistory()
-        self.plan = WorkoutPlan(self.profile, self.history)
         self.session = new_session(exercise.id, exercise.name)
         # PI-46/81: collect per-frame angles, tagged with a stable user_id, for ML training.
         self.collector = DataCollector(user_id=self.profile.ensure_user_id())
@@ -103,24 +101,16 @@ class PosePipeline:
         if len(exercises) == 1:
             return exercises[0]
 
-        ranked = self.plan.recommend_exercises(exercises)
-        ranked_ids = [r['exercise_id'] for r in ranked]
-        # Keep preferred order but put top recommendation first
-        ordered = ranked_ids + [e for e in exercises if e not in ranked_ids]
-
         print("\nSelect exercise:")
-        for i, ex_id in enumerate(ordered, 1):
+        for i, ex_id in enumerate(exercises, 1):
             ex = self.exercise_model.get_exercise(ex_id)
-            diff = self.plan.get_difficulty_settings(ex_id)
-            suffix = f"  → {diff['target_reps']} reps recommended"
-            rec_marker = " ★" if i == 1 and ranked else ""
-            print(f"  {i}. {ex.name}{rec_marker}{suffix}")
+            print(f"  {i}. {ex.name if ex else ex_id}")
 
         while True:
             choice = input("Choose: ").strip()
-            if choice.isdigit() and 1 <= int(choice) <= len(ordered):
-                return ordered[int(choice) - 1]
-            print(f"Please enter 1-{len(ordered)}")
+            if choice.isdigit() and 1 <= int(choice) <= len(exercises):
+                return exercises[int(choice) - 1]
+            print(f"Please enter 1-{len(exercises)}")
 
     # ── joint index → severity color for landmark dots ──────────────────
     _JOINT_LANDMARK_IDX = {
@@ -486,15 +476,6 @@ class PosePipeline:
                 for joint, count in metrics['weak_joints']:
                     muscle = JOINT_TO_MUSCLE.get(joint, joint)
                     print(f"      • {muscle} ({count} errors)")
-
-        corrective = self.plan.get_corrective_recommendations(self.profile.preferred_exercises)
-        if corrective:
-            print("\n  Next session — try these corrective exercises:")
-            for ex_id, reason in corrective:
-                ex = self.exercise_model.get_exercise(ex_id)
-                ex_name = ex.name if ex else ex_id
-                diff = self.plan.get_difficulty_settings(ex_id)
-                print(f"    • {ex_name}: {reason}  ({diff['target_reps']} reps)")
 
         print("=" * 50 + "\n")
 
