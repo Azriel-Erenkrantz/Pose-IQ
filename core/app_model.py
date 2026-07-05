@@ -84,6 +84,20 @@ class ScoreTrend(str, Enum):
 
 # ── User ──────────────────────────────────────────────────────────────────────
 
+# Maps user-reported limitation labels to the joint names the evaluation pipeline checks.
+# Lives here so any module that receives a User can compute limited_joints without
+# importing from the user folder.
+LIMITATION_JOINT_MAP: Dict[str, List[str]] = {
+    'right_knee':    ['right_knee'],
+    'left_knee':     ['left_knee'],
+    'lower_back':    ['spine'],
+    'right_shoulder':['right_arm_body'],
+    'left_shoulder': ['left_arm_body'],
+    'right_elbow':   ['right_elbow'],
+    'left_elbow':    ['left_elbow'],
+}
+
+
 @dataclass
 class User:
     """
@@ -102,11 +116,22 @@ class User:
 
     @property
     def threshold_modifier(self) -> float:
+        """How strictly the evaluation pipeline checks joint angles.
+        Beginners get wider acceptable ranges; advanced users get tighter ones."""
         return {
             FitnessLevel.BEGINNER:     1.30,
             FitnessLevel.INTERMEDIATE: 1.00,
             FitnessLevel.ADVANCED:     0.85,
         }[self.fitness_level]
+
+    @property
+    def limited_joints(self) -> List[str]:
+        """Joint names the pipeline should evaluate with extra leniency.
+        Derived from the user's reported physical limitations."""
+        joints: List[str] = []
+        for limitation in self.limitations:
+            joints.extend(LIMITATION_JOINT_MAP.get(limitation, []))
+        return joints
 
 
 # ── Auth ──────────────────────────────────────────────────────────────────────

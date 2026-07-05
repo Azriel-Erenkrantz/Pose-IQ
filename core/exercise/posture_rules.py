@@ -1,19 +1,17 @@
-from typing import Dict, List, Optional
+from typing import Dict, List
 from exercise.exercise_model import Exercise, AngleRange
-from user.user_profile import UserProfile
 
 
 class PostureRules:
     FRAMES_TO_ALERT = 8
     # TODO 2: Grace period for occlusions before alerting that a joint is missing
-    FRAMES_TO_MISSING = 5 
+    FRAMES_TO_MISSING = 5
 
-    def __init__(self, exercise: Exercise, profile: Optional[UserProfile] = None):
+    def __init__(self, exercise: Exercise, threshold_modifier: float = 1.0, limited_joints: List[str] = []):
         self.exercise = exercise
         self.corrections = exercise.corrections
-        self.profile = profile
-        self.modifier = profile.threshold_modifier if profile else 1.0
-        self.limited_joints = profile.limited_joints if profile else []
+        self.modifier = threshold_modifier
+        self.limited_joints = limited_joints
         self.violation_counters: Dict[str, int] = {}
 
     def _adjust_range(self, joint: str, angle_range: AngleRange) -> AngleRange:

@@ -7,11 +7,11 @@ from detection.angle_calculator import AngleCalculator
 from exercise.posture_rules import PostureRules
 from exercise.exercise_model import ExerciseModel
 from exercise.exercise_state_machine import ExerciseStateMachine
-from user.user_profile import UserProfile
 from user.workout_history import WorkoutHistory, new_session, rep_form_score, RepRecord, JOINT_TO_MUSCLE
 from coaching.voice_coach import VoiceCoach
 from ml.data_collector import DataCollector
 from ml.predictor import FormPredictor
+from app_model import User
 # Recommendation engine integration: see recommendation/bridge.py when ready to wire up.
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
@@ -35,13 +35,9 @@ _READY_HINTS = {
 }
 
 class PosePipeline:
-    def __init__(self, exercise_id: str = None):
-        if UserProfile.exists():
-            self.profile = UserProfile.load()
-            logging.info(f"Welcome back, {self.profile.name}! (Level: {self.profile.fitness_level})")
-        else:
-            logging.error("No user profile found. Create your account via the Pose-IQ mobile app.")
-            raise SystemExit(1)
+    def __init__(self, user: User, exercise_id: str = None):
+        self.user = user
+        logging.info(f"Welcome back, {user.name}! (Level: {user.fitness_level.value})")
 
         logging.info("Initializing Real-Time 3D Pipeline...")
         self.camera = CameraStream()
@@ -56,13 +52,13 @@ class PosePipeline:
             raise ValueError(f"Exercise '{exercise_id}' not found. Available: {self.exercise_model.list_exercises()}")
         self.exercise = exercise
         self.state_machine = ExerciseStateMachine(exercise, self.exercise_model)
-        self.rules = PostureRules(exercise, self.profile)
+        self.rules = PostureRules(exercise, user.threshold_modifier, user.limited_joints)
         logging.info(f"Exercise: {exercise.name}")
 
         self.history = WorkoutHistory()
         self.session = new_session(exercise.id, exercise.name)
         # PI-46/81: collect per-frame angles, tagged with a stable user_id, for ML training.
-        self.collector = DataCollector(user_id=self.profile.ensure_user_id())
+        self.collector = DataCollector(user_id=user.user_id)
         # PI-87: live ML heads. Each loads its saved model or no-ops (available=False)
         # if it hasn't been trained yet (e.g. plank). Quality is one-class, per exercise.
         # predict_every throttles inference to keep the loop responsive.
@@ -71,8 +67,8 @@ class PosePipeline:
         self.ml_quality = FormPredictor(f'quality_{exercise.id}', predict_every=5)
         self._ml_pred: dict = {}
         self._ml_last_form = None
-        self.coach = VoiceCoach(style=self.profile.coach_style)
-        self.coach.on_welcome(self.profile.name, exercise.name)
+        self.coach = VoiceCoach(style=user.trainer_personality.value)
+        self.coach.on_welcome(user.name, exercise.name)
         self._current_rep_errors: set = set()
         self._rep_flash_until: float = 0.0
         self._go_flash_until: float = 0.0
@@ -97,7 +93,7 @@ class PosePipeline:
         }
 
     def _select_exercise(self) -> str:
-        exercises = self.profile.preferred_exercises
+        exercises = self.exercise_model.list_exercises()
         if len(exercises) == 1:
             return exercises[0]
 
@@ -255,10 +251,9 @@ class PosePipeline:
         cv2.putText(frame, f"Form: {live_score:.0f}/100", (14, h - 14),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.68, sc, 2)
 
-        if self.profile:
-            badge = f"{self.profile.name}  |  {self.profile.fitness_level}"
-            cv2.putText(frame, badge, (w - 270, h - 14),
-                        cv2.FONT_HERSHEY_SIMPLEX, 0.52, (150, 150, 150), 1)
+        badge = f"{self.user.name}  |  {self.user.fitness_level.value}"
+        cv2.putText(frame, badge, (w - 270, h - 14),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.52, (150, 150, 150), 1)
 
         # ── GO flash (centre screen, triggered once on start) ────────────
         now = time.time()
@@ -481,5 +476,18 @@ class PosePipeline:
 
 if __name__ == "__main__":
     import sys
+    from user import service as user_service
+
     exercise_id = sys.argv[1] if len(sys.argv) > 1 else None
-    PosePipeline(exercise_id).run()
+    user_id     = sys.argv[2] if len(sys.argv) > 2 else None
+
+    if not user_id:
+        logging.error("Usage: python -m core.pipeline [exercise_id] <user_id>")
+        raise SystemExit(1)
+
+    _user = user_service.get_user(user_id)
+    if not _user:
+        logging.error(f"User '{user_id}' not found. Create an account via the Pose-IQ app.")
+        raise SystemExit(1)
+
+    PosePipeline(user=_user, exercise_id=exercise_id).run()
