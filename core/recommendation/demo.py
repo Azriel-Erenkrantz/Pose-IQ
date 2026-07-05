@@ -12,7 +12,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timedelta
 
-from core.recommendation.models import BodyRegion, ExercisePerformanceRecord
+from core.app_model import BodyRegion, ExercisePerformanceRecord
 from core.recommendation.simulation import (
     change_target_region,
     complete_exercise,

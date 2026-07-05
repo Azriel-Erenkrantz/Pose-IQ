@@ -16,12 +16,12 @@ from datetime import datetime
 from typing import Dict, List, Optional
 
 from .catalog import CATALOG, COMMUNITY_DATA
-from .models import (
+from ..app_model import (
     BodyRegion,
     ExercisePerformanceRecord,
     HealthStatus,
+    RecommendationSession as UserSession,
     UserFeedback,
-    UserSession,
 )
 from .performance_interface import simulate_performance
 from .recommender import recommend

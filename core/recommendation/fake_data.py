@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 from typing import Dict, List
 
-from .models import BodyRegion, ExercisePerformanceRecord, HealthStatus, UserFeedback
+from ..app_model import BodyRegion, ExercisePerformanceRecord, HealthStatus, UserFeedback
 
 
 @dataclass

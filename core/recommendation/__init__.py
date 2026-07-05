@@ -1,12 +1,12 @@
-from .models import (
+from ..app_model import (
     BodyRegion,
-    CatalogExercise,
+    Exercise,
     ExercisePerformanceRecord,
     ExerciseRecommendation,
     HealthScenario,
     HealthStatus,
+    RecommendationSession as UserSession,
     UserFeedback,
-    UserSession,
 )
 from .recommender import recommend, detect_scenario
 from .simulation import (
@@ -20,13 +20,13 @@ from .simulation import (
 
 __all__ = [
     "BodyRegion",
-    "CatalogExercise",
+    "Exercise",
     "ExercisePerformanceRecord",
     "ExerciseRecommendation",
     "HealthScenario",
     "HealthStatus",
-    "UserFeedback",
     "UserSession",
+    "UserFeedback",
     "recommend",
     "detect_scenario",
     "start_session",

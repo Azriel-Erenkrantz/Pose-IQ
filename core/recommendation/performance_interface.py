@@ -15,7 +15,7 @@ import uuid
 from datetime import datetime
 from typing import Dict, List, Optional
 
-from .models import BodyRegion, ExercisePerformanceRecord
+from ..app_model import BodyRegion, ExercisePerformanceRecord
 
 
 def simulate_performance(

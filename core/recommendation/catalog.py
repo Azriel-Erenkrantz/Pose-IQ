@@ -4,7 +4,7 @@ from datetime import datetime
 from typing import List, Optional
 import uuid
 
-from .models import BodyRegion, CatalogExercise, CommunityRecord
+from ..app_model import BodyRegion, Exercise, CommunityRecord
 
 # ---------------------------------------------------------------------------
 # Exercise catalog
@@ -12,71 +12,71 @@ from .models import BodyRegion, CatalogExercise, CommunityRecord
 # existing data/exercises.json used by the pose-detection system.
 # ---------------------------------------------------------------------------
 
-CATALOG: List[CatalogExercise] = [
+CATALOG: List[Exercise] = [
     # ── UPPER ────────────────────────────────────────────────────────────
-    CatalogExercise(
+    Exercise(
         "bicep_curl", "Bicep Curl",
         BodyRegion.UPPER, [BodyRegion.UPPER],
         0.30, "Dumbbell bicep curl", ["pull", "arms"],
     ),
-    CatalogExercise(
+    Exercise(
         "shoulder_press", "Shoulder Press",
         BodyRegion.UPPER, [BodyRegion.UPPER, BodyRegion.CORE],
         0.60, "Overhead shoulder press", ["push", "shoulders"],
     ),
-    CatalogExercise(
+    Exercise(
         "push_up", "Push-up",
         BodyRegion.UPPER, [BodyRegion.UPPER, BodyRegion.CORE],
         0.40, "Classic push-up", ["push", "chest"],
     ),
-    CatalogExercise(
+    Exercise(
         "tricep_dip", "Tricep Dip",
         BodyRegion.UPPER, [BodyRegion.UPPER],
         0.50, "Parallel bar tricep dip", ["push", "arms"],
     ),
     # ── CORE ─────────────────────────────────────────────────────────────
-    CatalogExercise(
+    Exercise(
         "plank", "Plank",
         BodyRegion.CORE, [BodyRegion.CORE, BodyRegion.UPPER],
         0.35, "Static plank hold", ["isometric", "core"],
     ),
-    CatalogExercise(
+    Exercise(
         "crunch", "Crunch",
         BodyRegion.CORE, [BodyRegion.CORE],
         0.25, "Basic abdominal crunch", ["core", "abs"],
     ),
-    CatalogExercise(
+    Exercise(
         "russian_twist", "Russian Twist",
         BodyRegion.CORE, [BodyRegion.CORE],
         0.50, "Seated oblique rotation", ["core", "obliques"],
     ),
-    CatalogExercise(
+    Exercise(
         "leg_raise", "Leg Raise",
         BodyRegion.CORE, [BodyRegion.CORE, BodyRegion.LOWER],
         0.55, "Lying or hanging leg raise", ["core", "hip flexors"],
     ),
     # ── LOWER ────────────────────────────────────────────────────────────
-    CatalogExercise(
+    Exercise(
         "squat", "Squat",
         BodyRegion.LOWER, [BodyRegion.LOWER, BodyRegion.CORE],
         0.45, "Bodyweight or barbell squat", ["legs", "glutes"],
     ),
-    CatalogExercise(
+    Exercise(
         "lunge", "Lunge",
         BodyRegion.LOWER, [BodyRegion.LOWER],
         0.40, "Forward or reverse lunge", ["legs", "glutes"],
     ),
-    CatalogExercise(
+    Exercise(
         "deadlift", "Deadlift",
         BodyRegion.LOWER, [BodyRegion.LOWER, BodyRegion.CORE, BodyRegion.UPPER],
         0.80, "Conventional deadlift", ["legs", "back", "full body"],
     ),
-    CatalogExercise(
+    Exercise(
         "calf_raise", "Calf Raise",
         BodyRegion.LOWER, [BodyRegion.LOWER],
         0.20, "Standing calf raise", ["legs", "calves"],
     ),
-    CatalogExercise(
+    Exercise(
         "glute_bridge", "Glute Bridge",
         BodyRegion.LOWER, [BodyRegion.LOWER, BodyRegion.CORE],
         0.30, "Lying hip extension", ["glutes", "core"],
@@ -84,11 +84,11 @@ CATALOG: List[CatalogExercise] = [
 ]
 
 
-def get_by_id(exercise_id: str) -> Optional[CatalogExercise]:
+def get_by_id(exercise_id: str) -> Optional[Exercise]:
     return next((e for e in CATALOG if e.exercise_id == exercise_id), None)
 
 
-def get_by_region(region: BodyRegion) -> List[CatalogExercise]:
+def get_by_region(region: BodyRegion) -> List[Exercise]:
     return [e for e in CATALOG if e.primary_region == region]
 
 

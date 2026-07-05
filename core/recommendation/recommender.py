@@ -39,9 +39,9 @@ from __future__ import annotations
 
 from typing import Dict, List, Optional, Tuple
 
-from .models import (
+from ..app_model import (
     BodyRegion,
-    CatalogExercise,
+    Exercise,
     CommunityRecord,
     ExercisePerformanceRecord,
     ExerciseRecommendation,
@@ -82,7 +82,7 @@ def detect_scenario(health: HealthStatus, target: BodyRegion) -> HealthScenario:
 # ── Per-signal scores ───────────────────────────────────────────────────────
 
 def _try_ml(
-    exercise: CatalogExercise,
+    exercise: Exercise,
     history: List[ExercisePerformanceRecord],
     health: HealthStatus,
 ) -> Optional[float]:
@@ -102,7 +102,7 @@ def _try_ml(
 
 
 def _personal_score(
-    exercise: CatalogExercise,
+    exercise: Exercise,
     history: List[ExercisePerformanceRecord],
     scenario: HealthScenario,
     health: HealthStatus,
@@ -167,7 +167,7 @@ def _personal_score(
 
 
 def _community_score(
-    exercise: CatalogExercise,
+    exercise: Exercise,
     community: List[CommunityRecord],
     health: HealthStatus,
 ) -> Optional[float]:
@@ -183,7 +183,7 @@ def _community_score(
 
 
 def _feedback_score(
-    exercise: CatalogExercise,
+    exercise: Exercise,
     feedbacks: List[UserFeedback],
 ) -> Optional[float]:
     matched = [f.rating / 5.0 for f in feedbacks if f.exercise_id == exercise.exercise_id]
@@ -191,7 +191,7 @@ def _feedback_score(
 
 
 def _variety_multiplier(
-    exercise: CatalogExercise,
+    exercise: Exercise,
     history: List[ExercisePerformanceRecord],
 ) -> float:
     """
@@ -227,7 +227,7 @@ def _blend(personal: float, community: Optional[float], feedback: Optional[float
 # ── Public API ──────────────────────────────────────────────────────────────
 
 def recommend(
-    exercises: List[CatalogExercise],
+    exercises: List[Exercise],
     target_region: BodyRegion,
     health: HealthStatus,
     history: List[ExercisePerformanceRecord],

@@ -24,9 +24,9 @@ _root = os.path.dirname(os.path.dirname(os.path.dirname(__file__)))
 if _root not in sys.path:
     sys.path.insert(0, _root)
 
-from core.recommendation.models import (
-    BodyRegion, CatalogExercise, CommunityRecord,
-    ExercisePerformanceRecord, HealthScenario, HealthStatus,
+from core.app_model import (
+    BodyRegion, Exercise, CommunityRecord,
+    ExercisePerformanceRecord, HealthScenario, HealthStatus, UserFeedback,
 )
 from core.recommendation.recommender import (
     ADJACENT, detect_scenario, recommend, _variety_multiplier,
@@ -157,8 +157,8 @@ class TestCatalogFilter(unittest.TestCase):
     def test_custom_catalog_is_fully_isolated(self):
         # Pass a 2-exercise catalog; scoring logic should work without knowing about it
         mini = [
-            CatalogExercise("ex_a", "Alpha", U, [U], 0.3, "test"),
-            CatalogExercise("ex_b", "Beta",  U, [U], 0.7, "test"),
+            Exercise("ex_a", "Alpha", U, [U], 0.3, "test"),
+            Exercise("ex_b", "Beta",  U, [U], 0.7, "test"),
         ]
         sc = scenario_all_healthy()
         recs = recommend(mini, U, sc.health, sc.history, [], [])
@@ -166,7 +166,7 @@ class TestCatalogFilter(unittest.TestCase):
         self.assertEqual({r.exercise.exercise_id for r in recs}, {"ex_a", "ex_b"})
 
     def test_adding_exercise_to_catalog_includes_it(self):
-        new_ex = CatalogExercise("new_upper", "New Move", U, [U], 0.5, "test")
+        new_ex = Exercise("new_upper", "New Move", U, [U], 0.5, "test")
         extended = CATALOG + [new_ex]
         sc = scenario_new_user()
         recs = recommend(extended, U, sc.health, sc.history, [], [])
@@ -217,7 +217,6 @@ class TestBlend(unittest.TestCase):
         self.assertGreater(pu_high.score, pu_low.score)
 
     def test_feedback_signal_changes_final_score(self):
-        from core.recommendation.models import UserFeedback
         sc = scenario_all_healthy()
         feedbacks = [
             UserFeedback("f1", "push_up", sc.user_id, "sess", datetime.now(), rating=5),
@@ -241,8 +240,8 @@ class TestModularity(unittest.TestCase):
     def test_swap_catalog_scoring_logic_unchanged(self):
         """Replace the entire catalog; scoring logic runs identically on the new exercises."""
         custom = [
-            CatalogExercise("hard_ex",  "Hard",  U, [U], 0.9, "test"),
-            CatalogExercise("easy_ex",  "Easy",  U, [U], 0.1, "test"),
+            Exercise("hard_ex",  "Hard",  U, [U], 0.9, "test"),
+            Exercise("easy_ex",  "Easy",  U, [U], 0.1, "test"),
         ]
         sc = scenario_all_healthy()
         # Seed history for the custom exercises at the same difficulty pattern
@@ -382,7 +381,7 @@ class TestVariety(unittest.TestCase):
         return records
 
     def _ex(self, exercise_id):
-        return CatalogExercise(exercise_id, exercise_id, U, [U], 0.5, "test")
+        return Exercise(exercise_id, exercise_id, U, [U], 0.5, "test")
 
     # ── Multiplier function ───────────────────────────────────────────────────
 

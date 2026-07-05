@@ -82,6 +82,12 @@ class ScoreTrend(str, Enum):
     DECLINING = "declining"
 
 
+class HealthScenario(str, Enum):
+    ALL_HEALTHY                 = "all_healthy"
+    TARGET_HEALTHY_ADJACENT_NOT = "target_healthy_adjacent_not"
+    TARGET_UNHEALTHY            = "target_unhealthy"
+
+
 # ── User ──────────────────────────────────────────────────────────────────────
 
 # Maps user-reported limitation labels to the joint names the evaluation pipeline checks.
@@ -302,17 +308,83 @@ class WeightRecommendation:
 
 @dataclass
 class ExerciseRecommendation:
-    """
-    One ranked recommendation produced by the recommendation engine.
-    Maps to core/recommendation/models.ExerciseRecommendation — will consolidate on unisolation.
-    """
+    """One ranked recommendation produced by the recommendation engine."""
     exercise:        Exercise
     score:           float               # 0–1 final blended score
     reason:          str
-    scenario:        str                 # health scenario name
+    scenario:        HealthScenario
     personal_score:  float
     community_score: Optional[float]
     feedback_score:  Optional[float]
+
+
+@dataclass
+class ExercisePerformanceRecord:
+    """
+    Output contract for the performance-monitoring ML model.
+    Records one completed exercise set; feeds the recommendation engine.
+    """
+    id:                 str
+    exercise_id:        str
+    user_id:            str
+    session_id:         str
+    timestamp:          datetime
+    difficulty_score:   float           # 0–1
+    form_quality_score: float           # 0–1
+    completion_rate:    float           # 0–1
+    violations:         List[str]
+    reps_completed:     int
+    sets_completed:     int
+    health_snapshot:    Dict[BodyRegion, int]
+
+
+@dataclass
+class UserFeedback:
+    """Explicit 1–5 star rating the user gives after an exercise set."""
+    id:          str
+    exercise_id: str
+    user_id:     str
+    session_id:  str
+    timestamp:   datetime
+    rating:      int
+    comment:     Optional[str] = None
+
+
+@dataclass
+class CommunityRecord:
+    """Aggregated feedback from one community user, used for collaborative filtering."""
+    id:             str
+    exercise_id:    str
+    health_ratings: Dict[BodyRegion, int]
+    user_rating:    float               # normalised 0–1
+    timestamp:      datetime
+
+
+@dataclass
+class RecommendationSession:
+    """In-memory session used by the recommendation simulation layer."""
+    id:                   str
+    user_id:              str
+    target_region:        BodyRegion
+    health_status:        HealthStatus
+    started_at:           datetime                     = field(default_factory=datetime.now)
+    recommendations:      List[ExerciseRecommendation] = field(default_factory=list)
+    completed_exercises:  List[ExercisePerformanceRecord] = field(default_factory=list)
+    feedbacks:            List[UserFeedback]           = field(default_factory=list)
+
+
+@dataclass
+class RecommendationInput:
+    """
+    Everything the recommendation engine needs from the user layer.
+    Built by the API; passed to recommendation/bridge.recommend_for_user().
+    """
+    fitness_level:   FitnessLevel
+    target_goals:    List[TargetGoal]
+    equipment:       List[Equipment]
+    limited_joints:  List[str]          # already mapped — not raw limitation strings
+    health_status:   HealthStatus
+    session_history: List[LiveSessionOutput]
 
 
 # ── UI screen data contracts ───────────────────────────────────────────────────

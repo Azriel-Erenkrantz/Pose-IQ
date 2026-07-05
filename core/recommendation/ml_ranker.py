@@ -37,7 +37,7 @@ import pickle
 from datetime import datetime
 from typing import List, Optional
 
-from .models import BodyRegion, ExercisePerformanceRecord, HealthStatus, UserFeedback
+from ..app_model import BodyRegion, ExercisePerformanceRecord, HealthStatus, UserFeedback
 
 # ── Configuration (monkeypatchable in tests) ──────────────────────────────────
 
