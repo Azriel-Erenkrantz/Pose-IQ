@@ -2,17 +2,20 @@ import React, { useState } from 'react';
 import { AuthToken } from '../api/types';
 import DashboardScreen from '../screens/DashboardScreen';
 import LoginScreen from '../screens/LoginScreen';
+import RegisterScreen from '../screens/RegisterScreen';
 
-// Simple state-based navigator — no library needed at this stage.
-// Replace with React Navigation stack when more screens are added.
-
-type Screen = 'login' | 'dashboard';
+type Screen = 'login' | 'register' | 'dashboard';
 
 export default function AppNavigator() {
   const [screen, setScreen] = useState<Screen>('login');
   const [token, setToken]   = useState<AuthToken | null>(null);
 
   function handleLogin(t: AuthToken) {
+    setToken(t);
+    setScreen('dashboard');
+  }
+
+  function handleRegister(t: AuthToken) {
     setToken(t);
     setScreen('dashboard');
   }
@@ -25,11 +28,18 @@ export default function AppNavigator() {
   if (screen === 'dashboard') {
     return <DashboardScreen onLogout={handleLogout} />;
   }
-
+  if (screen === 'register') {
+    return (
+      <RegisterScreen
+        onRegister={handleRegister}
+        onGoToLogin={() => setScreen('login')}
+      />
+    );
+  }
   return (
     <LoginScreen
       onLogin={handleLogin}
-      onGoToRegister={() => {/* register screen coming next */}}
+      onGoToRegister={() => setScreen('register')}
     />
   );
 }
