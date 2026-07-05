@@ -5,8 +5,7 @@ Public functions return app_model types — the rest of the app (API, UI)
 only ever touches these functions, never the internal user/ module classes.
 
 Storage (right now): JSON files under data/
-  data/users.json          — registered users {user_id: {email, password_hash, profile}}
-  data/user_profile.json   — legacy single-user CLI profile (untouched)
+  data/users.json  — registered users {user_id: {email, password_hash, profile}}
 
 When the DB is connected: swap the _load_users / _save_users helpers.
 Everything above them stays the same.
@@ -44,6 +43,10 @@ _USERS_PATH = os.path.normpath(
 )
 
 TOKEN_TTL_HOURS = 24 * 7  # 1 week
+
+# In-memory token store: token_string → AuthToken.
+# Lost on server restart — replace with Redis/MongoDB when DB is connected.
+_TOKENS: Dict[str, AuthToken] = {}
 
 
 # ── Internal helpers ───────────────────────────────────────────────────────────
@@ -119,11 +122,13 @@ def register(req: RegisterRequest) -> Optional[AuthToken]:
     users[user.user_id] = _user_to_dict(user, _hash(req.password))
     _save_users(users)
 
-    return AuthToken(
+    auth_token = AuthToken(
         user_id    = user.user_id,
         token      = str(uuid.uuid4()),
         expires_at = datetime.now() + timedelta(hours=TOKEN_TTL_HOURS),
     )
+    _TOKENS[auth_token.token] = auth_token
+    return auth_token
 
 
 def login(req: LoginRequest) -> Optional[AuthToken]:
@@ -139,11 +144,21 @@ def login(req: LoginRequest) -> Optional[AuthToken]:
     if match is None or match["password_hash"] != _hash(req.password):
         return None
 
-    return AuthToken(
+    auth_token = AuthToken(
         user_id    = match["user_id"],
         token      = str(uuid.uuid4()),
         expires_at = datetime.now() + timedelta(hours=TOKEN_TTL_HOURS),
     )
+    _TOKENS[auth_token.token] = auth_token
+    return auth_token
+
+
+def verify_token(token: str) -> Optional[str]:
+    """Return the user_id for a valid, unexpired token; None otherwise."""
+    entry = _TOKENS.get(token)
+    if entry is None or datetime.now() > entry.expires_at:
+        return None
+    return entry.user_id
 
 
 # ── User data ──────────────────────────────────────────────────────────────────

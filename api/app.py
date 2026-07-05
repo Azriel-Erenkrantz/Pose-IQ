@@ -66,10 +66,7 @@ def err(message: str, status: int = 400):
     return jsonify({"error": message}), status
 
 
-# ── Auth guard (simple token check) ───────────────────────────────────────────
-# Right now tokens are not persisted — any Bearer token is accepted as long as
-# the user_id in the URL matches. When a real token store is added (Redis /
-# MongoDB), swap this function only.
+# ── Auth guard ────────────────────────────────────────────────────────────────
 
 def require_auth(f):
     @wraps(f)
@@ -77,6 +74,9 @@ def require_auth(f):
         auth = request.headers.get("Authorization", "")
         if not auth.startswith("Bearer "):
             return err("Missing or invalid Authorization header", 401)
+        token = auth[len("Bearer "):]
+        if service.verify_token(token) is None:
+            return err("Token invalid or expired", 401)
         return f(*args, **kwargs)
     return wrapper
 

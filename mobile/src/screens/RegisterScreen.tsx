@@ -25,7 +25,7 @@ interface Props {
   onGoToLogin: () => void;
 }
 
-const TOTAL_STEPS = 5;
+const TOTAL_STEPS = 6;
 
 const STEP_TITLES = [
   'Create your account',
@@ -33,6 +33,7 @@ const STEP_TITLES = [
   'Training goals',
   'Equipment',
   'Coach style',
+  'Any limitations?',
 ];
 
 const FITNESS_LABELS: Record<FitnessLevel, string> = {
@@ -74,6 +75,16 @@ const TRAINER_DESC: Record<TrainerPersonality, string> = {
   motivating: 'Energetic and encouraging — hypes you up',
 };
 
+const LIMITATION_LABELS: Record<string, string> = {
+  right_knee:     '🦵 Right Knee',
+  left_knee:      '🦵 Left Knee',
+  lower_back:     '🔙 Lower Back',
+  right_shoulder: '💪 Right Shoulder',
+  left_shoulder:  '💪 Left Shoulder',
+  right_elbow:    '🤜 Right Elbow',
+  left_elbow:     '🤛 Left Elbow',
+};
+
 export default function RegisterScreen({ onRegister, onGoToLogin }: Props) {
   const [step, setStep] = useState(1);
   const [options, setOptions] = useState<ProfileSetupOptions | null>(null);
@@ -94,6 +105,9 @@ export default function RegisterScreen({ onRegister, onGoToLogin }: Props) {
 
   // Step 5 — trainer
   const [trainer, setTrainer] = useState<TrainerPersonality>('motivating');
+
+  // Step 6 — limitations
+  const [limitations, setLimitations] = useState<string[]>([]);
 
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
@@ -142,7 +156,7 @@ export default function RegisterScreen({ onRegister, onGoToLogin }: Props) {
         trainer_personality: trainer,
         target_goals:        goals,
         equipment,
-        limitations:         [],
+        limitations,
       });
       onRegister(token);
     } catch (e: any) {
@@ -282,6 +296,29 @@ export default function RegisterScreen({ onRegister, onGoToLogin }: Props) {
           </View>
         )}
 
+        {/* Step 6 — Physical limitations */}
+        {step === 6 && (
+          <View>
+            <Text style={styles.limitationHint}>
+              Select any joints or areas that need extra care. The app will adapt form checks accordingly. Skip if none apply.
+            </Text>
+            <View style={styles.grid}>
+              {(options?.limitation_options ?? Object.keys(LIMITATION_LABELS)).map(lim => (
+                <Pressable
+                  key={lim}
+                  style={[styles.gridCard, limitations.includes(lim) && styles.gridCardActive]}
+                  onPress={() => setLimitations(l => toggleMulti(l, lim))}
+                >
+                  <Text style={styles.gridIcon}>{LIMITATION_LABELS[lim]?.split(' ')[0]}</Text>
+                  <Text style={styles.gridLabel}>
+                    {LIMITATION_LABELS[lim]?.split(' ').slice(1).join(' ') || lim}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        )}
+
         {error ? <Text style={styles.error}>{error}</Text> : null}
       </ScrollView>
 
@@ -385,6 +422,13 @@ const styles = StyleSheet.create({
   radioSelected: { borderColor: '#4ade80', backgroundColor: '#4ade80' },
   radioTitle: { color: '#fff', fontSize: 16, fontWeight: '600' },
   radioDesc:  { color: '#888', fontSize: 13, marginLeft: 30 },
+
+  limitationHint: {
+    color: '#888',
+    fontSize: 13,
+    lineHeight: 19,
+    marginBottom: 16,
+  },
 
   grid: {
     flexDirection: 'row',
