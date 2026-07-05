@@ -150,14 +150,18 @@ export default function DashboardScreen({ token, onLogout }: Props) {
         </div>
 
         {/* Recommendations */}
-        {data.recommendations.length > 0 && (
-          <>
-            <h2 className="text-white font-bold text-lg mb-3">Recommended for you</h2>
-            {data.recommendations.slice(0, 5).map(r => (
+        <h2 className="text-white font-bold text-lg mb-3">Recommended for you</h2>
+        {data.recommendations.length > 0
+          ? data.recommendations.slice(0, 5).map(r => (
               <RecommendationCard key={r.exercise.exercise_id} rec={r} />
-            ))}
-          </>
-        )}
+            ))
+          : (
+            <div className="bg-[#1a1a2e] border border-[#2a2a40] rounded-xl p-4 mb-2.5">
+              <p className="text-[#555] text-sm font-semibold mb-1">No recommendations yet.</p>
+              <p className="text-[#444] text-xs">Rate your health above and tap Save, or make sure you selected goals during registration.</p>
+            </div>
+          )
+        }
 
         {/* Progress */}
         {data.progress_summary.length > 0 && (

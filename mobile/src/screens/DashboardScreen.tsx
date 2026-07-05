@@ -57,6 +57,7 @@ export default function DashboardScreen({ token, onLogout }: Props) {
         core:  serverRatings.core  ?? 5,
         lower: serverRatings.lower ?? 5,
       });
+      console.log('recommendations count:', dashboard.recommendations.length, dashboard.recommendations);
     } catch (e: any) {
       setError('Could not load dashboard. Is the server running?');
     } finally {
@@ -177,14 +178,18 @@ export default function DashboardScreen({ token, onLogout }: Props) {
       </View>
 
       {/* Recommendations */}
-      {data.recommendations.length > 0 && (
-        <>
-          <Text style={styles.sectionTitle}>Recommended for you</Text>
-          {data.recommendations.slice(0, 5).map(r => (
+      <Text style={styles.sectionTitle}>Recommended for you</Text>
+      {data.recommendations.length > 0
+        ? data.recommendations.slice(0, 5).map(r => (
             <RecommendationCard key={r.exercise.exercise_id} rec={r} />
-          ))}
-        </>
-      )}
+          ))
+        : (
+          <View style={styles.emptyCard}>
+            <Text style={styles.emptyText}>No recommendations yet.</Text>
+            <Text style={styles.emptyHint}>Rate your health above and tap Save, or make sure you selected goals during registration.</Text>
+          </View>
+        )
+      }
 
       {/* Progress by exercise */}
       {data.progress_summary.length > 0 && (
@@ -420,6 +425,17 @@ const styles = StyleSheet.create({
   },
   saveBtnDisabled: { opacity: 0.5 },
   saveBtnText: { color: '#4ade80', fontSize: 13, fontWeight: '600' },
+
+  emptyCard: {
+    backgroundColor: '#1a1a2e',
+    borderRadius: 14,
+    padding: 16,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#2a2a40',
+  },
+  emptyText: { color: '#555', fontSize: 14, fontWeight: '600', marginBottom: 4 },
+  emptyHint: { color: '#444', fontSize: 12, lineHeight: 18 },
 
   barBg:   { height: 4, backgroundColor: '#2a2a40', borderRadius: 2, overflow: 'hidden' },
   barFill: { height: 4, borderRadius: 2 },
