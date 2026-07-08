@@ -72,7 +72,7 @@ class ExerciseModel:
         if data_path is None:
             data_path = os.path.join(
                 os.path.dirname(os.path.dirname(os.path.dirname(__file__))),
-                'data', 'exercises_full.json'
+                'data', 'exercises_seed.json'
             )
         self.exercises: Dict[str, Exercise] = {}
         self._load(data_path)
@@ -84,16 +84,19 @@ class ExerciseModel:
         for ex_data in data['exercises']:
             phases = []
             for phase_data in sorted(ex_data['phases'], key=lambda p: p['order']):
-                angles = {
-                    joint: AngleRange(
+                # Support both seed format (joints: {corrections only}) and
+                # full format (angle_ranges: {min, max, mean, std, corrections})
+                angles = {}
+                for joint, r in phase_data.get('angle_ranges', phase_data.get('joints', {})).items():
+                    if 'min' not in r:
+                        continue  # seed format — no angle data yet, skip
+                    angles[joint] = AngleRange(
                         min=r['min'],
                         max=r['max'],
                         corrections=r.get('corrections', {}),
                         mean=r.get('mean'),
                         std=r.get('std'),
                     )
-                    for joint, r in phase_data.get('angle_ranges', {}).items()
-                }
                 phases.append(Phase(
                     name=phase_data['name'],
                     order=phase_data['order'],
@@ -113,13 +116,23 @@ class ExerciseModel:
                 for joint, r in ex_data.get('global_constraints', {}).items()
             }
 
+            # Derive primary_joints from diagnostic joints of non-initial phases
+            seen: set = set()
+            primary_joints: List[str] = []
+            for ph in ex_data.get('phases', []):
+                if not ph.get('is_initial', False):
+                    for j in ph.get('diagnostic_joints', []):
+                        if j not in seen:
+                            seen.add(j)
+                            primary_joints.append(j)
+
             exercise = Exercise(
                 id=ex_data['id'],
                 name=ex_data['name'],
                 description=ex_data['description'],
                 muscle_groups=ex_data['muscle_groups'],
                 phases=phases,
-                primary_joints=ex_data.get('primary_joints', []),
+                primary_joints=primary_joints,
                 mandatory_start_joints=ex_data.get('mandatory_start_joints', []),
                 global_constraints=global_constraints,
             )
