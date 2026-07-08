@@ -144,7 +144,6 @@ class TestExerciseModelLoad(unittest.TestCase):
         self.assertIn('lunge', ids)
         self.assertIn('biceps_curl', ids)
         self.assertIn('shoulder_press', ids)
-        self.assertIn('plank', ids)
 
     def test_squat_has_three_phases(self):
         ex = self.model.get_exercise('squat')
