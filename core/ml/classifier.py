@@ -173,7 +173,7 @@ def classify_trained(
     """
     bundle = _load_model(exercise.id)
     if bundle is not None:
-        from core.model1.trainer import JOINTS
+        from core.ml.trainer import JOINTS
         if rolling_delta is not None:
             delta = rolling_delta
         elif prev_primary_angle is not None and current_primary_angle is not None:

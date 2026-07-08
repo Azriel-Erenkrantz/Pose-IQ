@@ -22,9 +22,9 @@ QuickTime, etc.). You can also use "start_frame" / "end_frame" for raw video
 frame numbers if you prefer counting frames directly.
 
 Usage:
-    python -m core.model1.eval data/test_labels/squat_test.json
-    python -m core.model1.eval data/test_labels/squat_test.json --gaussian
-    python -m core.model1.eval data/test_labels/squat_test.json --skip 2
+    python -m core.ml.eval data/test_labels/squat_test.json
+    python -m core.ml.eval data/test_labels/squat_test.json --gaussian
+    python -m core.ml.eval data/test_labels/squat_test.json --skip 2
 """
 from __future__ import annotations
 
@@ -131,9 +131,9 @@ def evaluate(
 
     from core.db import get_db
     from core.exercise.exercise_model import ExerciseModel
-    from core.model2.angles import angles_over_time, compute_angles
-    from core.model2.extractor import extract_frames
-    from core.model1.classifier import classify, classify_trained
+    from core.ml.angles import angles_over_time, compute_angles
+    from core.ml.extractor import extract_frames
+    from core.ml.classifier import classify, classify_trained
 
     db = get_db()
     model = ExerciseModel.from_mongo(db)

@@ -22,9 +22,9 @@ Label file format:
   }
 
 Usage:
-    python -m core.model1.trainer                        # all exercises
-    python -m core.model1.trainer --exercise squat       # one exercise
-    python -m core.model1.trainer --labels data/my_labels --quiet
+    python -m core.ml.trainer                        # all exercises
+    python -m core.ml.trainer --exercise squat       # one exercise
+    python -m core.ml.trainer --labels data/my_labels --quiet
 """
 from __future__ import annotations
 
@@ -146,8 +146,8 @@ def collect_samples_from_labels(
     Returns (X, y, eval_label_path, phase_angles).
     """
     from collections import defaultdict
-    from core.model2.angles import compute_angles
-    from core.model2.extractor import extract_frames
+    from core.ml.angles import compute_angles
+    from core.ml.extractor import extract_frames
 
     label_dir = labels_root / exercise_id
     if not label_dir.exists():
@@ -365,7 +365,7 @@ def train_all(
         if path and eval_file is not None:
             if verbose:
                 print(f'  Evaluating on held-out: {eval_file.name}')
-            from core.model1.eval import evaluate
+            from core.ml.eval import evaluate
             evaluate(eval_file, verbose=verbose)
 
         if path:
