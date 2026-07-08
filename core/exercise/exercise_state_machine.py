@@ -1,5 +1,5 @@
 from typing import Dict, List, Optional
-from exercise.exercise_model import ExerciseModel, Exercise, Phase, AngleRange
+from core.exercise.exercise_model import ExerciseModel, Exercise, Phase, AngleRange
 
 
 class ExerciseStateMachine:

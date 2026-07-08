@@ -34,3 +34,7 @@ def _ensure_indexes(db: Database) -> None:
     db.users.create_index('email', unique=True)
     db.tokens.create_index('expires_at', expireAfterSeconds=0)   # TTL — auto-delete expired tokens
     db.sessions.create_index([('user_id', ASCENDING), ('date', ASCENDING)])
+    db.exercises.create_index('id', unique=True)
+    db.exercise_angles.create_index(
+        [('exercise_id', ASCENDING), ('phase', ASCENDING)], unique=True
+    )
