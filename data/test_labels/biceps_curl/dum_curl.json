@@ -1,0 +1,43 @@
+{
+  "exercise_id": "biceps_curl",
+  "video": "data/videos/biceps curl/dum_curl.mp4",
+  "fps": 30.0,
+  "skip": 1,
+  "labels": [
+    {
+      "start_sec": 0.0,
+      "end_sec": 0.23,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 0.4,
+      "end_sec": 1.83,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 1.83,
+      "end_sec": 2.53,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 2.53,
+      "end_sec": 3.17,
+      "phase": "curling"
+    },
+    {
+      "start_sec": 3.17,
+      "end_sec": 3.4,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 3.53,
+      "end_sec": 4.83,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 4.83,
+      "end_sec": 5.53,
+      "phase": "standing"
+    }
+  ]
+}

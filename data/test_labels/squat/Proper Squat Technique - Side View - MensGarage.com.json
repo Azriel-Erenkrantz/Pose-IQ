@@ -1,0 +1,498 @@
+{
+  "exercise_id": "squat",
+  "video": "data/videos/squat/good/Proper Squat Technique - Side View - MensGarage.com.mp4",
+  "fps": 29.97002997002997,
+  "skip": 1,
+  "labels": [
+    {
+      "start_sec": 0.0,
+      "end_sec": 0.23,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 0.57,
+      "end_sec": 0.8,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 0.8,
+      "end_sec": 1.4,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 1.4,
+      "end_sec": 1.77,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 1.77,
+      "end_sec": 2.47,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 2.47,
+      "end_sec": 2.77,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 2.77,
+      "end_sec": 3.0,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 3.44,
+      "end_sec": 3.74,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 3.74,
+      "end_sec": 4.04,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 4.04,
+      "end_sec": 4.94,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 4.94,
+      "end_sec": 5.17,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 5.17,
+      "end_sec": 5.34,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 5.34,
+      "end_sec": 5.57,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 5.57,
+      "end_sec": 5.91,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 5.91,
+      "end_sec": 6.14,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 6.14,
+      "end_sec": 6.37,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 6.37,
+      "end_sec": 7.11,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 7.11,
+      "end_sec": 7.34,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 7.44,
+      "end_sec": 7.67,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 7.67,
+      "end_sec": 7.91,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 8.14,
+      "end_sec": 8.38,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 8.48,
+      "end_sec": 8.71,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 8.71,
+      "end_sec": 9.38,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 9.44,
+      "end_sec": 9.68,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 9.98,
+      "end_sec": 10.21,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 10.44,
+      "end_sec": 10.68,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 11.08,
+      "end_sec": 11.38,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 11.38,
+      "end_sec": 11.61,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 11.61,
+      "end_sec": 11.88,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 11.88,
+      "end_sec": 12.11,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 12.11,
+      "end_sec": 13.05,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 13.05,
+      "end_sec": 13.28,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 13.28,
+      "end_sec": 13.65,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 13.65,
+      "end_sec": 13.88,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 13.98,
+      "end_sec": 14.21,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 14.71,
+      "end_sec": 14.95,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 15.32,
+      "end_sec": 15.55,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 15.55,
+      "end_sec": 16.48,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 16.48,
+      "end_sec": 16.72,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 16.98,
+      "end_sec": 17.22,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 17.25,
+      "end_sec": 17.48,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 18.02,
+      "end_sec": 18.32,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 18.32,
+      "end_sec": 18.65,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 18.75,
+      "end_sec": 18.99,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 18.99,
+      "end_sec": 19.55,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 19.55,
+      "end_sec": 19.79,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 19.79,
+      "end_sec": 20.25,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 20.25,
+      "end_sec": 20.49,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 20.55,
+      "end_sec": 20.79,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 20.92,
+      "end_sec": 21.15,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 21.29,
+      "end_sec": 21.96,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 21.96,
+      "end_sec": 22.19,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 23.56,
+      "end_sec": 23.79,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 23.79,
+      "end_sec": 24.06,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 24.06,
+      "end_sec": 24.29,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 24.46,
+      "end_sec": 24.69,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 24.69,
+      "end_sec": 24.92,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 24.92,
+      "end_sec": 25.36,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 25.36,
+      "end_sec": 25.59,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 25.76,
+      "end_sec": 25.99,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 26.13,
+      "end_sec": 26.36,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 26.36,
+      "end_sec": 27.23,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 27.23,
+      "end_sec": 27.46,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 27.73,
+      "end_sec": 27.96,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 28.03,
+      "end_sec": 28.26,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 28.26,
+      "end_sec": 29.03,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 29.03,
+      "end_sec": 29.26,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 29.36,
+      "end_sec": 29.7,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 29.7,
+      "end_sec": 30.0,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 30.0,
+      "end_sec": 31.23,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 31.26,
+      "end_sec": 31.5,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 31.5,
+      "end_sec": 31.77,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 31.87,
+      "end_sec": 32.1,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 32.1,
+      "end_sec": 32.8,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 32.8,
+      "end_sec": 33.03,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 33.43,
+      "end_sec": 33.67,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 33.67,
+      "end_sec": 34.63,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 34.63,
+      "end_sec": 34.87,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 34.87,
+      "end_sec": 35.0,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 35.0,
+      "end_sec": 35.24,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 35.3,
+      "end_sec": 35.54,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 35.6,
+      "end_sec": 35.97,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 35.97,
+      "end_sec": 36.67,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 36.67,
+      "end_sec": 36.9,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 36.9,
+      "end_sec": 37.14,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 37.14,
+      "end_sec": 38.1,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 38.1,
+      "end_sec": 38.34,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 38.41,
+      "end_sec": 38.64,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 38.91,
+      "end_sec": 39.14,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 39.14,
+      "end_sec": 39.64,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 39.64,
+      "end_sec": 39.87,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 40.04,
+      "end_sec": 40.27,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 40.34,
+      "end_sec": 40.57,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 40.57,
+      "end_sec": 40.87,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 40.94,
+      "end_sec": 41.17,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 41.34,
+      "end_sec": 41.64,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 41.64,
+      "end_sec": 41.88,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 42.04,
+      "end_sec": 42.28,
+      "phase": "standing"
+    }
+  ]
+}

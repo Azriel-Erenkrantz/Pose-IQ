@@ -1,0 +1,68 @@
+{
+  "exercise_id": "squat",
+  "video": "data/videos/squat/good/Back Squat (side view) - FostaFit (720p, h264).mp4",
+  "fps": 30.0,
+  "skip": 1,
+  "labels": [
+    {
+      "start_sec": 0.13,
+      "end_sec": 0.37,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 0.37,
+      "end_sec": 2.0,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 2.1,
+      "end_sec": 2.33,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 2.33,
+      "end_sec": 3.5,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 3.5,
+      "end_sec": 3.73,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 3.8,
+      "end_sec": 4.13,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 4.13,
+      "end_sec": 4.5,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 4.5,
+      "end_sec": 6.0,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 6.1,
+      "end_sec": 6.33,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 6.4,
+      "end_sec": 6.63,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 6.63,
+      "end_sec": 7.63,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 7.63,
+      "end_sec": 7.87,
+      "phase": "standing"
+    }
+  ]
+}

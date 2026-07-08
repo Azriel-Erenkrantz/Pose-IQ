@@ -1,0 +1,28 @@
+{
+  "exercise_id": "biceps_curl",
+  "video": "data/videos/biceps curl/dumb2.mp4",
+  "fps": 30.0,
+  "skip": 1,
+  "labels": [
+    {
+      "start_sec": 0.0,
+      "end_sec": 0.23,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 1.37,
+      "end_sec": 2.37,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 2.37,
+      "end_sec": 2.6,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 2.9,
+      "end_sec": 3.13,
+      "phase": "standing"
+    }
+  ]
+}

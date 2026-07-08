@@ -1,0 +1,148 @@
+{
+  "exercise_id": "lunge",
+  "video": "data/videos/lunge/good/DUMBBELL LUNGES (PROPER FORM).mp4",
+  "fps": 30.0,
+  "skip": 1,
+  "labels": [
+    {
+      "start_sec": 0.37,
+      "end_sec": 0.6,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 0.77,
+      "end_sec": 1.13,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 1.13,
+      "end_sec": 1.37,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 1.37,
+      "end_sec": 1.6,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 1.73,
+      "end_sec": 1.97,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 1.97,
+      "end_sec": 2.5,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 2.5,
+      "end_sec": 2.93,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 2.93,
+      "end_sec": 3.17,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 3.3,
+      "end_sec": 3.67,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 3.67,
+      "end_sec": 3.9,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 3.9,
+      "end_sec": 4.13,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 4.27,
+      "end_sec": 4.5,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 4.5,
+      "end_sec": 4.7,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 4.7,
+      "end_sec": 4.93,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 5.07,
+      "end_sec": 5.43,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 5.43,
+      "end_sec": 5.67,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 5.7,
+      "end_sec": 5.93,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 6.23,
+      "end_sec": 6.47,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 6.47,
+      "end_sec": 6.67,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 6.67,
+      "end_sec": 6.9,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 6.9,
+      "end_sec": 7.4,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 7.43,
+      "end_sec": 7.67,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 7.77,
+      "end_sec": 8.13,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 8.13,
+      "end_sec": 8.37,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 8.4,
+      "end_sec": 8.63,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 8.8,
+      "end_sec": 9.3,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 9.3,
+      "end_sec": 9.53,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 9.57,
+      "end_sec": 9.8,
+      "phase": "standing"
+    }
+  ]
+}

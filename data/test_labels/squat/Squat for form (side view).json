@@ -1,0 +1,243 @@
+{
+  "exercise_id": "squat",
+  "video": "data/videos/squat/good/Squat for form (side view).mp4",
+  "fps": 30.0,
+  "skip": 1,
+  "labels": [
+    {
+      "start_sec": 0.07,
+      "end_sec": 0.3,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 0.57,
+      "end_sec": 0.8,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 0.87,
+      "end_sec": 1.1,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 1.17,
+      "end_sec": 1.4,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 1.53,
+      "end_sec": 1.77,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 2.03,
+      "end_sec": 2.27,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 2.3,
+      "end_sec": 2.53,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 2.53,
+      "end_sec": 2.8,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 2.8,
+      "end_sec": 3.03,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 3.03,
+      "end_sec": 3.17,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 3.17,
+      "end_sec": 3.4,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 3.43,
+      "end_sec": 3.67,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 3.73,
+      "end_sec": 3.97,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 4.07,
+      "end_sec": 4.3,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 4.3,
+      "end_sec": 4.43,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 4.43,
+      "end_sec": 4.67,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 4.7,
+      "end_sec": 4.93,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 5.07,
+      "end_sec": 5.3,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 5.4,
+      "end_sec": 5.63,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 5.73,
+      "end_sec": 6.0,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 6.0,
+      "end_sec": 6.23,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 6.23,
+      "end_sec": 6.43,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 6.43,
+      "end_sec": 6.67,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 7.07,
+      "end_sec": 7.3,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 7.57,
+      "end_sec": 7.8,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 7.9,
+      "end_sec": 8.43,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 8.43,
+      "end_sec": 8.67,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 9.47,
+      "end_sec": 10.03,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 10.03,
+      "end_sec": 10.27,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 10.27,
+      "end_sec": 10.53,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 10.53,
+      "end_sec": 10.87,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 10.87,
+      "end_sec": 11.43,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 11.43,
+      "end_sec": 12.17,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 12.17,
+      "end_sec": 12.43,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 12.43,
+      "end_sec": 12.67,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 12.83,
+      "end_sec": 13.07,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 13.33,
+      "end_sec": 13.57,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 13.8,
+      "end_sec": 14.03,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 14.67,
+      "end_sec": 14.9,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 14.9,
+      "end_sec": 15.13,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 15.2,
+      "end_sec": 15.43,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 15.43,
+      "end_sec": 15.67,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 15.9,
+      "end_sec": 16.13,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 16.57,
+      "end_sec": 16.8,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 16.9,
+      "end_sec": 17.13,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 17.23,
+      "end_sec": 17.47,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 17.6,
+      "end_sec": 17.83,
+      "phase": "standing"
+    }
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "exercise_id": "lunge",
+  "video": "data/videos/lunge/good/Dumbbell Forward Lunges.mp4",
+  "fps": 29.97,
+  "skip": 1,
+  "labels": [
+    {
+      "start_sec": 0.0,
+      "end_sec": 0.23,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 0.57,
+      "end_sec": 0.8,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 0.8,
+      "end_sec": 1.5,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 1.5,
+      "end_sec": 2.04,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 2.04,
+      "end_sec": 2.27,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 2.34,
+      "end_sec": 2.57,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 2.57,
+      "end_sec": 2.8,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 2.9,
+      "end_sec": 3.14,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 3.14,
+      "end_sec": 3.37,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 3.5,
+      "end_sec": 3.74,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 3.74,
+      "end_sec": 4.4,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 4.4,
+      "end_sec": 4.9,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 4.9,
+      "end_sec": 5.14,
+      "phase": "standing"
+    }
+  ]
+}

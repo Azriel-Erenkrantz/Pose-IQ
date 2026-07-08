@@ -1,0 +1,283 @@
+{
+  "exercise_id": "lunge",
+  "video": "data/videos/lunge/good/Strength - Forward Lunge.mp4",
+  "fps": 29.445054945054945,
+  "skip": 1,
+  "labels": [
+    {
+      "start_sec": 0.0,
+      "end_sec": 0.24,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 0.24,
+      "end_sec": 0.41,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 0.41,
+      "end_sec": 0.65,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 0.65,
+      "end_sec": 1.32,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 1.46,
+      "end_sec": 1.7,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 1.77,
+      "end_sec": 2.0,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 2.0,
+      "end_sec": 2.21,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 2.21,
+      "end_sec": 2.45,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 2.78,
+      "end_sec": 3.02,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 3.09,
+      "end_sec": 3.33,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 3.33,
+      "end_sec": 3.57,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 3.6,
+      "end_sec": 3.84,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 3.84,
+      "end_sec": 4.31,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 4.38,
+      "end_sec": 4.62,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 4.62,
+      "end_sec": 4.82,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 4.82,
+      "end_sec": 5.06,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 5.2,
+      "end_sec": 5.43,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 5.71,
+      "end_sec": 5.94,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 6.01,
+      "end_sec": 6.32,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 6.32,
+      "end_sec": 6.55,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 6.79,
+      "end_sec": 7.03,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 7.03,
+      "end_sec": 7.34,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 7.44,
+      "end_sec": 7.68,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 7.68,
+      "end_sec": 8.05,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 8.05,
+      "end_sec": 8.29,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 8.39,
+      "end_sec": 8.66,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 8.66,
+      "end_sec": 8.9,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 9.0,
+      "end_sec": 9.31,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 9.31,
+      "end_sec": 9.54,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 9.58,
+      "end_sec": 9.81,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 10.29,
+      "end_sec": 10.53,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 10.53,
+      "end_sec": 10.9,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 10.9,
+      "end_sec": 11.14,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 11.24,
+      "end_sec": 11.55,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 11.55,
+      "end_sec": 11.78,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 11.85,
+      "end_sec": 12.16,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 12.16,
+      "end_sec": 12.4,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 12.4,
+      "end_sec": 12.94,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 13.08,
+      "end_sec": 13.31,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 13.31,
+      "end_sec": 13.48,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 13.48,
+      "end_sec": 13.72,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 13.79,
+      "end_sec": 14.37,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 14.37,
+      "end_sec": 14.6,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 14.67,
+      "end_sec": 15.01,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 15.01,
+      "end_sec": 15.25,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 15.25,
+      "end_sec": 15.69,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 15.83,
+      "end_sec": 16.06,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 16.06,
+      "end_sec": 16.2,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 16.2,
+      "end_sec": 16.44,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 16.54,
+      "end_sec": 17.18,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 17.18,
+      "end_sec": 17.42,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 17.49,
+      "end_sec": 17.83,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 17.83,
+      "end_sec": 18.41,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 18.41,
+      "end_sec": 18.81,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 18.81,
+      "end_sec": 19.05,
+      "phase": "standing"
+    }
+  ]
+}

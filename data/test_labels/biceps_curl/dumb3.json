@@ -1,0 +1,83 @@
+{
+  "exercise_id": "biceps_curl",
+  "video": "data/videos/biceps curl/dumb3.mp4",
+  "fps": 30.0,
+  "skip": 1,
+  "labels": [
+    {
+      "start_sec": 0.0,
+      "end_sec": 0.23,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 0.23,
+      "end_sec": 0.53,
+      "phase": "curling"
+    },
+    {
+      "start_sec": 0.53,
+      "end_sec": 0.77,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 0.77,
+      "end_sec": 1.13,
+      "phase": "curling"
+    },
+    {
+      "start_sec": 1.13,
+      "end_sec": 1.37,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 1.5,
+      "end_sec": 1.87,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 1.87,
+      "end_sec": 2.1,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 2.1,
+      "end_sec": 2.7,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 2.7,
+      "end_sec": 2.93,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 3.87,
+      "end_sec": 4.13,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 4.13,
+      "end_sec": 4.37,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 4.7,
+      "end_sec": 5.03,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 5.03,
+      "end_sec": 5.27,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 5.27,
+      "end_sec": 5.77,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 5.77,
+      "end_sec": 6.0,
+      "phase": "standing"
+    }
+  ]
+}
