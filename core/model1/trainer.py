@@ -135,13 +135,17 @@ def collect_samples_from_labels(
     labels_root: Path = LABELS_DIR,
     skip: int = 1,
     verbose: bool = True,
-) -> Tuple[np.ndarray, List[str], Optional[Path]]:
+) -> Tuple[np.ndarray, List[str], Optional[Path], Dict[str, Dict[str, List[float]]]]:
     """
     Build (X, y) training data from hand-labeled JSON files.
 
+    Also accumulates raw angle values per phase/joint across all training files
+    so the caller can compute min/max/mean/std and write to exercise_angles.
+
     Holds out the last file alphabetically as the eval set.
-    Returns (X, y, eval_label_path).
+    Returns (X, y, eval_label_path, phase_angles).
     """
+    from collections import defaultdict
     from core.model2.angles import compute_angles
     from core.model2.extractor import extract_frames
 
@@ -149,13 +153,13 @@ def collect_samples_from_labels(
     if not label_dir.exists():
         if verbose:
             print(f'  [{exercise_id}] no label directory: {label_dir}')
-        return np.empty((0, len(JOINTS) + 1)), [], None
+        return np.empty((0, len(JOINTS) + 1)), [], None, {}
 
     label_files = sorted(label_dir.glob('*.json'))
     if not label_files:
         if verbose:
             print(f'  [{exercise_id}] no .json label files found')
-        return np.empty((0, len(JOINTS) + 1)), [], None
+        return np.empty((0, len(JOINTS) + 1)), [], None, {}
 
     if len(label_files) == 1:
         if verbose:
@@ -168,6 +172,8 @@ def collect_samples_from_labels(
             print(f'  [{exercise_id}] train={len(train_files)} files  eval={eval_file.name}')
 
     X_rows, y_rows = [], []
+    # phase → joint → [angle values]  accumulated across all training videos
+    phase_angles: Dict[str, Dict[str, List[float]]] = defaultdict(lambda: defaultdict(list))
 
     for lf in train_files:
         data = json.loads(lf.read_text(encoding='utf-8'))
@@ -203,9 +209,12 @@ def collect_samples_from_labels(
             for i, angles in enumerate(per_frame):
                 if i not in frame_labels:
                     continue
+                phase = frame_labels[i]
                 delta = _rolling_delta(per_frame, i, primary)
                 X_rows.append(angles_to_features(angles, delta))
-                y_rows.append(frame_labels[i])
+                y_rows.append(phase)
+                for joint, value in angles.items():
+                    phase_angles[phase][joint].append(value)
                 labeled += 1
 
             if verbose:
@@ -217,9 +226,49 @@ def collect_samples_from_labels(
                 print(f'ERROR: {exc}')
 
     if not X_rows:
-        return np.empty((0, len(JOINTS) + 1)), [], eval_file
+        return np.empty((0, len(JOINTS) + 1)), [], eval_file, dict(phase_angles)
 
-    return np.vstack(X_rows), y_rows, eval_file
+    return np.vstack(X_rows), y_rows, eval_file, dict(phase_angles)
+
+
+def write_exercise_angles(
+    exercise_id: str,
+    phase_angles: Dict[str, Dict[str, List[float]]],
+    verbose: bool = True,
+) -> None:
+    """
+    Compute min/max/mean/std per phase/joint from collected training frames
+    and write to the exercise_angles MongoDB collection.
+
+    This replaces the Model 2 builder step — the same labeled frames that
+    train the RF also populate the form-correction angle database.
+    """
+    from core.db import get_db
+    db = get_db()
+
+    for phase, joints in phase_angles.items():
+        joint_stats = {}
+        for joint, values in joints.items():
+            if not values:
+                continue
+            arr = np.array(values)
+            joint_stats[joint] = {
+                'min':      round(float(arr.min()), 1),
+                'max':      round(float(arr.max()), 1),
+                'mean':     round(float(arr.mean()), 1),
+                'std':      round(float(arr.std()), 1),
+                'n_frames': len(values),
+            }
+
+        db.exercise_angles.replace_one(
+            {'exercise_id': exercise_id, 'phase': phase},
+            {'exercise_id': exercise_id, 'phase': phase, 'joints': joint_stats},
+            upsert=True,
+        )
+
+    if verbose:
+        phases = sorted(phase_angles.keys())
+        print(f'  [{exercise_id}] exercise_angles updated: {phases}')
 
 
 # ---------------------------------------------------------------------------
@@ -306,7 +355,11 @@ def train_all(
         if verbose:
             print(f'\n[{ex_id}]')
 
-        X, y, eval_file = collect_samples_from_labels(ex_id, labels_root, skip, verbose)
+        X, y, eval_file, phase_angles = collect_samples_from_labels(ex_id, labels_root, skip, verbose)
+
+        if phase_angles:
+            write_exercise_angles(ex_id, phase_angles, verbose)
+
         path = train_exercise(ex_id, X, y, verbose)
 
         if path and eval_file is not None:
