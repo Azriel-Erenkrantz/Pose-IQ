@@ -2,7 +2,7 @@
 Train a per-exercise phase classifier from hand-labeled videos.
 
 Pipeline:
-  1. Read label JSON files from data/test_labels/{exercise_id}/*.json
+  1. Read label JSON files from data/labeled_vidz/{exercise_id}/*.json
   2. For each labeled frame extract joint angles + rolling angle delta.
   3. Build a 13-feature vector: 12 joint angles (-1 if missing) + 1 delta.
   4. Hold out the last label file (alphabetically) per exercise for evaluation.

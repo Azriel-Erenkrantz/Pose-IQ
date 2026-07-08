@@ -22,9 +22,9 @@ QuickTime, etc.). You can also use "start_frame" / "end_frame" for raw video
 frame numbers if you prefer counting frames directly.
 
 Usage:
-    python -m core.ml.eval data/test_labels/squat_test.json
-    python -m core.ml.eval data/test_labels/squat_test.json --gaussian
-    python -m core.ml.eval data/test_labels/squat_test.json --skip 2
+    python -m core.ml.eval data/labeled_vidz/squat_test.json
+    python -m core.ml.eval data/labeled_vidz/squat_test.json --gaussian
+    python -m core.ml.eval data/labeled_vidz/squat_test.json --skip 2
 """
 from __future__ import annotations
 
