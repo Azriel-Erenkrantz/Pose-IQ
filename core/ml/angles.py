@@ -10,7 +10,7 @@ from typing import Dict, List
 
 import numpy as np
 
-from .extractor import PoseFrame
+from .extractor import LANDMARK_NAMES, PoseFrame
 
 # (joint_a, vertex, joint_c) — angle measured at vertex
 ANGLE_DEFS: Dict[str, tuple[str, str, str]] = {
@@ -54,6 +54,23 @@ def compute_angles(frame: PoseFrame) -> Dict[str, float]:
             result[name] = _angle_deg(lm[a], lm[b], lm[c])
 
     return result
+
+
+def frame_from_live(landmarks: Dict[int, object], width: int, height: int) -> PoseFrame:
+    """
+    Adapt the live detector's output (index → Point in pixel coords) to a
+    PoseFrame, so the live pipeline computes angles with the exact same math
+    and coordinate space (normalized 0-1) used to train the phase models.
+    """
+    lms: Dict[str, tuple] = {}
+    vis: Dict[str, float] = {}
+    for idx, name in LANDMARK_NAMES.items():
+        pt = landmarks.get(idx)
+        if pt is None:
+            continue
+        lms[name] = (pt.x / width, pt.y / height, getattr(pt, 'z', 0.0) / width)
+        vis[name] = getattr(pt, 'visibility', 1.0)
+    return PoseFrame(frame_idx=-1, timestamp_ms=0.0, landmarks=lms, visibility=vis)
 
 
 def angles_over_time(frames: List[PoseFrame]) -> Dict[str, List[float]]:

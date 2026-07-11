@@ -18,7 +18,9 @@ MODEL_URL = (
     'https://storage.googleapis.com/mediapipe-models/'
     'pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task'
 )
-DEFAULT_MODEL_PATH = Path(__file__).parent.parent.parent / 'data' / 'models' / 'pose_landmarker_full.task'
+# Cached under the user's home dir (like detection/pose_detector.py) — MediaPipe's
+# C++ layer fails on non-ASCII paths, and the project may live in one.
+DEFAULT_MODEL_PATH = Path.home() / '.pose-iq' / 'pose_landmarker_full.task'
 
 # MediaPipe landmark index → readable name
 LANDMARK_NAMES: Dict[int, str] = {
@@ -90,7 +92,17 @@ def extract_frames(video_path: Path, skip: int = 1, model_path: Path | None = No
 
     fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
 
-    with PoseLandmarker.create_from_options(options) as landmarker:
+    # MediaPipe checks the cwd at creation time and aborts on non-ASCII paths
+    # (e.g. a project folder with Hebrew in it) — create from an ASCII-safe dir.
+    import os
+    original_dir = os.getcwd()
+    os.chdir(resolved_model.parent)
+    try:
+        landmarker_ctx = PoseLandmarker.create_from_options(options)
+    finally:
+        os.chdir(original_dir)
+
+    with landmarker_ctx as landmarker:
         idx = 0
         while True:
             ret, frame = cap.read()

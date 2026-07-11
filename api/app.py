@@ -80,8 +80,13 @@ def require_auth(f):
         if not auth.startswith("Bearer "):
             return err("Missing or invalid Authorization header", 401)
         token = auth[len("Bearer "):]
-        if service.verify_token(token) is None:
+        token_user_id = service.verify_token(token)
+        if token_user_id is None:
             return err("Token invalid or expired", 401)
+        # A valid token only grants access to its own user's resources.
+        route_user_id = kwargs.get("user_id")
+        if route_user_id is not None and route_user_id != token_user_id:
+            return err("Forbidden", 403)
         return f(*args, **kwargs)
     return wrapper
 

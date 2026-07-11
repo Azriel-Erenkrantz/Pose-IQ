@@ -166,18 +166,3 @@ def from_pipeline_session(
         sets_completed=1,
         health_snapshot=health_snapshot or {r: 3 for r in BodyRegion},
     )
-
-
-def load_history_from_workout_history(user_id: str, history_path: str = None) -> int:
-    """
-    Load all past WorkoutSessions from workout_history.json and seed the
-    recommendation engine with real performance data.
-    Returns the number of records loaded.
-    """
-    from core.user.workout_history import WorkoutHistory
-    from .simulation import seed_history
-
-    wh = WorkoutHistory(history_path)
-    records = [from_pipeline_session(s, user_id) for s in wh.sessions]
-    seed_history(user_id, records)
-    return len(records)

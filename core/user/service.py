@@ -14,6 +14,8 @@ To swap storage: replace get_db() calls — everything above stays the same.
 from __future__ import annotations
 
 import hashlib
+import hmac
+import os
 import uuid
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
@@ -41,8 +43,28 @@ TOKEN_TTL_HOURS = 24 * 7  # 1 week
 
 # ── Internal helpers ───────────────────────────────────────────────────────────
 
+# scrypt work factors: n must be a power of 2; 2^14 keeps login < ~100ms.
+_SCRYPT_N, _SCRYPT_R, _SCRYPT_P = 2 ** 14, 8, 1
+
+
 def _hash(password: str) -> str:
-    return hashlib.sha256(password.encode()).hexdigest()
+    """Salted scrypt hash, stored as 'scrypt$<salt_hex>$<digest_hex>'."""
+    salt = os.urandom(16)
+    digest = hashlib.scrypt(password.encode(), salt=salt,
+                            n=_SCRYPT_N, r=_SCRYPT_R, p=_SCRYPT_P)
+    return f"scrypt${salt.hex()}${digest.hex()}"
+
+
+def _verify_password(password: str, stored: str) -> bool:
+    if stored.startswith('scrypt$'):
+        _, salt_hex, digest_hex = stored.split('$')
+        digest = hashlib.scrypt(password.encode(), salt=bytes.fromhex(salt_hex),
+                                n=_SCRYPT_N, r=_SCRYPT_R, p=_SCRYPT_P)
+        return hmac.compare_digest(digest.hex(), digest_hex)
+    # Legacy unsalted sha256 (pre-scrypt accounts) — accepted once, then
+    # login() rewrites the stored hash with scrypt.
+    legacy = hashlib.sha256(password.encode()).hexdigest()
+    return hmac.compare_digest(legacy, stored)
 
 
 def _doc_to_user(doc: Dict) -> User:
@@ -101,8 +123,11 @@ def login(req: LoginRequest) -> Optional[AuthToken]:
     """Verify credentials and return a token. Returns None on mismatch."""
     db  = get_db()
     doc = db.users.find_one({'email': req.email})
-    if doc is None or doc['password_hash'] != _hash(req.password):
+    if doc is None or not _verify_password(req.password, doc['password_hash']):
         return None
+    if not doc['password_hash'].startswith('scrypt$'):
+        db.users.update_one({'_id': doc['_id']},
+                            {'$set': {'password_hash': _hash(req.password)}})
     return _issue_token(db, str(doc['_id']))
 
 

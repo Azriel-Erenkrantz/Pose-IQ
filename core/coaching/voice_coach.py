@@ -9,7 +9,7 @@ try:
 except ImportError:
     _TTS_AVAILABLE = False
 
-from coaching.coach_messages import (
+from core.coaching.coach_messages import (
     get_start_message, get_phase_message, get_rep_message,
     get_error_message, get_encouragement, get_session_end_message,
 )

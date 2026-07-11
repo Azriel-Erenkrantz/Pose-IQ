@@ -1,23 +1,28 @@
 import cv2
 import time
 import logging
-from detection.camera_stream import CameraStream
-from detection.pose_detector import PoseDetector
-from detection.angle_calculator import AngleCalculator
-from exercise.posture_rules import PostureRules
-from exercise.exercise_model import ExerciseModel
-from exercise.exercise_state_machine import ExerciseStateMachine
-from user.workout_history import WorkoutHistory, new_session, rep_form_score, RepRecord, JOINT_TO_MUSCLE
-from coaching.voice_coach import VoiceCoach
-from ml.data_collector import DataCollector
-from ml.predictor import FormPredictor
-from app_model import User
+from collections import deque
+
+from core.detection.camera_stream import CameraStream
+from core.detection.pose_detector import PoseDetector
+from core.detection.angle_calculator import AngleCalculator
+from core.exercise.posture_rules import PostureRules
+from core.exercise.exercise_model import ExerciseModel
+from core.exercise.exercise_state_machine import ExerciseStateMachine
+from core.user.workout_history import WorkoutHistory, new_session, rep_form_score, RepRecord, JOINT_TO_MUSCLE
+from core.coaching.voice_coach import VoiceCoach
+from core.ml.angles import compute_angles, frame_from_live
+from core.ml.classifier import classify_trained
+from core.app_model import User
 # Recommendation engine integration: see recommendation/bridge.py when ready to wire up.
 
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 
 _JOINT_LABELS = {
     'right_knee': 'Right knee', 'left_knee': 'Left knee',
+    'right_hip': 'Right hip', 'left_hip': 'Left hip',
+    'right_ankle': 'Right ankle', 'left_ankle': 'Left ankle',
+    'right_shoulder': 'Right shoulder', 'left_shoulder': 'Left shoulder',
     'spine': 'Back / spine', 'legs_spread': 'Feet width',
     'right_elbow': 'Right elbow', 'left_elbow': 'Left elbow',
     'right_arm_body': 'Right arm', 'left_arm_body': 'Left arm',
@@ -26,6 +31,12 @@ _JOINT_LABELS = {
 _READY_HINTS = {
     'right_knee':    {'too low': 'straighten right leg',  'too high': 'bend right knee more'},
     'left_knee':     {'too low': 'straighten left leg',   'too high': 'bend left knee more'},
+    'right_hip':     {'too low': 'stand up straighter',   'too high': 'bend at the hips'},
+    'left_hip':      {'too low': 'stand up straighter',   'too high': 'bend at the hips'},
+    'right_ankle':   {'too low': 'shift weight back',     'too high': 'lean forward slightly'},
+    'left_ankle':    {'too low': 'shift weight back',     'too high': 'lean forward slightly'},
+    'right_shoulder':{'too low': 'raise right arm',       'too high': 'lower right arm'},
+    'left_shoulder': {'too low': 'raise left arm',        'too high': 'lower left arm'},
     'spine':         {'too low': 'straighten your back',  'too high': 'straighten your back'},
     'legs_spread':   {'too low': 'spread feet wider',     'too high': 'bring feet closer'},
     'right_elbow':   {'too low': 'open right elbow',      'too high': 'bend right elbow to 90°'},
@@ -33,6 +44,26 @@ _READY_HINTS = {
     'right_arm_body':{'too low': 'raise right arm',       'too high': 'lower right arm'},
     'left_arm_body': {'too low': 'raise left arm',        'too high': 'lower left arm'},
 }
+
+_ML_PREDICT_EVERY = 5   # classify with the RF every Nth frame to keep the loop responsive
+_DELTA_WINDOW = 6       # primary-joint history length for the rolling angle delta
+
+
+def _load_exercise_model() -> ExerciseModel:
+    """
+    Prefer MongoDB — that's where the trainer writes the measured angle ranges
+    (min/max/mean/std per phase) that drive the state machine. Fall back to the
+    seed JSON only so errors stay readable when Mongo is down.
+    """
+    try:
+        from core.db import get_db
+        model = ExerciseModel.from_mongo(get_db())
+        if model.list_exercises():
+            return model
+        logging.warning("MongoDB has no exercises — run: python -m core.exercise.seed")
+    except Exception as exc:
+        logging.warning(f"MongoDB unavailable ({exc}) — falling back to seed JSON.")
+    return ExerciseModel()
 
 class PosePipeline:
     def __init__(self, user: User, exercise_id: str = None):
@@ -42,7 +73,7 @@ class PosePipeline:
         logging.info("Initializing Real-Time 3D Pipeline...")
         self.camera = CameraStream()
         self.detector = PoseDetector()
-        self.exercise_model = ExerciseModel()
+        self.exercise_model = _load_exercise_model()
 
         if exercise_id is None:
             exercise_id = self._select_exercise()
@@ -50,6 +81,13 @@ class PosePipeline:
         exercise = self.exercise_model.get_exercise(exercise_id)
         if not exercise:
             raise ValueError(f"Exercise '{exercise_id}' not found. Available: {self.exercise_model.list_exercises()}")
+        if not any(ph.angles for ph in exercise.phases):
+            raise RuntimeError(
+                f"Exercise '{exercise.id}' has no measured angle ranges yet — the state machine "
+                "can't track phases without them. Seed the DB and train first:\n"
+                "  python -m core.exercise.seed\n"
+                "  python -m core.ml.trainer"
+            )
         self.exercise = exercise
         self.state_machine = ExerciseStateMachine(exercise, self.exercise_model)
         self.rules = PostureRules(exercise, user.threshold_modifier, user.limited_joints)
@@ -57,16 +95,13 @@ class PosePipeline:
 
         self.history = WorkoutHistory(user_id=user.user_id)
         self.session = new_session(exercise.id, exercise.name)
-        # PI-46/81: collect per-frame angles, tagged with a stable user_id, for ML training.
-        self.collector = DataCollector(user_id=user.user_id)
-        # PI-87: live ML heads. Each loads its saved model or no-ops (available=False)
-        # if it hasn't been trained yet (e.g. plank). Quality is one-class, per exercise.
-        # predict_every throttles inference to keep the loop responsive.
-        self.ml_exercise = FormPredictor('exercise', predict_every=5)
-        self.ml_phase = FormPredictor('phase', predict_every=5)
-        self.ml_quality = FormPredictor(f'quality_{exercise.id}', predict_every=5)
+        # Live ML phase classification: RF model when trained, Gaussian fallback
+        # otherwise. The deterministic state machine stays the source of truth for
+        # reps/transitions; the ML prediction is a parallel signal (debug overlay).
+        self._primary_joint = exercise.primary_joints[0] if exercise.primary_joints else None
+        self._primary_hist: deque = deque(maxlen=_DELTA_WINDOW)
+        self._frame_idx = 0
         self._ml_pred: dict = {}
-        self._ml_last_form = None
         self.coach = VoiceCoach(style=user.trainer_personality.value)
         self.coach.on_welcome(user.name, exercise.name)
         self._current_rep_errors: set = set()
@@ -85,6 +120,12 @@ class PosePipeline:
             'spine': [(11, 23), (12, 24), (23, 24)],
             'right_knee': [(24, 26), (26, 28)],
             'left_knee': [(23, 25), (25, 27)],
+            'right_hip': [(12, 24), (24, 26)],
+            'left_hip': [(11, 23), (23, 25)],
+            'right_ankle': [(26, 28)],
+            'left_ankle': [(25, 27)],
+            'right_shoulder': [(12, 14), (12, 24)],
+            'left_shoulder': [(11, 13), (11, 23)],
             'right_arm_body': [(12, 14), (14, 16)],
             'left_arm_body': [(11, 13), (13, 15)],
             'right_elbow': [(12, 14), (14, 16)],
@@ -111,6 +152,9 @@ class PosePipeline:
     # ── joint index → severity color for landmark dots ──────────────────
     _JOINT_LANDMARK_IDX = {
         'spine': [23, 24], 'right_knee': [26], 'left_knee': [25],
+        'right_hip': [24], 'left_hip': [23],
+        'right_ankle': [28], 'left_ankle': [27],
+        'right_shoulder': [12], 'left_shoulder': [11],
         'right_elbow': [14], 'left_elbow': [13],
         'right_arm_body': [12], 'left_arm_body': [11],
         'legs_spread': [23, 24],
@@ -285,8 +329,10 @@ class PosePipeline:
     def draw_debug_angles(self, frame, landmarks, angles):
         mapping = {
             'right_knee': 26, 'left_knee': 25,
+            'right_hip': 24, 'left_hip': 23,
+            'right_ankle': 28, 'left_ankle': 27,
             'right_elbow': 14, 'left_elbow': 13,
-            'right_arm_body': 12, 'left_arm_body': 11,
+            'right_shoulder': 12, 'left_shoulder': 11,
             'spine': 24, 'legs_spread': 23,
         }
         for joint, angle in angles.items():
@@ -295,34 +341,34 @@ class PosePipeline:
                 cv2.putText(frame, f"{joint[:5]}:{int(angle)}", (int(pt.x) + 10, int(pt.y) - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.42, (0, 220, 220), 1)
 
-    def draw_ml_debug(self, frame):
-        """PI-87: experimental ML signals overlay (toggle with 'd'). Kept out of the
-        main HUD on purpose — the quality head is one-class on un-trimmed 'good' data,
-        so it's a developer signal until the training set is cleaned."""
-        preds = self._ml_pred
-        if not preds:
+    def _rolling_delta(self) -> float:
+        """Mean frame-to-frame delta of the primary joint — same feature the RF trained on."""
+        vals = list(self._primary_hist)
+        if len(vals) < 2:
+            return 0.0
+        return sum(b - a for a, b in zip(vals, vals[1:])) / (len(vals) - 1)
+
+    def draw_ml_debug(self, frame, sm_phase: str):
+        """ML phase prediction overlay (toggle with 'd'): shows what the trained RF
+        (or the Gaussian fallback) thinks the current phase is, next to the
+        deterministic state machine's phase — agreement means both layers work."""
+        pred = self._ml_pred
+        if not pred:
             return
 
-        rows = []
-        ex = preds.get('exercise')
-        if ex:
-            rows.append((f"ex: {ex['label']} {ex['confidence']:.0%}", (190, 220, 190)))
-        ph = preds.get('phase')
-        if ph:
-            rows.append((f"phase: {ph['label']} {ph['confidence']:.0%}", (190, 220, 190)))
-        q = preds.get('quality')
-        if q:
-            c = (0, 210, 120) if q['label'] == 'good' else (60, 120, 255)
-            rows.append((f"form: {q['label']} ({q['score']:+.2f})", c))
-        if not rows:
-            return
+        agrees = pred.get('phase') == sm_phase
+        rows = [
+            (f"ML phase: {pred.get('phase', '?')} [{pred.get('method', '-')}]",
+             (0, 210, 120) if agrees else (60, 120, 255)),
+            (f"state machine: {sm_phase}", (190, 220, 190)),
+        ]
 
         h, w = frame.shape[:2]
         pad, rh = 10, 22
-        bw, bh = 250, 24 + len(rows) * rh
+        bw, bh = 280, 24 + len(rows) * rh
         x0, y0 = w - bw - 8, 100
         self._draw_panel(frame, x0, y0, x0 + bw, y0 + bh)
-        cv2.putText(frame, "ML (experimental)", (x0 + pad, y0 + 18),
+        cv2.putText(frame, "ML phase classifier", (x0 + pad, y0 + 18),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.42, (160, 160, 160), 1)
         y = y0 + 18 + rh
         for text, c in rows:
@@ -340,9 +386,33 @@ class PosePipeline:
                 break
 
             landmarks = self.detector.find_pose(frame)
-            angles = AngleCalculator.get_body_angles(landmarks)
+
+            # Two angle sets, one dict: the ML angles (knee/hip/elbow/shoulder/ankle,
+            # 2D normalized — the space the models and Mongo ranges were trained in)
+            # override the legacy 3D values on shared names; legacy-only angles
+            # (spine, legs_spread, arm_body) survive for global constraints.
+            angles = {}
+            if landmarks:
+                h, w = frame.shape[:2]
+                angles = AngleCalculator.get_body_angles(landmarks)
+                angles.update(compute_angles(frame_from_live(landmarks, w, h)))
 
             sm_result = self.state_machine.update(angles if angles else {})
+
+            # Live ML phase prediction (throttled). Runs alongside the state
+            # machine — RF when data/models/phase_{id}.joblib exists, else Gaussian.
+            if angles:
+                self._frame_idx += 1
+                if self._primary_joint and self._primary_joint in angles:
+                    self._primary_hist.append(angles[self._primary_joint])
+                if self._frame_idx % _ML_PREDICT_EVERY == 0:
+                    ml_phase, method = classify_trained(
+                        self.exercise, angles, rolling_delta=self._rolling_delta()
+                    )
+                    self._ml_pred = {
+                        'phase': ml_phase.name if ml_phase else None,
+                        'method': method,
+                    }
 
             posture_issues = []
             if landmarks and angles and sm_result['started']:
@@ -351,28 +421,6 @@ class PosePipeline:
                 # ExerciseStateMachine._get_active_rules) — analyze() expects the merged dict.
                 active_rules = {**self.exercise.global_constraints, **current_phase.angles}
                 posture_issues = self.rules.analyze(angles, active_rules)
-
-                # PI-46/81: snapshot this frame for ML training (collector samples internally).
-                self.collector.collect(
-                    exercise_id=self.exercise.id,
-                    rep_number=sm_result['rep_count'],
-                    phase_name=sm_result['phase'],
-                    phase_index=sm_result['phase_index'],
-                    angles=angles,
-                    in_phase=(len(posture_issues) == 0),
-                    quality_score=max(0, 100 - len(posture_issues) * 15),
-                )
-
-                # PI-87: feed the live ML heads (each keeps its own rolling buffer).
-                self._ml_pred = {
-                    'exercise': self.ml_exercise.update(angles),
-                    'phase': self.ml_phase.update(angles),
-                    'quality': self.ml_quality.update(angles),
-                }
-                q = self._ml_pred.get('quality')
-                if q and q['label'] != self._ml_last_form:
-                    self._ml_last_form = q['label']
-                    logging.info(f"[ML] form -> {q['label']} (score {q['score']:+.2f})")
 
                 self.draw_skeleton(frame, landmarks, posture_issues)
                 self.draw_debug_angles(frame, landmarks, angles)
@@ -414,7 +462,7 @@ class PosePipeline:
 
             if self._show_debug and landmarks and angles:
                 self.draw_debug_angles(frame, landmarks, angles)
-                self.draw_ml_debug(frame)
+                self.draw_ml_debug(frame, sm_result['phase'])
 
             self.draw_hud(frame, sm_result, posture_issues, time.time() - session_start)
 
@@ -427,7 +475,6 @@ class PosePipeline:
 
         self.session.duration_seconds = round(time.time() - session_start, 1)
         self.session.total_reps = self.state_machine.rep_count
-        self.collector.finish()          # PI-46/81: flush remaining buffered rows
         self.camera.cap.release()
         cv2.destroyAllWindows()
 
@@ -476,7 +523,7 @@ class PosePipeline:
 
 if __name__ == "__main__":
     import sys
-    from user import service as user_service
+    from core.user import service as user_service
 
     exercise_id = sys.argv[1] if len(sys.argv) > 1 else None
     user_id     = sys.argv[2] if len(sys.argv) > 2 else None

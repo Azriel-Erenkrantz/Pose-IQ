@@ -49,7 +49,7 @@ JOINTS = [
 ]
 
 MODELS_DIR  = Path(__file__).parent.parent.parent / 'data' / 'models'
-LABELS_DIR  = Path(__file__).parent.parent.parent / 'data' / 'test_labels'
+LABELS_DIR  = Path(__file__).parent.parent.parent / 'data' / 'labeled_vidz'
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 MIN_SAMPLES_PER_CLASS = 10
@@ -381,6 +381,9 @@ def train_all(
 # ---------------------------------------------------------------------------
 
 def main() -> None:
+    # Windows consoles may default to cp1252, which can't print the project's
+    # non-ASCII path — degrade unprintable characters instead of crashing.
+    sys.stdout.reconfigure(errors='replace')
     parser = argparse.ArgumentParser(
         description='Train per-exercise phase classifiers from hand-labeled videos.'
     )

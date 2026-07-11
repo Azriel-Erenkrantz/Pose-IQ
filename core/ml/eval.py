@@ -248,6 +248,9 @@ def evaluate(
 
 
 def main() -> None:
+    # Windows consoles may default to cp1252, which can't print the project's
+    # non-ASCII path — degrade unprintable characters instead of crashing.
+    sys.stdout.reconfigure(errors='replace')
     parser = argparse.ArgumentParser(
         description='Evaluate the trained RF phase classifier against a labeled test video.'
     )

@@ -1,13 +1,25 @@
 # Pose-IQ dependencies (Python 3.12)
+
+# API
 flask>=3.1
+flask-cors>=5.0
+
+# Database — MongoDB
+pymongo>=4.10
+python-dotenv>=1.0
+
+# Computer vision / real-time pipeline
 opencv-python==4.13.0.92
 mediapipe==0.10.33
 numpy==2.2.5
-pandas==2.2.3
+
+# Machine learning
 scikit-learn==1.6.1
 joblib==1.5.1
-SQLAlchemy==2.0.51
 
-# Database driver — only needed when DATABASE_URL points at PostgreSQL (prod).
-# Dev runs on SQLite, which needs no extra driver.
-# psycopg[binary]>=3.2
+# Voice coaching (desktop pipeline)
+pyttsx3>=2.99
+
+# ── Dev / test ────────────────────────────────────────────
+mongomock>=4.1
+pytest>=8.0
