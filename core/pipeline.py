@@ -1,7 +1,6 @@
 import cv2
 import time
 import logging
-from collections import deque
 
 from core.detection.camera_stream import CameraStream
 from core.detection.pose_detector import PoseDetector
@@ -12,7 +11,8 @@ from core.exercise.exercise_state_machine import ExerciseStateMachine
 from core.user.workout_history import WorkoutHistory, new_session, rep_form_score, RepRecord, JOINT_TO_MUSCLE
 from core.coaching.voice_coach import VoiceCoach
 from core.ml.angles import compute_angles, frame_from_live
-from core.ml.classifier import classify_trained
+from core.ml.classifier import classify_trained, DeltaTracker
+from core.ml.smoother import PhaseSmoother
 from core.app_model import User
 # Recommendation engine integration: see recommendation/bridge.py when ready to wire up.
 
@@ -44,10 +44,6 @@ _READY_HINTS = {
     'right_arm_body':{'too low': 'raise right arm',       'too high': 'lower right arm'},
     'left_arm_body': {'too low': 'raise left arm',        'too high': 'lower left arm'},
 }
-
-_ML_PREDICT_EVERY = 5   # classify with the RF every Nth frame to keep the loop responsive
-_DELTA_WINDOW = 6       # primary-joint history length for the rolling angle delta
-
 
 def _load_exercise_model() -> ExerciseModel:
     """
@@ -98,9 +94,10 @@ class PosePipeline:
         # Live ML phase classification: RF model when trained, Gaussian fallback
         # otherwise. The deterministic state machine stays the source of truth for
         # reps/transitions; the ML prediction is a parallel signal (debug overlay).
-        self._primary_joint = exercise.primary_joints[0] if exercise.primary_joints else None
-        self._primary_hist: deque = deque(maxlen=_DELTA_WINDOW)
-        self._frame_idx = 0
+        # DeltaTracker feeds per-joint velocities (same features as training);
+        # PhaseSmoother majority-votes and enforces the legal phase cycle.
+        self._delta_tracker = DeltaTracker()
+        self._smoother = PhaseSmoother(exercise)
         self._ml_pred: dict = {}
         self.coach = VoiceCoach(style=user.trainer_personality.value)
         self.coach.on_welcome(user.name, exercise.name)
@@ -341,13 +338,6 @@ class PosePipeline:
                 cv2.putText(frame, f"{joint[:5]}:{int(angle)}", (int(pt.x) + 10, int(pt.y) - 10),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.42, (0, 220, 220), 1)
 
-    def _rolling_delta(self) -> float:
-        """Mean frame-to-frame delta of the primary joint — same feature the RF trained on."""
-        vals = list(self._primary_hist)
-        if len(vals) < 2:
-            return 0.0
-        return sum(b - a for a, b in zip(vals, vals[1:])) / (len(vals) - 1)
-
     def draw_ml_debug(self, frame, sm_phase: str):
         """ML phase prediction overlay (toggle with 'd'): shows what the trained RF
         (or the Gaussian fallback) thinks the current phase is, next to the
@@ -357,8 +347,10 @@ class PosePipeline:
             return
 
         agrees = pred.get('phase') == sm_phase
+        smoothed, raw = pred.get('phase', '?'), pred.get('raw')
+        label = smoothed if smoothed == raw else f"{smoothed} (raw: {raw})"
         rows = [
-            (f"ML phase: {pred.get('phase', '?')} [{pred.get('method', '-')}]",
+            (f"ML phase: {label} [{pred.get('method', '-')}]",
              (0, 210, 120) if agrees else (60, 120, 255)),
             (f"state machine: {sm_phase}", (190, 220, 190)),
         ]
@@ -399,20 +391,17 @@ class PosePipeline:
 
             sm_result = self.state_machine.update(angles if angles else {})
 
-            # Live ML phase prediction (throttled). Runs alongside the state
-            # machine — RF when data/models/phase_{id}.joblib exists, else Gaussian.
+            # Live ML phase prediction. Runs alongside the state machine —
+            # RF when data/models/phase_{id}.joblib exists, else Gaussian.
             if angles:
-                self._frame_idx += 1
-                if self._primary_joint and self._primary_joint in angles:
-                    self._primary_hist.append(angles[self._primary_joint])
-                if self._frame_idx % _ML_PREDICT_EVERY == 0:
-                    ml_phase, method = classify_trained(
-                        self.exercise, angles, rolling_delta=self._rolling_delta()
-                    )
-                    self._ml_pred = {
-                        'phase': ml_phase.name if ml_phase else None,
-                        'method': method,
-                    }
+                deltas = self._delta_tracker.update(angles, now=time.time())
+                ml_phase, method = classify_trained(self.exercise, angles, deltas=deltas)
+                raw_name = ml_phase.name if ml_phase else None
+                self._ml_pred = {
+                    'phase': self._smoother.update(raw_name),
+                    'raw': raw_name,
+                    'method': method,
+                }
 
             posture_issues = []
             if landmarks and angles and sm_result['started']:

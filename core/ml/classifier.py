@@ -19,6 +19,7 @@ must supply the previous primary-joint angle so the direction can be inferred.
 from __future__ import annotations
 
 import math
+from collections import deque
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -87,13 +88,15 @@ def classify(
     angles: Dict[str, float],
     prev_primary_angle: Optional[float] = None,
     current_primary_angle: Optional[float] = None,
+    observed_delta: Optional[float] = None,
 ) -> Optional[Phase]:
     """
     Return the most likely Phase for the given joint angles.
 
-    prev_primary_angle / current_primary_angle: consecutive readings of the
-    primary joint. When provided, they break ties between phases that share the
-    same angle range (e.g. descending vs ascending) using motion_direction.
+    Motion direction (for tie-breaking phases that share the same angle range,
+    e.g. descending vs ascending) can come from either:
+      - observed_delta: a pre-computed primary-joint delta, or
+      - prev_primary_angle / current_primary_angle: consecutive readings.
     """
     if not exercise.phases:
         return None
@@ -107,15 +110,17 @@ def classify(
     # motion_direction differs, use the observed direction to pick.
     if len(scored) > 1 and (best.score - scored[1].score) < 0.05:
         runner_up = scored[1]
+        if observed_delta is None and (
+            prev_primary_angle is not None and current_primary_angle is not None
+        ):
+            observed_delta = current_primary_angle - prev_primary_angle
         if (
             best.phase.motion_direction != runner_up.phase.motion_direction
-            and prev_primary_angle is not None
-            and current_primary_angle is not None
+            and observed_delta is not None
         ):
-            delta = current_primary_angle - prev_primary_angle
-            if delta < -1.0:
+            if observed_delta < -1.0:
                 observed_dir = 'decreasing'
-            elif delta > 1.0:
+            elif observed_delta > 1.0:
                 observed_dir = 'increasing'
             else:
                 observed_dir = 'stable'
@@ -160,33 +165,89 @@ def classify_trained(
     prev_primary_angle: Optional[float] = None,
     current_primary_angle: Optional[float] = None,
     rolling_delta: Optional[float] = None,
+    deltas: Optional[Dict[str, float]] = None,
 ) -> tuple[Optional[Phase], str]:
     """
     Classify using the trained Random Forest when available.
     Falls back to Gaussian/boundary scoring if no model exists yet.
 
-    rolling_delta: pre-computed rolling average angle delta (preferred over
-    single-frame prev/current when the caller maintains a history buffer).
-    Falls back to current_primary_angle - prev_primary_angle if not provided.
+    deltas: per-joint rolling deltas (trainer.rolling_deltas / DeltaTracker) —
+    required for full accuracy with feature_version 2 models.
+    rolling_delta / prev+current primary angle: legacy single-delta signals,
+    used by feature_version 1 models and the Gaussian direction tiebreak.
 
     Returns (Phase, method) where method is 'rf' or 'gaussian'.
     """
     bundle = _load_model(exercise.id)
     if bundle is not None:
-        from core.ml.trainer import JOINTS
-        if rolling_delta is not None:
-            delta = rolling_delta
-        elif prev_primary_angle is not None and current_primary_angle is not None:
-            delta = current_primary_angle - prev_primary_angle
+        from core.ml.trainer import JOINTS, angles_to_features
+
+        if bundle.get('feature_version', 1) >= 2:
+            features = angles_to_features(angles, deltas).reshape(1, -1)
         else:
-            delta = 0.0
-        features = np.array(
-            [[angles.get(j, -1.0) for j in JOINTS] + [delta]], dtype=np.float32
-        )
+            # Legacy 13-feature bundle: 12 angles + one primary-joint delta.
+            if rolling_delta is not None:
+                delta = rolling_delta
+            elif prev_primary_angle is not None and current_primary_angle is not None:
+                delta = current_primary_angle - prev_primary_angle
+            else:
+                delta = 0.0
+            features = np.array(
+                [[angles.get(j, -1.0) for j in JOINTS] + [delta]], dtype=np.float32
+            )
         phase_name: str = bundle['model'].predict(features)[0]
         phase = exercise.get_phase(phase_name)
         if phase is not None:
             return phase, 'rf'
 
-    # Fallback to Gaussian classifier
-    return classify(exercise, angles, prev_primary_angle, current_primary_angle), 'gaussian'
+    # Fallback to Gaussian classifier. Direction for the tiebreak: explicit
+    # rolling_delta, else the primary joint's entry in the deltas dict.
+    observed = rolling_delta
+    if observed is None and deltas:
+        for j in exercise.primary_joints:
+            if j in deltas:
+                observed = deltas[j]
+                break
+    return classify(exercise, angles, prev_primary_angle, current_primary_angle,
+                    observed_delta=observed), 'gaussian'
+
+
+class DeltaTracker:
+    """
+    Per-joint rolling angular velocities for a live frame stream.
+
+    Produces the same numbers as trainer.rolling_deltas() computes offline
+    (degrees/second), so live inference sees the exact feature distribution
+    the model trained on — regardless of the camera's actual frame rate.
+    """
+
+    def __init__(self, window: int = 5):
+        self._window = window
+        self._prev: Optional[Dict[str, float]] = None
+        self._prev_t: Optional[float] = None
+        self._history: Dict[str, deque] = {}
+
+    def update(self, angles: Dict[str, float], now: Optional[float] = None) -> Dict[str, float]:
+        """
+        Feed the current frame's angles; returns {joint: mean velocity}.
+        now: wall-clock seconds (time.time()) — required for °/sec output;
+        without it, deltas are per-frame (only valid for fixed-rate sources).
+        """
+        if self._prev is not None:
+            dt = 1.0
+            if now is not None and self._prev_t is not None:
+                dt = now - self._prev_t
+            if dt > 0:
+                for joint, value in angles.items():
+                    if joint in self._prev:
+                        self._history.setdefault(
+                            joint, deque(maxlen=self._window)
+                        ).append((value - self._prev[joint]) / dt)
+        self._prev = dict(angles)
+        self._prev_t = now
+        return {j: sum(d) / len(d) for j, d in self._history.items() if d}
+
+    def reset(self):
+        self._prev = None
+        self._prev_t = None
+        self._history.clear()

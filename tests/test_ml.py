@@ -509,22 +509,29 @@ class TestFullSquatRep(unittest.TestCase):
 
 class TestFeatureVector(unittest.TestCase):
     """
-    The 13-element feature vector must be built identically during training
-    (collect_samples) and inference (classify_trained). If they diverge, the RF
-    silently produces garbage. These tests lock down the format.
+    The 24-element feature vector (12 angles + 12 per-joint velocities) must be
+    built identically during training (collect_samples) and inference
+    (classify_trained). If they diverge, the RF silently produces garbage.
+    These tests lock down the format.
     """
 
-    def test_length_is_12_joints_plus_delta(self):
-        from core.ml.trainer import JOINTS, angles_to_features
+    def test_length_is_12_angles_plus_12_deltas(self):
+        from core.ml.trainer import JOINTS, N_FEATURES, angles_to_features
         feat = angles_to_features({})
-        self.assertEqual(len(feat), len(JOINTS) + 1)
-        self.assertEqual(len(feat), 13)
+        self.assertEqual(len(feat), 2 * len(JOINTS))
+        self.assertEqual(len(feat), N_FEATURES)
+        self.assertEqual(len(feat), 24)
 
     def test_missing_joints_are_minus_one(self):
         from core.ml.trainer import angles_to_features
         feat = angles_to_features({})
-        # All 12 joint slots should be -1.0 (delta=0.0 is the 13th)
+        # All 12 angle slots should be -1.0
         self.assertTrue(all(v == -1.0 for v in feat[:12]))
+
+    def test_missing_deltas_are_zero(self):
+        from core.ml.trainer import angles_to_features
+        feat = angles_to_features({'right_knee': 90.0})
+        self.assertTrue(all(v == 0.0 for v in feat[12:]))
 
     def test_present_joint_value_preserved(self):
         from core.ml.trainer import JOINTS, angles_to_features
@@ -536,24 +543,21 @@ class TestFeatureVector(unittest.TestCase):
         feat = angles_to_features({'right_knee': 90.0})
         self.assertEqual(feat[JOINTS.index('left_knee')], -1.0)
 
-    def test_delta_is_last_element(self):
-        from core.ml.trainer import angles_to_features
-        feat = angles_to_features({}, angle_delta=7.5)
-        self.assertAlmostEqual(feat[-1], 7.5)
-
-    def test_delta_default_is_zero(self):
-        from core.ml.trainer import angles_to_features
-        feat = angles_to_features({'right_knee': 90.0})
-        self.assertEqual(feat[-1], 0.0)
+    def test_delta_slot_matches_joint_order(self):
+        from core.ml.trainer import JOINTS, angles_to_features
+        feat = angles_to_features({}, deltas={'right_knee': 7.5})
+        self.assertAlmostEqual(feat[12 + JOINTS.index('right_knee')], 7.5, places=4)
+        # Other delta slots stay 0
+        self.assertEqual(feat[12 + JOINTS.index('left_knee')], 0.0)
 
     def test_negative_delta_preserved(self):
-        from core.ml.trainer import angles_to_features
-        feat = angles_to_features({}, angle_delta=-4.2)
-        self.assertAlmostEqual(feat[-1], -4.2)
+        from core.ml.trainer import JOINTS, angles_to_features
+        feat = angles_to_features({}, deltas={'left_hip': -4.2})
+        self.assertAlmostEqual(feat[12 + JOINTS.index('left_hip')], -4.2, places=4)
 
     def test_feature_dtype_is_float32(self):
         from core.ml.trainer import angles_to_features
-        feat = angles_to_features({'right_knee': 90.0}, angle_delta=1.0)
+        feat = angles_to_features({'right_knee': 90.0}, deltas={'right_knee': 1.0})
         self.assertEqual(feat.dtype, np.float32)
 
     def test_joints_order_matches_trainer_constant(self):
@@ -564,6 +568,98 @@ class TestFeatureVector(unittest.TestCase):
         for i, joint in enumerate(JOINTS):
             self.assertAlmostEqual(feat[i], angles[joint],
                 msg=f'Feature index {i} should be {joint}={angles[joint]}, got {feat[i]}')
+
+
+class TestRollingDeltas(unittest.TestCase):
+    """trainer.rolling_deltas (offline) and classifier.DeltaTracker (live)
+    must produce identical numbers for the same frame stream."""
+
+    FRAMES = [
+        {'right_knee': 170.0, 'left_knee': 168.0},
+        {'right_knee': 160.0, 'left_knee': 162.0},
+        {'right_knee': 148.0, 'left_knee': 150.0},
+        {'right_knee': 140.0},                       # left knee occluded
+        {'right_knee': 133.0, 'left_knee': 130.0},
+    ]
+
+    def test_offline_deltas_mean_of_pairs(self):
+        from core.ml.trainer import rolling_deltas
+        d = rolling_deltas(self.FRAMES, 2)
+        self.assertAlmostEqual(d['right_knee'], ((160 - 170) + (148 - 160)) / 2)
+        self.assertAlmostEqual(d['left_knee'], ((162 - 168) + (150 - 162)) / 2)
+
+    def test_first_frame_has_no_deltas(self):
+        from core.ml.trainer import rolling_deltas
+        self.assertEqual(rolling_deltas(self.FRAMES, 0), {})
+
+    def test_occluded_joint_pairs_skipped(self):
+        from core.ml.trainer import rolling_deltas
+        # frame 3 lost left_knee → pairs (2,3) and (3,4) contribute nothing for it
+        d = rolling_deltas(self.FRAMES, 4, window=2)
+        self.assertIn('right_knee', d)
+        self.assertNotIn('left_knee', d)
+
+    def test_live_tracker_matches_offline(self):
+        """A 30fps live stream must produce the same °/sec as offline rate=30."""
+        from core.ml.classifier import DeltaTracker
+        from core.ml.trainer import rolling_deltas
+        fps = 30.0
+        tracker = DeltaTracker(window=5)
+        for i, frame in enumerate(self.FRAMES):
+            live = tracker.update(frame, now=i / fps)
+            offline = rolling_deltas(self.FRAMES, i, window=5, rate=fps)
+            self.assertEqual(set(live), set(offline), f'frame {i}')
+            for j in offline:
+                self.assertAlmostEqual(live[j], offline[j], places=4,
+                                       msg=f'frame {i}, joint {j}')
+
+    def test_rate_scales_to_degrees_per_second(self):
+        from core.ml.trainer import rolling_deltas
+        per_frame = rolling_deltas(self.FRAMES, 2)
+        per_sec   = rolling_deltas(self.FRAMES, 2, rate=30.0)
+        for j in per_frame:
+            self.assertAlmostEqual(per_sec[j], per_frame[j] * 30.0)
+
+
+class TestPhaseSmoother(unittest.TestCase):
+    """Majority vote + legal-cycle constraint over raw phase predictions."""
+
+    def setUp(self):
+        from core.ml.smoother import PhaseSmoother
+        self.smoother = PhaseSmoother(_make_exercise(), window=5, resync_after=6)
+
+    def _feed(self, names):
+        out = []
+        for n in names:
+            out.append(self.smoother.update(n))
+        return out
+
+    def test_single_frame_flicker_erased(self):
+        out = self._feed(['standing'] * 4 + ['descending'] + ['standing'] * 4)
+        self.assertTrue(all(p == 'standing' for p in out))
+
+    def test_sustained_transition_accepted(self):
+        out = self._feed(['standing'] * 5 + ['descending'] * 5)
+        self.assertEqual(out[-1], 'descending')
+
+    def test_illegal_jump_rejected(self):
+        # standing → ascending skips descending+hold — must be held back
+        out = self._feed(['standing'] * 5 + ['ascending'] * 3)
+        self.assertEqual(out[-1], 'standing')
+
+    def test_persistent_illegal_winner_resyncs(self):
+        # ...but if the model keeps insisting, resync instead of deadlocking
+        out = self._feed(['standing'] * 5 + ['ascending'] * 12)
+        self.assertEqual(out[-1], 'ascending')
+
+    def test_none_prediction_keeps_current(self):
+        self._feed(['standing'] * 5)
+        self.assertEqual(self.smoother.update(None), 'standing')
+
+    def test_reset_clears_state(self):
+        self._feed(['standing'] * 5)
+        self.smoother.reset()
+        self.assertIsNone(self.smoother.current)
 
 
 # ---------------------------------------------------------------------------
@@ -602,14 +698,16 @@ class TestRealTrainedModel(unittest.TestCase):
     def test_feature_shape_matches_inference(self):
         """
         The most important test: the number of features the model expects must
-        equal what classify_trained actually builds (len(JOINTS) + 1).
+        equal what classify_trained actually builds for its feature_version.
         If angles_to_features changes but the model is not retrained, this fails.
         """
-        from core.ml.trainer import JOINTS
-        expected = len(JOINTS) + 1
+        from core.ml.trainer import JOINTS, N_FEATURES
+        version = self.bundle.get('feature_version', 1)
+        expected = N_FEATURES if version >= 2 else len(JOINTS) + 1
         actual = self.bundle['model'].n_features_in_
         self.assertEqual(actual, expected,
-            f'Saved model expects {actual} features, inference builds {expected}. Retrain.')
+            f'Saved model (feature_version={version}) expects {actual} features, '
+            f'inference builds {expected}. Retrain.')
 
     def test_all_classes_are_valid_phase_names(self):
         """Every class the model learned must correspond to a real phase."""
@@ -631,41 +729,48 @@ class TestRealTrainedModel(unittest.TestCase):
     def test_n_samples_positive(self):
         self.assertGreater(self.bundle['n_samples'], 0)
 
+    def _features(self, angles, deltas=None):
+        """Build features matching the loaded bundle's feature_version."""
+        from core.ml.trainer import JOINTS, angles_to_features
+        if self.bundle.get('feature_version', 1) >= 2:
+            return angles_to_features(angles, deltas).reshape(1, -1)
+        # Legacy 13-feature layout: single primary delta as last element
+        primary = max(deltas, key=lambda j: abs(deltas[j])) if deltas else None
+        delta = deltas[primary] if primary else 0.0
+        return np.array(
+            [[angles.get(j, -1.0) for j in JOINTS] + [delta]], dtype=np.float32)
+
     def test_predict_does_not_crash_on_all_missing(self):
         """All -1.0 features (no joints visible) must not raise."""
-        from core.ml.trainer import angles_to_features
-        feat = angles_to_features({}, angle_delta=0.0).reshape(1, -1)
+        feat = self._features({})
         pred = self.bundle['model'].predict(feat)
         self.assertEqual(len(pred), 1)
         self.assertIn(str(pred[0]), [str(c) for c in self.bundle['classes']])
 
     def test_predict_on_standing_angles_returns_valid_phase(self):
         """Realistic standing angles must produce a valid phase name without crashing."""
-        from core.ml.trainer import angles_to_features
         standing_full = {
             'right_knee': 167.0, 'left_knee': 157.0,
             'right_hip':  167.0, 'left_hip':  157.0,
             'right_ankle': 124.0, 'left_ankle': 95.0,
         }
-        feat = angles_to_features(standing_full, angle_delta=-0.5).reshape(1, -1)
+        feat = self._features(standing_full, {'right_knee': -0.5, 'left_knee': -0.5})
         pred = str(self.bundle['model'].predict(feat)[0])
         valid = [str(c) for c in self.bundle['classes']]
         self.assertIn(pred, valid, f'Prediction "{pred}" is not a known phase')
 
     def test_negative_delta_not_classified_as_standing(self):
         """A strongly decreasing angle should never be classified as standing."""
-        from core.ml.trainer import angles_to_features
         mid = {'right_knee': 130.0, 'left_knee': 130.0}
-        feat = angles_to_features(mid, angle_delta=-10.0).reshape(1, -1)
+        feat = self._features(mid, {'right_knee': -10.0, 'left_knee': -10.0})
         pred = str(self.bundle['model'].predict(feat)[0])
         self.assertNotEqual(pred, 'standing',
             'Angle at 130° and sharply decreasing should not be standing')
 
     def test_positive_delta_not_classified_as_standing(self):
         """A strongly increasing angle from a low position should not be standing."""
-        from core.ml.trainer import angles_to_features
         mid = {'right_knee': 110.0, 'left_knee': 110.0}
-        feat = angles_to_features(mid, angle_delta=+10.0).reshape(1, -1)
+        feat = self._features(mid, {'right_knee': +10.0, 'left_knee': +10.0})
         pred = str(self.bundle['model'].predict(feat)[0])
         self.assertNotEqual(pred, 'standing')
 
@@ -689,34 +794,34 @@ class TestRealTrainedModel(unittest.TestCase):
 
     def test_negative_delta_predicts_descending(self):
         """
-        Mid-range angle with a strongly negative delta (angle falling fast)
+        Mid-range angle with strongly negative velocities (angles falling fast)
         should predict 'descending'. Requires hip angles — the model was
         trained with multi-joint vectors, not just knees.
         """
-        from core.ml.trainer import angles_to_features
         mid = {'right_knee': 120.0, 'left_knee': 120.0,
                'right_hip': 130.0, 'left_hip': 130.0}
-        feat = angles_to_features(mid, angle_delta=-15.0).reshape(1, -1)
+        down = {j: -15.0 for j in mid}
+        feat = self._features(mid, down)
         pred = str(self.bundle['model'].predict(feat)[0])
         self.assertEqual(pred, 'descending',
-            f'Mid-range angle with delta=-15° classified as "{pred}" — '
-            'the delta feature should signal descent')
+            f'Mid-range angle with velocity -15°/frame classified as "{pred}" — '
+            'the velocity features should signal descent')
 
     def test_delta_feature_is_used_by_model(self):
         """
-        The same mid-range angle with opposite deltas must not produce identical
-        predictions — this confirms angle_delta is actually influencing the RF.
+        The same mid-range angle with opposite velocities must not produce
+        identical predictions — confirms the velocity features actually
+        influence the RF.
         """
-        from core.ml.trainer import angles_to_features
         mid = {'right_knee': 120.0, 'left_knee': 120.0,
                'right_hip': 130.0, 'left_hip': 130.0}
-        feat_neg = angles_to_features(mid, angle_delta=-15.0).reshape(1, -1)
-        feat_pos = angles_to_features(mid, angle_delta=+15.0).reshape(1, -1)
+        feat_neg = self._features(mid, {j: -15.0 for j in mid})
+        feat_pos = self._features(mid, {j: +15.0 for j in mid})
         pred_neg = str(self.bundle['model'].predict(feat_neg)[0])
         pred_pos = str(self.bundle['model'].predict(feat_pos)[0])
         self.assertNotEqual(pred_neg, pred_pos,
-            'Opposite deltas at the same angle produce identical predictions — '
-            'angle_delta is not influencing the model')
+            'Opposite velocities at the same angle produce identical predictions — '
+            'the velocity features are not influencing the model')
 
 
 # ---------------------------------------------------------------------------

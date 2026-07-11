@@ -92,24 +92,6 @@ def _build_frame_labels(
     return frame_labels
 
 
-def _rolling_delta(
-    per_frame: List[Dict[str, float]],
-    frame_idx: int,
-    primary_joint: Optional[str],
-    window: int = DELTA_WINDOW,
-) -> float:
-    """5-frame rolling average of frame-to-frame changes for the primary joint."""
-    if primary_joint is None or frame_idx < 1:
-        return 0.0
-    deltas = []
-    for i in range(max(1, frame_idx - window + 1), frame_idx + 1):
-        prev = per_frame[i - 1].get(primary_joint)
-        curr = per_frame[i].get(primary_joint)
-        if prev is not None and curr is not None:
-            deltas.append(curr - prev)
-    return sum(deltas) / len(deltas) if deltas else 0.0
-
-
 def evaluate(
     label_path: Path,
     skip_override: Optional[int] = None,
@@ -134,6 +116,8 @@ def evaluate(
     from core.ml.angles import angles_over_time, compute_angles
     from core.ml.extractor import extract_frames
     from core.ml.classifier import classify, classify_trained
+    from core.ml.smoother import PhaseSmoother
+    from core.ml.trainer import rolling_deltas
 
     db = get_db()
     model = ExerciseModel.from_mongo(db)
@@ -174,53 +158,90 @@ def evaluate(
         sys.exit(1)
 
     all_phases = sorted({p.name for p in exercise.phases})
-    correct: Dict[str, int] = defaultdict(int)
-    total:   Dict[str, int] = defaultdict(int)
-    confusion: Dict[str, Dict[str, int]] = {p: defaultdict(int) for p in all_phases}
     method_used = 'gaussian'
 
-    for i, angles in enumerate(per_frame):
-        if i not in frame_labels:
-            continue
+    # ── Pass 1: predict EVERY frame (the smoother needs temporal continuity),
+    #    then score only the labeled ones.
+    raw_preds:      List[str] = []
+    smoothed_preds: List[str] = []
+    smoother = PhaseSmoother(exercise)
+    rate = fps / skip   # extracted frames per second → deltas in °/sec
 
-        truth = frame_labels[i]
-        rdelta = _rolling_delta(per_frame, i, primary)
+    for i, angles in enumerate(per_frame):
+        deltas = rolling_deltas(per_frame, i, rate=rate)
         prev_angle = per_frame[i - 1].get(primary) if i > 0 and primary else None
         curr_angle = angles.get(primary) if primary else None
 
         if use_gaussian:
             predicted_phase = classify(exercise, angles, prev_angle, curr_angle)
-            predicted_name = predicted_phase.name if predicted_phase else 'unknown'
             method_used = 'gaussian'
         else:
             predicted_phase, method_used = classify_trained(
-                exercise, angles, prev_angle, curr_angle, rolling_delta=rdelta
+                exercise, angles, prev_angle, curr_angle, deltas=deltas
             )
-            predicted_name = predicted_phase.name if predicted_phase else 'unknown'
+        name = predicted_phase.name if predicted_phase else 'unknown'
+        raw_preds.append(name)
+        smoothed_preds.append(smoother.update(name) or 'unknown')
+
+    # ── Pass 2: score. Boundary-tolerant = prediction matches the label of ANY
+    #    frame within ±0.3s — phase boundaries are ambiguous even for humans.
+    tol = max(1, int(round(0.3 * fps / skip)))
+
+    def _tolerant_hit(idx: int, predicted: str) -> bool:
+        return any(
+            frame_labels.get(k) == predicted
+            for k in range(idx - tol, idx + tol + 1)
+        )
+
+    correct:   Dict[str, int] = defaultdict(int)   # raw
+    correct_s: Dict[str, int] = defaultdict(int)   # smoothed
+    total:     Dict[str, int] = defaultdict(int)
+    confusion: Dict[str, Dict[str, int]] = {p: defaultdict(int) for p in all_phases}
+    raw_tol = smooth_tol = 0
+
+    for i in sorted(frame_labels):
+        if i >= len(raw_preds):
+            break
+        truth = frame_labels[i]
+        raw, smooth = raw_preds[i], smoothed_preds[i]
 
         total[truth] += 1
         if truth in confusion:
-            confusion[truth][predicted_name] += 1
-        if predicted_name == truth:
+            confusion[truth][raw] += 1
+        if raw == truth:
             correct[truth] += 1
+        if smooth == truth:
+            correct_s[truth] += 1
+        if _tolerant_hit(i, raw):
+            raw_tol += 1
+        if _tolerant_hit(i, smooth):
+            smooth_tol += 1
 
-    overall_correct = sum(correct.values())
-    overall_total   = sum(total.values())
-    overall_acc = overall_correct / overall_total if overall_total > 0 else 0.0
+    overall_total     = sum(total.values())
+    overall_correct   = sum(correct.values())
+    overall_correct_s = sum(correct_s.values())
+    overall_acc        = overall_correct / overall_total if overall_total else 0.0
+    overall_acc_s      = overall_correct_s / overall_total if overall_total else 0.0
+    overall_acc_tol    = raw_tol / overall_total if overall_total else 0.0
+    overall_acc_s_tol  = smooth_tol / overall_total if overall_total else 0.0
 
     if verbose:
         print(f'\n{"─" * 54}')
-        print(f'Method : {method_used}')
-        print(f'Overall: {overall_correct}/{overall_total} frames correct  ({100*overall_acc:.1f}%)')
-        print(f'\nPer-phase accuracy:')
+        print(f'Method : {method_used}   (boundary tolerance: ±0.3s = ±{tol} frames)')
+        print(f'Overall raw       : {overall_correct}/{overall_total}  ({100*overall_acc:.1f}%)')
+        print(f'Overall smoothed  : {overall_correct_s}/{overall_total}  ({100*overall_acc_s:.1f}%)')
+        print(f'Raw      ±0.3s    : {raw_tol}/{overall_total}  ({100*overall_acc_tol:.1f}%)')
+        print(f'Smoothed ±0.3s    : {smooth_tol}/{overall_total}  ({100*overall_acc_s_tol:.1f}%)')
+        print(f'\nPer-phase accuracy (raw → smoothed):')
 
         labeled_phases = sorted(total.keys())
         for phase in labeled_phases:
             n = total[phase]
-            c = correct.get(phase, 0)
-            filled = int(20 * c / n)
+            c  = correct.get(phase, 0)
+            cs = correct_s.get(phase, 0)
+            filled = int(20 * cs / n)
             bar = '█' * filled + '░' * (20 - filled)
-            print(f'  {phase:20s}  {c:4d}/{n:<4d}  {100*c/n:5.1f}%  {bar}')
+            print(f'  {phase:20s}  {100*c/n:5.1f}% → {100*cs/n:5.1f}%  {bar}')
 
         print(f'\nConfusion matrix (row=truth, col=predicted):')
         col_w = max(14, max(len(p) for p in all_phases) + 2)
@@ -238,9 +259,17 @@ def evaluate(
         'video':          str(video_path),
         'method':         method_used,
         'accuracy':       round(overall_acc, 3),
+        'accuracy_smoothed':          round(overall_acc_s, 3),
+        'accuracy_tolerant':          round(overall_acc_tol, 3),
+        'accuracy_smoothed_tolerant': round(overall_acc_s_tol, 3),
+        'tolerance_frames': tol,
         'labeled_frames': overall_total,
         'per_phase': {
             p: round(correct.get(p, 0) / total[p], 3)
+            for p in sorted(total.keys())
+        },
+        'per_phase_smoothed': {
+            p: round(correct_s.get(p, 0) / total[p], 3)
             for p in sorted(total.keys())
         },
         'confusion': {t: dict(confusion[t]) for t in sorted(total.keys())},

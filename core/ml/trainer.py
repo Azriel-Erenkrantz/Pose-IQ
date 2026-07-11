@@ -60,9 +60,46 @@ DELTA_WINDOW = 5
 # Feature helpers
 # ---------------------------------------------------------------------------
 
-def angles_to_features(angles: Dict[str, float], angle_delta: float = 0.0) -> np.ndarray:
-    """12 joint angles + 1 rolling delta = 13 features. Missing joints → -1."""
-    return np.array([angles.get(j, -1.0) for j in JOINTS] + [angle_delta], dtype=np.float32)
+FEATURE_VERSION = 2   # v1: 12 angles + 1 primary delta · v2: 12 angles + 12 per-joint deltas
+N_FEATURES = 2 * len(JOINTS)
+
+
+def angles_to_features(angles: Dict[str, float],
+                       deltas: Optional[Dict[str, float]] = None) -> np.ndarray:
+    """
+    12 joint angles + 12 per-joint rolling deltas = 24 features.
+    Missing angles → -1; missing deltas → 0.
+
+    The per-joint velocity is what separates direction phases (descending vs
+    ascending share the exact same angle ranges — only motion tells them apart).
+    """
+    deltas = deltas or {}
+    return np.array(
+        [angles.get(j, -1.0) for j in JOINTS] +
+        [deltas.get(j, 0.0) for j in JOINTS],
+        dtype=np.float32,
+    )
+
+
+def rolling_deltas(per_frame: List[Dict[str, float]], frame_idx: int,
+                   window: int = None, rate: float = 1.0) -> Dict[str, float]:
+    """
+    Mean frame-to-frame change per joint over the trailing window, scaled by
+    `rate` (frames per second) → degrees/second. Normalizing to wall-clock
+    keeps the feature comparable across videos with different fps/skip and the
+    live camera, whose frame rate is whatever the hardware delivers.
+    Joints missing in consecutive frames are simply omitted (feature → 0).
+    """
+    window = window or DELTA_WINDOW
+    if frame_idx < 1:
+        return {}
+    deltas: Dict[str, List[float]] = {}
+    for i in range(max(1, frame_idx - window + 1), frame_idx + 1):
+        prev, curr = per_frame[i - 1], per_frame[i]
+        for j in JOINTS:
+            if j in prev and j in curr:
+                deltas.setdefault(j, []).append(curr[j] - prev[j])
+    return {j: rate * sum(v) / len(v) for j, v in deltas.items()}
 
 
 # ---------------------------------------------------------------------------
@@ -103,29 +140,6 @@ def _build_frame_labels(labels: List[dict], n_frames: int, fps: float, skip: int
     return frame_labels
 
 
-def _rolling_delta(per_frame: List[Dict[str, float]], frame_idx: int,
-                   primary: Optional[str], window: int = DELTA_WINDOW) -> float:
-    if primary is None or frame_idx < 1:
-        return 0.0
-    deltas = []
-    for i in range(max(1, frame_idx - window + 1), frame_idx + 1):
-        prev = per_frame[i - 1].get(primary)
-        curr = per_frame[i].get(primary)
-        if prev is not None and curr is not None:
-            deltas.append(curr - prev)
-    return sum(deltas) / len(deltas) if deltas else 0.0
-
-
-def _primary_joint(per_frame: List[Dict[str, float]], labeled_indices: List[int]) -> Optional[str]:
-    """Joint with highest variance across labeled frames — most informative signal."""
-    variances: Dict[str, float] = {}
-    for j in JOINTS:
-        vals = [per_frame[i][j] for i in labeled_indices if j in per_frame[i]]
-        if len(vals) > 1:
-            variances[j] = float(np.var(vals))
-    return max(variances, key=variances.get) if variances else None
-
-
 # ---------------------------------------------------------------------------
 # Sample collection from hand-labeled files
 # ---------------------------------------------------------------------------
@@ -153,13 +167,13 @@ def collect_samples_from_labels(
     if not label_dir.exists():
         if verbose:
             print(f'  [{exercise_id}] no label directory: {label_dir}')
-        return np.empty((0, len(JOINTS) + 1)), [], None, {}
+        return np.empty((0, N_FEATURES)), [], None, {}
 
     label_files = sorted(label_dir.glob('*.json'))
     if not label_files:
         if verbose:
             print(f'  [{exercise_id}] no .json label files found')
-        return np.empty((0, len(JOINTS) + 1)), [], None, {}
+        return np.empty((0, N_FEATURES)), [], None, {}
 
     if len(label_files) == 1:
         if verbose:
@@ -203,15 +217,13 @@ def collect_samples_from_labels(
                     print('no labeled frames — check timestamps')
                 continue
 
-            primary = _primary_joint(per_frame, list(frame_labels.keys()))
-
+            rate = fps / file_skip   # extracted frames per second → deltas in °/sec
             labeled = 0
             for i, angles in enumerate(per_frame):
                 if i not in frame_labels:
                     continue
                 phase = frame_labels[i]
-                delta = _rolling_delta(per_frame, i, primary)
-                X_rows.append(angles_to_features(angles, delta))
+                X_rows.append(angles_to_features(angles, rolling_deltas(per_frame, i, rate=rate)))
                 y_rows.append(phase)
                 for joint, value in angles.items():
                     phase_angles[phase][joint].append(value)
@@ -226,7 +238,7 @@ def collect_samples_from_labels(
                 print(f'ERROR: {exc}')
 
     if not X_rows:
-        return np.empty((0, len(JOINTS) + 1)), [], eval_file, dict(phase_angles)
+        return np.empty((0, N_FEATURES)), [], eval_file, dict(phase_angles)
 
     return np.vstack(X_rows), y_rows, eval_file, dict(phase_angles)
 
@@ -320,13 +332,14 @@ def train_exercise(
     MODELS_DIR.mkdir(parents=True, exist_ok=True)
     model_path = MODELS_DIR / f'phase_{exercise_id}.joblib'
     joblib.dump({
-        'model':        clf,
-        'classes':      list(clf.classes_),
-        'joints':       JOINTS,
-        'exercise_id':  exercise_id,
-        'cv_accuracy':  round(float(cv_acc), 3) if cv_acc is not None else None,
-        'n_samples':    len(X_f),
-        'class_counts': dict(counts),
+        'model':           clf,
+        'classes':         list(clf.classes_),
+        'joints':          JOINTS,
+        'feature_version': FEATURE_VERSION,
+        'exercise_id':     exercise_id,
+        'cv_accuracy':     round(float(cv_acc), 3) if cv_acc is not None else None,
+        'n_samples':       len(X_f),
+        'class_counts':    dict(counts),
     }, model_path)
 
     if verbose:
