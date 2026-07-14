@@ -914,5 +914,158 @@ class TestClassifyTrainedRF(unittest.TestCase):
         self.assertIn(method, ('rf', 'gaussian'))
 
 
+# ---------------------------------------------------------------------------
+# Rep-level metrics (core/ml/reps.py)
+# ---------------------------------------------------------------------------
+
+# Squat cycle as sorted by phase order in _make_exercise()
+CYCLE = ['standing', 'descending', 'hold', 'ascending']
+
+
+def _seq(*runs):
+    """Expand ('standing', 3), ('descending', 4), ... into a frame sequence."""
+    out = []
+    for phase, n in runs:
+        out.extend([phase] * n)
+    return out
+
+
+class TestExtractReps(unittest.TestCase):
+
+    def test_full_cycle_is_one_rep(self):
+        from core.ml.reps import extract_reps
+        seq = _seq(('standing', 5), ('descending', 5), ('hold', 3),
+                   ('ascending', 5), ('standing', 5))
+        reps = extract_reps(seq, CYCLE)
+        self.assertEqual(len(reps), 1)
+
+    def test_anchor_is_entry_into_final_phase(self):
+        from core.ml.reps import extract_reps
+        seq = _seq(('standing', 5), ('descending', 5), ('hold', 3),
+                   ('ascending', 5), ('standing', 5))
+        rep = extract_reps(seq, CYCLE)[0]
+        self.assertEqual(rep.anchor_idx, 13)   # 5 standing + 5 desc + 3 hold
+        self.assertEqual(rep.start_idx, 5)     # descending began here
+        self.assertEqual(rep.end_idx, 17)      # last ascending frame
+
+    def test_two_reps_counted(self):
+        from core.ml.reps import extract_reps
+        one = [('descending', 4), ('hold', 2), ('ascending', 4), ('standing', 3)]
+        seq = _seq(('standing', 3), *one, *one)
+        self.assertEqual(len(extract_reps(seq, CYCLE)), 2)
+
+    def test_skipped_hold_still_a_rep(self):
+        # Fast reps often have no visible hold — descending straight into
+        # ascending must still count.
+        from core.ml.reps import extract_reps
+        seq = _seq(('standing', 4), ('descending', 5), ('ascending', 5),
+                   ('standing', 4))
+        self.assertEqual(len(extract_reps(seq, CYCLE)), 1)
+
+    def test_ascending_without_descending_is_not_a_rep(self):
+        # Isolated final-phase blip (label artifact or model flicker)
+        from core.ml.reps import extract_reps
+        seq = _seq(('standing', 5), ('ascending', 4), ('standing', 5))
+        self.assertEqual(len(extract_reps(seq, CYCLE)), 0)
+
+    def test_unknown_frames_do_not_split_a_segment(self):
+        # Truth labels have gaps; None/'unknown' frames carry no information
+        from core.ml.reps import extract_reps
+        seq = (_seq(('standing', 3), ('descending', 3)) + [None, 'unknown'] +
+               _seq(('descending', 2), ('ascending', 4), ('standing', 3)))
+        self.assertEqual(len(extract_reps(seq, CYCLE)), 1)
+
+    def test_flicker_produces_extra_reps(self):
+        # Raw (unsmoothed) desc/asc flicker: each desc→asc counts — this is
+        # exactly the double-counting the metric must expose.
+        from core.ml.reps import extract_reps
+        seq = _seq(('standing', 3), ('descending', 2), ('ascending', 2),
+                   ('descending', 2), ('ascending', 2), ('standing', 3))
+        self.assertEqual(len(extract_reps(seq, CYCLE)), 2)
+
+    def test_empty_sequence(self):
+        from core.ml.reps import extract_reps
+        self.assertEqual(extract_reps([], CYCLE), [])
+
+
+class TestMatchReps(unittest.TestCase):
+
+    def test_exact_anchors_all_match(self):
+        from core.ml.reps import match_reps
+        pairs = match_reps([10, 50, 90], [10, 50, 90], tol_frames=5)
+        self.assertEqual(len(pairs), 3)
+
+    def test_offset_within_tolerance_matches(self):
+        from core.ml.reps import match_reps
+        pairs = match_reps([10], [13], tol_frames=5)
+        self.assertEqual(pairs, [(0, 0)])
+
+    def test_offset_beyond_tolerance_no_match(self):
+        from core.ml.reps import match_reps
+        self.assertEqual(match_reps([10], [20], tol_frames=5), [])
+
+    def test_each_anchor_used_once(self):
+        # Two predictions near one truth rep: only the closer one matches
+        from core.ml.reps import match_reps
+        pairs = match_reps([10], [9, 13], tol_frames=5)
+        self.assertEqual(len(pairs), 1)
+        self.assertEqual(pairs[0], (0, 0))   # 9 is closer than 13
+
+    def test_greedy_prefers_smallest_offset(self):
+        from core.ml.reps import match_reps
+        # truth 10 could match pred 14 (|4|), but pred 11 (|1|) wins it;
+        # pred 14 then matches truth 15 (|1|)
+        pairs = sorted(match_reps([10, 15], [11, 14], tol_frames=5))
+        self.assertEqual(pairs, [(0, 0), (1, 1)])
+
+
+class TestRepMetrics(unittest.TestCase):
+
+    REP = [('descending', 4), ('hold', 2), ('ascending', 4), ('standing', 4)]
+
+    def test_perfect_prediction(self):
+        from core.ml.reps import rep_metrics
+        seq = _seq(('standing', 4), *self.REP, *self.REP)
+        m = rep_metrics(seq, list(seq), CYCLE, tol_frames=5)
+        self.assertEqual(m['truth_reps'], 2)
+        self.assertEqual(m['matched'], 2)
+        self.assertEqual(m['missed'], 0)
+        self.assertEqual(m['extra'], 0)
+        self.assertEqual(m['recall'], 1.0)
+        self.assertEqual(m['precision'], 1.0)
+        self.assertEqual(m['f1'], 1.0)
+        self.assertEqual(m['mean_anchor_offset_frames'], 0.0)
+
+    def test_missed_rep_lowers_recall(self):
+        from core.ml.reps import rep_metrics
+        truth = _seq(('standing', 4), *self.REP, *self.REP)
+        # Model saw only the first rep, then flat standing
+        pred = _seq(('standing', 4), *self.REP) + ['standing'] * 14
+        m = rep_metrics(truth, pred, CYCLE, tol_frames=5)
+        self.assertEqual(m['truth_reps'], 2)
+        self.assertEqual(m['matched'], 1)
+        self.assertEqual(m['missed'], 1)
+        self.assertEqual(m['recall'], 0.5)
+
+    def test_extra_rep_lowers_precision(self):
+        from core.ml.reps import rep_metrics
+        truth = _seq(('standing', 4), *self.REP) + ['standing'] * 14
+        pred = _seq(('standing', 4), *self.REP, *self.REP)
+        m = rep_metrics(truth, pred, CYCLE, tol_frames=5)
+        self.assertEqual(m['truth_reps'], 1)
+        self.assertEqual(m['extra'], 1)
+        self.assertEqual(m['precision'], 0.5)
+        self.assertEqual(m['recall'], 1.0)
+
+    def test_no_reps_anywhere_is_safe(self):
+        from core.ml.reps import rep_metrics
+        seq = ['standing'] * 10
+        m = rep_metrics(seq, list(seq), CYCLE, tol_frames=5)
+        self.assertEqual(m['truth_reps'], 0)
+        self.assertEqual(m['recall'], 0.0)
+        self.assertEqual(m['f1'], 0.0)
+        self.assertIsNone(m['mean_anchor_offset_frames'])
+
+
 if __name__ == '__main__':
     unittest.main()

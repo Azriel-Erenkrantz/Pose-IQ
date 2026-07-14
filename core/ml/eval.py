@@ -97,6 +97,7 @@ def evaluate(
     skip_override: Optional[int] = None,
     use_gaussian: bool = False,
     verbose: bool = True,
+    rep_tol_sec: float = 0.5,
 ) -> dict:
     data = json.loads(label_path.read_text(encoding='utf-8'))
 
@@ -116,6 +117,7 @@ def evaluate(
     from core.ml.angles import angles_over_time, compute_angles
     from core.ml.extractor import extract_frames
     from core.ml.classifier import classify, classify_trained
+    from core.ml.reps import rep_metrics
     from core.ml.smoother import PhaseSmoother
     from core.ml.trainer import rolling_deltas
 
@@ -217,6 +219,15 @@ def evaluate(
         if _tolerant_hit(i, smooth):
             smooth_tol += 1
 
+    # ── Pass 3: rep-level. This is the product metric — the app counts reps
+    #    and coaches per rep, so "was each rep detected once, at roughly the
+    #    right time" matters more than frame-exact boundaries.
+    cycle = [p.name for p in sorted(exercise.phases, key=lambda p: p.order)]
+    truth_seq = [frame_labels.get(i) for i in range(len(frames))]
+    rep_tol = max(1, int(round(rep_tol_sec * fps / skip)))
+    reps_raw      = rep_metrics(truth_seq, raw_preds, cycle, rep_tol)
+    reps_smoothed = rep_metrics(truth_seq, smoothed_preds, cycle, rep_tol)
+
     overall_total     = sum(total.values())
     overall_correct   = sum(correct.values())
     overall_correct_s = sum(correct_s.values())
@@ -242,6 +253,13 @@ def evaluate(
             filled = int(20 * cs / n)
             bar = '█' * filled + '░' * (20 - filled)
             print(f'  {phase:20s}  {100*c/n:5.1f}% → {100*cs/n:5.1f}%  {bar}')
+
+        print(f'\nRep-level (anchor tolerance: ±{rep_tol_sec:.1f}s = ±{rep_tol} frames):')
+        print(f'  {"":10s}{"truth":>7s}{"pred":>7s}{"match":>7s}{"miss":>7s}{"extra":>7s}{"recall":>9s}{"F1":>7s}')
+        for label, m in (('raw', reps_raw), ('smoothed', reps_smoothed)):
+            print(f'  {label:10s}{m["truth_reps"]:>7d}{m["predicted_reps"]:>7d}'
+                  f'{m["matched"]:>7d}{m["missed"]:>7d}{m["extra"]:>7d}'
+                  f'{100*m["recall"]:>8.1f}%{m["f1"]:>7.2f}')
 
         print(f'\nConfusion matrix (row=truth, col=predicted):')
         col_w = max(14, max(len(p) for p in all_phases) + 2)
@@ -273,6 +291,11 @@ def evaluate(
             for p in sorted(total.keys())
         },
         'confusion': {t: dict(confusion[t]) for t in sorted(total.keys())},
+        'reps': {
+            'tolerance_sec': rep_tol_sec,
+            'raw': reps_raw,
+            'smoothed': reps_smoothed,
+        },
     }
 
 
@@ -289,6 +312,8 @@ def main() -> None:
                         help='Override the skip value in the label file')
     parser.add_argument('--gaussian', action='store_true',
                         help='Use Gaussian classifier instead of trained RF')
+    parser.add_argument('--rep-tol', type=float, default=0.5,
+                        help='Rep anchor matching tolerance in seconds (default 0.5)')
     parser.add_argument('--quiet', action='store_true')
     args = parser.parse_args()
 
@@ -301,6 +326,7 @@ def main() -> None:
         skip_override=args.skip,
         use_gaussian=args.gaussian,
         verbose=not args.quiet,
+        rep_tol_sec=args.rep_tol,
     )
 
 
