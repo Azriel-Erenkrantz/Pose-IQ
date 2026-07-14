@@ -30,7 +30,7 @@ code, comments, and commits are in English.
 ## Commands
 
 ```bash
-python -m pytest tests/ -q          # full suite (~235 tests, mongomock)
+python -m pytest tests/ -q          # full suite (~277 tests, mongomock)
 python -m core.exercise.seed        # seed exercises into Mongo (idempotent)
 python -m core.ml.trainer           # retrain phase models + write exercise_angles
 python -m core.ml.eval "data/labeled_vidz/squat/<file>.json"   # held-out eval
@@ -66,29 +66,47 @@ Demo user in the local dev DB: `demo@poseiq.dev` / `demo1234`.
 - Training videos (~190MB) are **not in git**; label JSONs reference
   `data/videos/{ex}/good/*.mp4`.
 
-## ML state (2026-07-12)
+## ML state (2026-07-14)
 
 Held-out accuracy after velocity features + smoothing (commit 49efb8c):
 frame-exact raw ~53% avg (squat 63, lunge 61, biceps 56, shoulder_press 32);
 **±0.3s boundary-tolerant: squat 81 / lunge 87 / biceps 89 / shoulder_press 53**.
-Velocities fixed in-video direction separation (squat descending 0%→70%,
-cv 0.40→0.52). Conclusion: **data-limited** — only 2-3 training videos per
-exercise, different sources. Next lever: user films 8-10 videos/exercise
-(2-3 people × 2-3 angles, consistent labeling convention). User targets
-98-99% — realistic on rep-level / tolerant metrics once data grows.
+Conclusion: **data-limited** — only 2-3 training videos per exercise,
+different sources. Next lever: user films videos per
+`docs/filming-protocol-he.md` (people/angles/labeling rules + bad-form clip
+list). User targets 98-99% — realistic on rep-level metrics once data grows.
 shoulder_press is inherently hard (slow eccentric ≈ static start position).
+
+**Rep-level metric** (`core/ml/reps.py`, wired into eval.py, `--rep-tol`):
+a rep anchors at the transition into the cycle's final phase (turnaround);
+truth↔pred anchors matched greedily within ±0.5s; reports matched/missed/
+extra + recall/precision/F1 for raw and smoothed. Baseline on all 13 labeled
+videos (train+test mixed → optimistic): smoothed rep recall lunge 91 /
+squat 83 / shoulder_press 70 / biceps 50 — biceps has only 2 complete labeled
+reps total; several label files are partial (eccentric-only, setup footage).
+This is the headline metric for the report's accuracy-vs-data curve.
+
+**Weight tracking + progressive overload** (2026-07-14): sessions carry
+optional `weight_kg` (pipeline 3rd CLI arg; `PUT /api/user/<id>/sessions/
+<sid>/weight`; editable in frontend session cards). Double-progression rules
+in `core/recommendation/overload.py` gated on form score (≥85 clean ×2-3
+sessions → +increment; <70 → back off), surfaced via `GET .../weights` and
+embedded in the dashboard (`weight_recommendations`).
 
 ## Roadmap (agreed with user)
 
 1. ~~Fix broken pipeline, auth holes, retrain~~ (done, 2c81b92)
 2. ~~Close the loop: pipeline → Mongo → dashboard~~ (done, 6b5bc94 + tests)
 3. ~~Velocity features + smoothing + honest eval~~ (done, 49efb8c)
-4. **More labeled videos** → accuracy curve for the report; possible rep-level
-   accuracy metric in eval.py (offered, not yet built)
+4. **More labeled videos** → accuracy curve for the report. Rep-level metric
+   ~~built~~ (core/ml/reps.py); filming protocol written
+   (docs/filming-protocol-he.md) — waiting on user to film
 5. Web client with in-browser pose (MediaPipe Tasks JS) — decided web over RN
-6. Weight tracking + progressive-overload recommendations (still missing)
+6. ~~Weight tracking + progressive-overload recommendations~~ (done,
+   overload.py + API + frontend, 2026-07-14)
 7. Cloud: Mongo Atlas + API on Render/Railway + frontend on Vercel + CI
-8. Bad-form clips → binary quality classifier (planned, nothing built yet)
+8. Bad-form clips → binary quality classifier (planned; filming protocol
+   already covers bad-form clips with per-mistake tags)
 
 `docs/pose-iq-status-he.md` is the Hebrew status doc for the advisor — it
 predates the Mongo migration and ML rewrite; update it before any submission.

@@ -34,6 +34,7 @@ class WorkoutSession:
     rep_records: List[RepRecord] = field(default_factory=list)
     duration_seconds: float = 0.0
     overall_score: float = 0.0
+    weight_kg: Optional[float] = None   # load used; None = not logged, 0 = bodyweight
 
     def calculate_score(self):
         if not self.rep_records:
@@ -62,6 +63,7 @@ class WorkoutHistory:
             rep_records      = reps,
             duration_seconds = doc.get('duration_seconds', 0.0),
             overall_score    = doc.get('overall_score', 0.0),
+            weight_kg        = doc.get('weight_kg'),
         )
 
     def save_session(self, session: WorkoutSession):
@@ -76,7 +78,18 @@ class WorkoutHistory:
             'rep_records':     [{'rep_number': r.rep_number, 'error_joints': r.error_joints, 'form_score': r.form_score} for r in session.rep_records],
             'duration_seconds': session.duration_seconds,
             'overall_score':   session.overall_score,
+            'weight_kg':       session.weight_kg,
         })
+
+    def set_session_weight(self, session_id: str, weight_kg: Optional[float]) -> bool:
+        """Set the load used in a past session. Scoped to this user — a
+        session id belonging to someone else is not found. Returns False
+        when no matching session exists."""
+        result = get_db().sessions.update_one(
+            {'_id': session_id, 'user_id': self.user_id},
+            {'$set': {'weight_kg': weight_kg}},
+        )
+        return result.matched_count > 0
 
     def get_sessions(self, exercise_id: str = None, limit: int = None) -> List[WorkoutSession]:
         query: dict = {'user_id': self.user_id}
@@ -142,13 +155,15 @@ def _trend(values: List[float]) -> str:
     return 'stable'
 
 
-def new_session(exercise_id: str, exercise_name: str) -> WorkoutSession:
+def new_session(exercise_id: str, exercise_name: str,
+                weight_kg: Optional[float] = None) -> WorkoutSession:
     return WorkoutSession(
         session_id=str(uuid.uuid4())[:8],
         date=datetime.now().isoformat(),
         exercise_id=exercise_id,
         exercise_name=exercise_name,
-        total_reps=0
+        total_reps=0,
+        weight_kg=weight_kg,
     )
 
 

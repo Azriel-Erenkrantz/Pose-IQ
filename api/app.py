@@ -39,6 +39,7 @@ from core.app_model import (
 from core.user import service
 from core.user import fake_data
 from core.recommendation.bridge import recommend_for_user
+from core.recommendation.overload import recommend_weights_for_user
 
 app = Flask(__name__)
 CORS(app)
@@ -209,6 +210,34 @@ def get_progress(user_id: str):
     return ok(service.get_progress(user_id))
 
 
+@app.put("/api/user/<user_id>/sessions/<session_id>/weight")
+@require_auth
+def set_session_weight(user_id: str, session_id: str):
+    body = request.get_json(silent=True) or {}
+    if "weight_kg" not in body:
+        return err("Missing field: weight_kg")
+    weight = body["weight_kg"]
+    if weight is not None:
+        try:
+            weight = float(weight)
+        except (TypeError, ValueError):
+            return err("weight_kg must be a number or null")
+        if not 0 <= weight <= 300:
+            return err("weight_kg must be between 0 and 300")
+    if not service.set_session_weight(user_id, session_id, weight):
+        return err("Session not found", 404)
+    return ok({"session_id": session_id, "weight_kg": weight})
+
+
+@app.get("/api/user/<user_id>/weights")
+@require_auth
+def get_weight_recommendations(user_id: str):
+    user = service.get_user(user_id)
+    if user is None:
+        return err("User not found", 404)
+    return ok(recommend_weights_for_user(user, service.get_history(user_id)))
+
+
 @app.get("/api/dashboard/<user_id>")
 @require_auth
 def get_dashboard(user_id: str):
@@ -227,6 +256,7 @@ def get_dashboard(user_id: str):
         recent_sessions  = sessions[:5],
         progress_summary = service.get_progress(user_id),
         injury_risk      = None,
+        weight_recommendations = recommend_weights_for_user(user, sessions),
     )
     return ok(dashboard)
 

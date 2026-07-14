@@ -62,7 +62,8 @@ def _load_exercise_model() -> ExerciseModel:
     return ExerciseModel()
 
 class PosePipeline:
-    def __init__(self, user: User, exercise_id: str = None):
+    def __init__(self, user: User, exercise_id: str = None,
+                 weight_kg: float = None):
         self.user = user
         logging.info(f"Welcome back, {user.name}! (Level: {user.fitness_level.value})")
 
@@ -90,7 +91,7 @@ class PosePipeline:
         logging.info(f"Exercise: {exercise.name}")
 
         self.history = WorkoutHistory(user_id=user.user_id)
-        self.session = new_session(exercise.id, exercise.name)
+        self.session = new_session(exercise.id, exercise.name, weight_kg=weight_kg)
         # Live ML phase classification: RF model when trained, Gaussian fallback
         # otherwise. The deterministic state machine stays the source of truth for
         # reps/transitions; the ML prediction is a parallel signal (debug overlay).
@@ -516,14 +517,23 @@ if __name__ == "__main__":
 
     exercise_id = sys.argv[1] if len(sys.argv) > 1 else None
     user_id     = sys.argv[2] if len(sys.argv) > 2 else None
+    weight_arg  = sys.argv[3] if len(sys.argv) > 3 else None
 
     if not user_id:
-        logging.error("Usage: python -m core.pipeline [exercise_id] <user_id>")
+        logging.error("Usage: python -m core.pipeline [exercise_id] <user_id> [weight_kg]")
         raise SystemExit(1)
+
+    weight_kg = None
+    if weight_arg is not None:
+        try:
+            weight_kg = float(weight_arg)
+        except ValueError:
+            logging.error(f"weight_kg must be a number, got '{weight_arg}'")
+            raise SystemExit(1)
 
     _user = user_service.get_user(user_id)
     if not _user:
         logging.error(f"User '{user_id}' not found. Create an account via the Pose-IQ app.")
         raise SystemExit(1)
 
-    PosePipeline(user=_user, exercise_id=exercise_id).run()
+    PosePipeline(user=_user, exercise_id=exercise_id, weight_kg=weight_kg).run()

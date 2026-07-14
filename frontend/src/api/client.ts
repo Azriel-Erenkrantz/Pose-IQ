@@ -62,6 +62,9 @@ export const userApi = {
     get<DashboardData>(`/api/dashboard/${id}`, token),
   updateHealth: (id: string, ratings: Record<string, number>, token: string) =>
     put<HealthStatus>(`/api/user/${id}/health`, ratings, token),
+  setSessionWeight: (id: string, sessionId: string, weightKg: number | null, token: string) =>
+    put<{ session_id: string; weight_kg: number | null }>(
+      `/api/user/${id}/sessions/${sessionId}/weight`, { weight_kg: weightKg }, token),
 };
 
 // ── Dev / fake-data (no auth needed, for UI development) ──────────────────────

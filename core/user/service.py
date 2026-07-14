@@ -98,16 +98,23 @@ def _user_to_doc(user: User, password_hash: str) -> Dict:
 
 # ── Auth ───────────────────────────────────────────────────────────────────────
 
+def _normalize_email(email: str) -> str:
+    # Emails are matched exactly in Mongo — normalize once at the boundary so
+    # "Demo@X.com " and "demo@x.com" are the same account.
+    return email.strip().lower()
+
+
 def register(req: RegisterRequest) -> Optional[AuthToken]:
     """Create a new user. Returns None if the email is already registered."""
     db = get_db()
-    if db.users.find_one({'email': req.email}):
+    email = _normalize_email(req.email)
+    if db.users.find_one({'email': email}):
         return None
 
     user = User(
         user_id             = str(uuid.uuid4()),
         name                = req.name,
-        email               = req.email,
+        email               = email,
         fitness_level       = req.fitness_level,
         trainer_personality = req.trainer_personality,
         target_goals        = req.target_goals,
@@ -122,7 +129,7 @@ def register(req: RegisterRequest) -> Optional[AuthToken]:
 def login(req: LoginRequest) -> Optional[AuthToken]:
     """Verify credentials and return a token. Returns None on mismatch."""
     db  = get_db()
-    doc = db.users.find_one({'email': req.email})
+    doc = db.users.find_one({'email': _normalize_email(req.email)})
     if doc is None or not _verify_password(req.password, doc['password_hash']):
         return None
     if not doc['password_hash'].startswith('scrypt$'):
@@ -225,7 +232,15 @@ def _session_to_live(session, user_id: str) -> LiveSessionOutput:
         reps             = reps,
         duration_seconds = session.duration_seconds,
         overall_score    = session.overall_score,
+        weight_kg        = session.weight_kg,
     )
+
+
+def set_session_weight(user_id: str, session_id: str, weight_kg: Optional[float]) -> bool:
+    """Record the load used in a past session. Returns False if the session
+    doesn't exist or belongs to another user."""
+    from core.user.workout_history import WorkoutHistory
+    return WorkoutHistory(user_id=user_id).set_session_weight(session_id, weight_kg)
 
 
 # ── Progress metrics ───────────────────────────────────────────────────────────

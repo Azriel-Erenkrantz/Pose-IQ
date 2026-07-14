@@ -7,6 +7,7 @@ import type {
   ExerciseRecommendation,
   LiveSessionOutput,
   ProgressMetrics,
+  WeightRecommendation,
 } from '../api/types';
 
 const REGIONS: BodyRegion[] = ['upper', 'core', 'lower'];
@@ -163,6 +164,16 @@ export default function DashboardScreen({ token, onLogout }: Props) {
           )
         }
 
+        {/* Weight recommendations */}
+        {data.weight_recommendations.length > 0 && (
+          <>
+            <h2 className="text-white font-bold text-lg mb-3 mt-2">Next Working Weight</h2>
+            {data.weight_recommendations.map(w => (
+              <WeightCard key={w.exercise_id} rec={w} />
+            ))}
+          </>
+        )}
+
         {/* Progress */}
         {data.progress_summary.length > 0 && (
           <>
@@ -175,7 +186,16 @@ export default function DashboardScreen({ token, onLogout }: Props) {
         {data.recent_sessions.length > 0 && (
           <>
             <h2 className="text-white font-bold text-lg mb-3 mt-2">Recent Sessions</h2>
-            {data.recent_sessions.map(s => <SessionCard key={s.session_id} session={s} />)}
+            {data.recent_sessions.map(s => (
+              <SessionCard
+                key={s.session_id}
+                session={s}
+                onSetWeight={async (weightKg) => {
+                  await userApi.setSessionWeight(token.user_id, s.session_id, weightKg, token.token);
+                  await load();
+                }}
+              />
+            ))}
           </>
         )}
       </div>
@@ -244,17 +264,82 @@ function ProgressCard({ metrics }: { metrics: ProgressMetrics }) {
   );
 }
 
-function SessionCard({ session }: { session: LiveSessionOutput }) {
+function WeightCard({ rec }: { rec: WeightRecommendation }) {
+  const weightLabel = rec.recommended_weight_kg > 0
+    ? `${rec.recommended_weight_kg % 1 === 0 ? rec.recommended_weight_kg.toFixed(0) : rec.recommended_weight_kg.toFixed(1)} kg`
+    : 'Bodyweight';
+  return (
+    <div className="bg-[#1a1a2e] border border-[#2a2a40] rounded-xl p-4 mb-2.5">
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-white font-semibold">{rec.exercise_name}</span>
+        <span className="text-[#60a5fa] font-extrabold text-xl">{weightLabel}</span>
+      </div>
+      <p className="text-[#666] text-xs">{rec.reasoning}</p>
+    </div>
+  );
+}
+
+function SessionCard({ session, onSetWeight }: {
+  session: LiveSessionOutput;
+  onSetWeight: (weightKg: number) => Promise<void>;
+}) {
   const dateStr = new Date(session.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft]     = useState(session.weight_kg?.toString() ?? '');
+  const [saving, setSaving]   = useState(false);
+
+  async function save() {
+    const parsed = parseFloat(draft);
+    if (isNaN(parsed) || parsed < 0 || parsed > 300) return;
+    setSaving(true);
+    try {
+      await onSetWeight(parsed);
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="bg-[#1a1a2e] border border-[#2a2a40] rounded-xl p-4 mb-2.5">
       <div className="flex items-center justify-between mb-1">
         <span className="text-white font-semibold">{session.exercise_name}</span>
         <span className="text-[#4ade80] font-extrabold text-xl">{session.overall_score.toFixed(0)}</span>
       </div>
-      <p className="text-[#666] text-xs mb-2">
-        {dateStr} · {session.reps.length} reps · {Math.round(session.duration_seconds)}s
-      </p>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-[#666] text-xs">
+          {dateStr} · {session.reps.length} reps · {Math.round(session.duration_seconds)}s
+        </p>
+        {editing ? (
+          <span className="flex items-center gap-1.5">
+            <input
+              type="number"
+              min={0}
+              max={300}
+              step={0.5}
+              value={draft}
+              onChange={e => setDraft(e.target.value)}
+              className="w-16 bg-[#0f0f1a] border border-[#2a2a40] rounded-lg px-2 py-0.5 text-white text-xs text-right"
+              autoFocus
+            />
+            <span className="text-[#555] text-xs">kg</span>
+            <button
+              onClick={save}
+              disabled={saving}
+              className="text-[#4ade80] text-xs font-semibold hover:text-white transition-colors disabled:opacity-50"
+            >
+              {saving ? '…' : 'Save'}
+            </button>
+          </span>
+        ) : (
+          <button
+            onClick={() => setEditing(true)}
+            className="text-[#60a5fa] text-xs font-semibold hover:text-white transition-colors"
+          >
+            {session.weight_kg != null ? `${session.weight_kg} kg` : '+ log weight'}
+          </button>
+        )}
+      </div>
       <ScoreBar score={session.overall_score} />
     </div>
   );

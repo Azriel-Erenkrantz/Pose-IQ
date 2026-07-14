@@ -146,6 +146,16 @@ class TestLogin(MongoMockMixin, unittest.TestCase):
         t2 = service.login(LoginRequest(email='login@x.com', password='correct'))
         self.assertNotEqual(t1.token, t2.token)
 
+    def test_email_case_and_whitespace_normalized(self):
+        token = service.login(LoginRequest(email='  Login@X.com ', password='correct'))
+        self.assertIsNotNone(token)
+        self.assertEqual(token.user_id, self.token.user_id)
+
+    def test_register_normalizes_email_too(self):
+        # Same address with different case is the same account
+        dup = service.register(_req(email='LOGIN@x.com '))
+        self.assertIsNone(dup)
+
 
 class TestVerifyToken(MongoMockMixin, unittest.TestCase):
 

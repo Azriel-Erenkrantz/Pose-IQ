@@ -243,6 +243,7 @@ class LiveSessionOutput:
     reps:             List[RepResult]
     duration_seconds: float
     overall_score:    float              # 0–100, avg form across all reps
+    weight_kg:        Optional[float] = None   # load used; None = not logged, 0 = bodyweight
 
     @property
     def total_reps(self) -> int:
@@ -412,6 +413,7 @@ class DashboardData:
     recent_sessions:  List[LiveSessionOutput]
     progress_summary: List[ProgressMetrics]
     injury_risk:      Optional[InjuryRisk]  = None
+    weight_recommendations: List[WeightRecommendation] = field(default_factory=list)
 
 
 @dataclass
