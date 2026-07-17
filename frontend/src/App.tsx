@@ -65,7 +65,7 @@ function Shell() {
       <div className="flex flex-col min-h-screen">
         <NavBar active={tab} onNavigate={setTab} onLogout={handleLogout} />
         {tab === 'home'    && <DashboardScreen token={token} onNavigate={setTab} />}
-        {tab === 'workout' && <WorkoutScreen />}
+        {tab === 'workout' && <WorkoutScreen token={token} onNavigate={setTab} />}
         {tab === 'history' && <HistoryScreen token={token} />}
       </div>
     );

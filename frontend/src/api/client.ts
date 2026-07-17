@@ -1,6 +1,6 @@
 import type {
-  AuthToken, DashboardData, HealthStatus, LiveSessionOutput,
-  ProfileSetupOptions, ProgressMetrics, User,
+  AuthToken, DashboardData, ExerciseDef, HealthStatus, LiveSessionOutput,
+  ProfileSetupOptions, ProgressMetrics, RepPayload, SavedSession, User,
 } from './types';
 
 // iOS Simulator can reach the Mac's localhost directly.
@@ -32,6 +32,17 @@ async function post<T>(path: string, body: unknown): Promise<T> {
 async function put<T>(path: string, body: unknown, token: string): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     method: 'PUT',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify(body),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+  return data as T;
+}
+
+async function postAuth<T>(path: string, body: unknown, token: string): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify(body),
   });
@@ -72,6 +83,18 @@ export const userApi = {
   setSessionWeight: (id: string, sessionId: string, weightKg: number | null, token: string) =>
     put<{ session_id: string; weight_kg: number | null }>(
       `/api/user/${id}/sessions/${sessionId}/weight`, { weight_kg: weightKg }, token),
+  getExercises: () => get<ExerciseDef[]>('/api/exercises'),
+  saveWorkoutSession: (
+    id: string,
+    body: {
+      exercise_id: string;
+      exercise_name?: string;
+      duration_seconds: number;
+      weight_kg?: number | null;
+      reps: RepPayload[];
+    },
+    token: string,
+  ) => postAuth<SavedSession>(`/api/user/${id}/sessions`, body, token),
 };
 
 // ── Dev / fake-data (no auth needed, for UI development) ──────────────────────

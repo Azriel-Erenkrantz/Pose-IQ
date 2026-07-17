@@ -111,6 +111,51 @@ export interface AuthToken {
   expires_at: string;
 }
 
+// ── Exercise model for the in-browser state machine (GET /api/exercises) ──
+
+export interface AngleRangeDef {
+  min: number;
+  max: number;
+  corrections: Record<string, string>;   // too_low / too_high / severity
+  mean: number | null;
+  std: number | null;
+}
+
+export interface PhaseDef {
+  name: string;
+  order: number;
+  angles: Record<string, AngleRangeDef>;
+  instruction: string;
+  is_initial: boolean;
+  diagnostic_joints: string[];
+  motion_direction: 'stable' | 'increasing' | 'decreasing';
+}
+
+export interface ExerciseDef {
+  id: string;
+  name: string;
+  description: string;
+  muscle_groups: string[];
+  phases: PhaseDef[];
+  primary_joints: string[];
+  mandatory_start_joints: string[];
+  global_constraints: Record<string, AngleRangeDef>;
+  ready: boolean;   // trainer has written angle ranges — state machine can run
+}
+
+export interface RepPayload {
+  rep_number: number;
+  error_joints: string[];
+  form_score: number;
+}
+
+export interface SavedSession {
+  session_id: string;
+  total_reps: number;
+  overall_score: number;
+  weight_kg: number | null;
+}
+
 export interface ProfileSetupOptions {
   fitness_levels: FitnessLevel[];
   trainer_personalities: TrainerPersonality[];

@@ -243,6 +243,42 @@ def set_session_weight(user_id: str, session_id: str, weight_kg: Optional[float]
     return WorkoutHistory(user_id=user_id).set_session_weight(session_id, weight_kg)
 
 
+def save_workout_session(
+    user_id: str,
+    exercise_id: str,
+    exercise_name: Optional[str],
+    duration_seconds: float,
+    weight_kg: Optional[float],
+    reps: List[Dict],
+) -> Optional['WorkoutSession']:  # noqa: F821 — forward ref, imported lazily
+    """Persist a completed workout reported by a client (the web live-workout
+    screen). Mirrors what core/pipeline.py saves at the end of a session.
+    Returns the saved session (with computed overall score), or None if the
+    user doesn't exist."""
+    db = get_db()
+    if not db.users.find_one({'_id': user_id}):
+        return None
+
+    if not exercise_name:
+        doc = db.exercises.find_one({'id': exercise_id})
+        exercise_name = doc['name'] if doc else exercise_id
+
+    from core.user.workout_history import RepRecord, WorkoutHistory, new_session
+    session = new_session(exercise_id, exercise_name, weight_kg=weight_kg)
+    session.rep_records = [
+        RepRecord(
+            rep_number   = r['rep_number'],
+            error_joints = list(r.get('error_joints', [])),
+            form_score   = r['form_score'],
+        )
+        for r in reps
+    ]
+    session.total_reps = len(session.rep_records)
+    session.duration_seconds = duration_seconds
+    WorkoutHistory(user_id=user_id).save_session(session)
+    return session
+
+
 # ── Progress metrics ───────────────────────────────────────────────────────────
 
 def get_progress(user_id: str) -> List[ProgressMetrics]:

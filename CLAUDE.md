@@ -27,8 +27,14 @@ code, comments, and commits are in English.
 - **Clients**: `frontend/` React+Vite (works against the real API) — bilingual
   he/en with RTL (`src/i18n.tsx`, no deps), light "clinical" design system
   (tokens in `index.css`: paper bg, black primary buttons, pine-green accent),
-  top-nav tabs: Home / Workout (placeholder) / History.
+  top-nav tabs: Home / Workout / History.
   `mobile/` Expo RN scaffold (fake data, frozen — web won over RN).
+- **In-browser live workout** (`frontend/src/pose/` + WorkoutScreen):
+  MediaPipe Tasks JS (pose_landmarker_lite from Google CDN, GPU) →
+  `angles.ts` / `stateMachine.ts` / `postureRules.ts` are faithful TS ports
+  of the Python pipeline logic, driven by the same Mongo ranges served by
+  `GET /api/exercises`; sessions saved via `POST /api/user/<id>/sessions`.
+  Camera/model failures surface distinct errors; video is mirrored (selfie).
 
 ## Commands
 
@@ -104,7 +110,9 @@ embedded in the dashboard (`weight_recommendations`).
 4. **More labeled videos** → accuracy curve for the report. Rep-level metric
    ~~built~~ (core/ml/reps.py); filming protocol written
    (docs/filming-protocol-he.md) — waiting on user to film
-5. Web client with in-browser pose (MediaPipe Tasks JS) — decided web over RN
+5. ~~Web client with in-browser pose (MediaPipe Tasks JS)~~ (done, 2026-07-17 —
+   live camera → angles → state machine → reps/violations → save session;
+   verified working end-to-end by the user)
 6. ~~Weight tracking + progressive-overload recommendations~~ (done,
    overload.py + API + frontend, 2026-07-14)
 7. Cloud: Mongo Atlas + API on Render/Railway + frontend on Vercel + CI

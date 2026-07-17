@@ -198,10 +198,82 @@ def update_health(user_id: str):
     return ok(health)
 
 
+@app.get("/api/exercises")
+def list_exercises():
+    """Full exercise model for clients that run the state machine locally
+    (the web live-workout screen): phases with measured angle ranges +
+    corrections, global constraints, mandatory start joints.
+
+    `ready` is False until the trainer has written angle ranges to Mongo —
+    the state machine can't track phases without them."""
+    from core.exercise.exercise_model import ExerciseModel
+    try:
+        from core.db import get_db
+        model = ExerciseModel.from_mongo(get_db())
+        if not model.list_exercises():
+            model = ExerciseModel()
+    except Exception:
+        model = ExerciseModel()
+
+    out = []
+    for ex_id in model.list_exercises():
+        ex = model.get_exercise(ex_id)
+        data = _serialize(ex)
+        data["ready"] = bool(ex.phases) and all(ph.angles for ph in ex.phases)
+        out.append(data)
+    return ok(out)
+
+
 @app.get("/api/user/<user_id>/history")
 @require_auth
 def get_history(user_id: str):
     return ok(service.get_history(user_id))
+
+
+@app.post("/api/user/<user_id>/sessions")
+@require_auth
+def create_session(user_id: str):
+    """Save a workout completed in a client (web live-workout screen)."""
+    body = request.get_json(silent=True) or {}
+    exercise_id = body.get("exercise_id")
+    reps = body.get("reps")
+    if not exercise_id or not isinstance(reps, list) or not reps:
+        return err("exercise_id and a non-empty reps list are required")
+
+    weight = body.get("weight_kg")
+    if weight is not None:
+        try:
+            weight = float(weight)
+        except (TypeError, ValueError):
+            return err("weight_kg must be a number or null")
+        if not 0 <= weight <= 300:
+            return err("weight_kg must be between 0 and 300")
+
+    try:
+        duration = float(body.get("duration_seconds", 0) or 0)
+        rep_records = [
+            {
+                "rep_number":   int(r["rep_number"]),
+                "error_joints": list(r.get("error_joints", [])),
+                "form_score":   float(r["form_score"]),
+            }
+            for r in reps
+        ]
+    except (KeyError, TypeError, ValueError) as e:
+        return err(f"Invalid reps payload: {e}")
+
+    session = service.save_workout_session(
+        user_id, exercise_id, body.get("exercise_name"),
+        duration, weight, rep_records,
+    )
+    if session is None:
+        return err("User not found", 404)
+    return ok({
+        "session_id":    session.session_id,
+        "total_reps":    session.total_reps,
+        "overall_score": session.overall_score,
+        "weight_kg":     session.weight_kg,
+    }, 201)
 
 
 @app.get("/api/user/<user_id>/progress")

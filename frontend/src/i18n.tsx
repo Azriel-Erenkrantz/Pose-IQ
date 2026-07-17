@@ -105,6 +105,34 @@ interface Dict {
   meanwhileText: string;
   supportedExercises: string;
   exerciseNames: Record<string, string>;
+
+  // Live workout
+  chooseExercise: string;
+  startWorkout: string;
+  cameraHint: string;
+  notReadyHint: string;
+  loadingModel: string;
+  cameraError: string;
+  modelError: string;
+  getIntoPosition: string;
+  startingPosition: string;
+  endWorkout: string;
+  goodForm: string;
+  formLabel: string;
+  timeLabel: string;
+  repFlash: (n: number) => string;
+  goFlash: string;
+  summaryTitle: string;
+  saveSession: string;
+  savingSession: string;
+  discard: string;
+  sessionSaved: string;
+  weightUsedLabel: string;
+  noRepsYet: string;
+  voiceLabel: string;
+  adjustStraighten: string;
+  adjustBend: string;
+  jointLabels: Record<string, string>;
 }
 
 const en: Dict = {
@@ -216,6 +244,40 @@ const en: Dict = {
     squat: 'Squat', lunge: 'Lunge',
     biceps_curl: 'Biceps Curl', shoulder_press: 'Shoulder Press',
   },
+
+  chooseExercise: 'Choose an exercise',
+  startWorkout: 'Start workout',
+  cameraHint: 'Allow camera access when prompted. Step back so your whole body is in frame — a side view works best.',
+  notReadyHint: 'Angle ranges missing — run the trainer on the server first',
+  loadingModel: 'Loading pose model…',
+  cameraError: 'Camera blocked. Click the camera icon in the address bar, allow access, and try again.',
+  modelError: 'Could not load the pose model — check your internet connection and try again.',
+  getIntoPosition: 'Get into starting position',
+  startingPosition: 'Starting position',
+  endWorkout: 'End workout',
+  goodForm: 'Good form — keep it up',
+  formLabel: 'Form',
+  timeLabel: 'Time',
+  repFlash: n => `REP ${n}`,
+  goFlash: 'GO!',
+  summaryTitle: 'Workout summary',
+  saveSession: 'Save session',
+  savingSession: 'Saving…',
+  discard: 'Discard',
+  sessionSaved: 'Saved to your history',
+  weightUsedLabel: 'Weight used (kg, optional)',
+  noRepsYet: 'No completed reps — nothing to save.',
+  voiceLabel: 'Voice',
+  adjustStraighten: 'straighten',
+  adjustBend: 'bend more',
+  jointLabels: {
+    right_knee: 'Right knee', left_knee: 'Left knee',
+    right_hip: 'Right hip', left_hip: 'Left hip',
+    right_elbow: 'Right elbow', left_elbow: 'Left elbow',
+    right_shoulder: 'Right shoulder', left_shoulder: 'Left shoulder',
+    right_ankle: 'Right ankle', left_ankle: 'Left ankle',
+    spine: 'Back',
+  },
 };
 
 const he: Dict = {
@@ -325,6 +387,40 @@ const he: Dict = {
   supportedExercises: 'תרגילים נתמכים',
   exerciseNames: {
     squat: 'סקוואט', lunge: 'מכרעים', biceps_curl: 'כפיפת מרפקים', shoulder_press: 'לחיצת כתפיים',
+  },
+
+  chooseExercise: 'בחרו תרגיל',
+  startWorkout: 'התחלת אימון',
+  cameraHint: 'אשרו גישה למצלמה כשתתבקשו. התרחקו כך שכל הגוף בפריים — מבט צד עובד הכי טוב.',
+  notReadyHint: 'חסרים טווחי זוויות — יש להריץ קודם את המאמן בשרת',
+  loadingModel: 'טוען מודל זיהוי תנועה…',
+  cameraError: 'המצלמה חסומה. לחצו על אייקון המצלמה בשורת הכתובת, אשרו גישה ונסו שוב.',
+  modelError: 'טעינת מודל זיהוי התנועה נכשלה — בדקו חיבור אינטרנט ונסו שוב.',
+  getIntoPosition: 'היכנסו לעמדת הפתיחה',
+  startingPosition: 'עמדת פתיחה',
+  endWorkout: 'סיום אימון',
+  goodForm: 'טכניקה טובה — המשיכו כך',
+  formLabel: 'טכניקה',
+  timeLabel: 'זמן',
+  repFlash: n => `חזרה ${n}`,
+  goFlash: 'קדימה!',
+  summaryTitle: 'סיכום אימון',
+  saveSession: 'שמירת אימון',
+  savingSession: 'שומר…',
+  discard: 'ביטול',
+  sessionSaved: 'נשמר בהיסטוריה שלך',
+  weightUsedLabel: 'משקל בשימוש (ק"ג, לא חובה)',
+  noRepsYet: 'לא הושלמו חזרות — אין מה לשמור.',
+  voiceLabel: 'קול',
+  adjustStraighten: 'ליישר',
+  adjustBend: 'לכופף יותר',
+  jointLabels: {
+    right_knee: 'ברך ימין', left_knee: 'ברך שמאל',
+    right_hip: 'ירך ימין', left_hip: 'ירך שמאל',
+    right_elbow: 'מרפק ימין', left_elbow: 'מרפק שמאל',
+    right_shoulder: 'כתף ימין', left_shoulder: 'כתף שמאל',
+    right_ankle: 'קרסול ימין', left_ankle: 'קרסול שמאל',
+    spine: 'גב',
   },
 };
 
