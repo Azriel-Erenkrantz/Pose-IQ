@@ -91,6 +91,7 @@ class WorkoutHistory:
         )
         return result.matched_count > 0
 
+
     def get_sessions(self, exercise_id: str = None, limit: int = None) -> List[WorkoutSession]:
         query: dict = {'user_id': self.user_id}
         if exercise_id:

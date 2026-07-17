@@ -1,4 +1,7 @@
-import type { AuthToken, DashboardData, HealthStatus, ProfileSetupOptions, User } from './types';
+import type {
+  AuthToken, DashboardData, HealthStatus, LiveSessionOutput,
+  ProfileSetupOptions, ProgressMetrics, User,
+} from './types';
 
 // iOS Simulator can reach the Mac's localhost directly.
 // Physical device: replace with your Mac's local IP (e.g. http://192.168.x.x:5001)
@@ -60,6 +63,10 @@ export const userApi = {
     put<User>(`/api/user/${id}`, body, token),
   getDashboard: (id: string, token: string) =>
     get<DashboardData>(`/api/dashboard/${id}`, token),
+  getHistory: (id: string, token: string) =>
+    get<LiveSessionOutput[]>(`/api/user/${id}/history`, token),
+  getProgress: (id: string, token: string) =>
+    get<ProgressMetrics[]>(`/api/user/${id}/progress`, token),
   updateHealth: (id: string, ratings: Record<string, number>, token: string) =>
     put<HealthStatus>(`/api/user/${id}/health`, ratings, token),
   setSessionWeight: (id: string, sessionId: string, weightKg: number | null, token: string) =>

@@ -1,12 +1,31 @@
 @import "tailwindcss";
 
+/* ── Pose-IQ design system ───────────────────────────────────────────────────
+   Light, clinical-professional product language: warm paper background,
+   white hairline panels, near-black ink, solid black primary buttons.
+   One restrained accent (pine green) reserved for data and emphasis.
+   Heebo carries both Hebrew and Latin. */
+:root {
+  --bg:      #f7f7f5;
+  --panel:   #ffffff;
+  --line:    #e6e5e1;
+  --line-hi: #cfceca;
+  --ink:     #171716;
+  --dim:     #6f6e68;
+  --faint:   #a09f98;
+  --accent:  #0e7a4a;
+  --good:    #0e7a4a;
+  --warn:    #b45309;
+  --bad:     #d92d20;
+}
+
 *, *::before, *::after { box-sizing: border-box; }
 
 body {
   margin: 0;
-  background: #0f0f1a;
-  color: #fff;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Heebo', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -19,23 +38,98 @@ body {
 input, button, textarea { font-family: inherit; }
 
 ::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: #0f0f1a; }
-::-webkit-scrollbar-thumb { background: #2a2a40; border-radius: 3px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: var(--line-hi); border-radius: 3px; }
+
+/* ── Type system ── */
+
+.label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.num { font-variant-numeric: tabular-nums; }
+
+.text-accent { color: var(--accent); }
+
+/* ── Surfaces ── */
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(23, 23, 22, .04);
+}
+
+.rows > * + * { border-top: 1px solid var(--line); }
+
+/* ── Controls ── */
+
+.btn {
+  background: var(--ink);
+  color: #fff;
+  font-weight: 700;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .12s ease;
+}
+.btn:hover:not(:disabled) { background: #000; }
+.btn:disabled { opacity: .5; cursor: default; }
+
+.btn-ghost {
+  background: var(--panel);
+  color: var(--dim);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: color .12s ease, border-color .12s ease;
+}
+.btn-ghost:hover { color: var(--ink); border-color: var(--line-hi); }
+
+.field {
+  width: 100%;
+  background: var(--panel);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: .8rem 1rem;
+  font-size: 1rem;
+}
+.field:focus { outline: none; border-color: var(--ink); }
+.field::placeholder { color: var(--faint); }
+
+/* Selectable option tile (register flow) */
+.tile {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color .12s ease, background .12s ease;
+}
+.tile:hover { border-color: var(--line-hi); }
+.tile.selected {
+  border-color: var(--ink);
+  background: #fcfcfb;
+}
 
 .spinner {
-  width: 36px;
-  height: 36px;
-  border: 3px solid #2a2a40;
-  border-top-color: #4ade80;
+  width: 32px;
+  height: 32px;
+  border: 3px solid var(--line);
+  border-top-color: var(--ink);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }
 
 .spinner-sm {
-  width: 18px;
-  height: 18px;
-  border: 2px solid #2a2a40;
-  border-top-color: #0f0f1a;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255,255,255,.35);
+  border-top-color: #fff;
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }

@@ -1,15 +1,29 @@
 import { useEffect, useState } from 'react';
 import type { AuthToken } from './api/types';
+import NavBar from './components/NavBar';
+import type { Tab } from './components/NavBar';
+import { LanguageProvider } from './i18n';
 import DashboardScreen from './screens/DashboardScreen';
+import HistoryScreen from './screens/HistoryScreen';
 import LoginScreen from './screens/LoginScreen';
 import RegisterScreen from './screens/RegisterScreen';
+import WorkoutScreen from './screens/WorkoutScreen';
 
 const TOKEN_KEY = 'pose_iq_token';
 
-type Screen = 'loading' | 'login' | 'register' | 'dashboard';
+type Screen = 'loading' | 'login' | 'register' | 'app';
 
 export default function App() {
+  return (
+    <LanguageProvider>
+      <Shell />
+    </LanguageProvider>
+  );
+}
+
+function Shell() {
   const [screen, setScreen] = useState<Screen>('loading');
+  const [tab, setTab]       = useState<Tab>('home');
   const [token, setToken]   = useState<AuthToken | null>(null);
 
   useEffect(() => {
@@ -18,23 +32,18 @@ export default function App() {
       const saved: AuthToken = JSON.parse(raw);
       if (new Date(saved.expires_at) > new Date()) {
         setToken(saved);
-        setScreen('dashboard');
+        setScreen('app');
         return;
       }
     }
     setScreen('login');
   }, []);
 
-  function handleLogin(t: AuthToken) {
+  function handleAuth(t: AuthToken) {
     localStorage.setItem(TOKEN_KEY, JSON.stringify(t));
     setToken(t);
-    setScreen('dashboard');
-  }
-
-  function handleRegister(t: AuthToken) {
-    localStorage.setItem(TOKEN_KEY, JSON.stringify(t));
-    setToken(t);
-    setScreen('dashboard');
+    setTab('home');
+    setScreen('app');
   }
 
   function handleLogout() {
@@ -45,19 +54,26 @@ export default function App() {
 
   if (screen === 'loading') {
     return (
-      <div className="flex flex-1 items-center justify-center bg-[#0f0f1a]">
+      <div className="flex flex-1 items-center justify-center">
         <div className="spinner" />
       </div>
     );
   }
 
-  if (screen === 'dashboard' && token) {
-    return <DashboardScreen token={token} onLogout={handleLogout} />;
+  if (screen === 'app' && token) {
+    return (
+      <div className="flex flex-col min-h-screen">
+        <NavBar active={tab} onNavigate={setTab} onLogout={handleLogout} />
+        {tab === 'home'    && <DashboardScreen token={token} onNavigate={setTab} />}
+        {tab === 'workout' && <WorkoutScreen />}
+        {tab === 'history' && <HistoryScreen token={token} />}
+      </div>
+    );
   }
 
   if (screen === 'register') {
-    return <RegisterScreen onRegister={handleRegister} onGoToLogin={() => setScreen('login')} />;
+    return <RegisterScreen onRegister={handleAuth} onGoToLogin={() => setScreen('login')} />;
   }
 
-  return <LoginScreen onLogin={handleLogin} onGoToRegister={() => setScreen('register')} />;
+  return <LoginScreen onLogin={handleAuth} onGoToRegister={() => setScreen('register')} />;
 }

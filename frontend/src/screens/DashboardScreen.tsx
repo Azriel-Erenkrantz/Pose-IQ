@@ -4,21 +4,22 @@ import type {
   AuthToken,
   BodyRegion,
   DashboardData,
-  ExerciseRecommendation,
   LiveSessionOutput,
-  ProgressMetrics,
-  WeightRecommendation,
 } from '../api/types';
+import ScoreRing from '../components/ScoreRing';
+import SessionRow from '../components/SessionCard';
+import type { Tab } from '../components/NavBar';
+import { useI18n } from '../i18n';
 
 const REGIONS: BodyRegion[] = ['upper', 'core', 'lower'];
-const REGION_LABEL: Record<BodyRegion, string> = { upper: 'Upper Body', core: 'Core', lower: 'Lower Body' };
 
 interface Props {
   token: AuthToken;
-  onLogout: () => void;
+  onNavigate: (tab: Tab) => void;
 }
 
-export default function DashboardScreen({ token, onLogout }: Props) {
+export default function DashboardScreen({ token, onNavigate }: Props) {
+  const { t, exerciseName } = useI18n();
   const [data, setData]         = useState<DashboardData | null>(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
@@ -34,12 +35,12 @@ export default function DashboardScreen({ token, onLogout }: Props) {
       setData(dashboard);
       const r = dashboard.health_status.ratings;
       setRatings({ upper: r.upper ?? 5, core: r.core ?? 5, lower: r.lower ?? 5 });
-    } catch (e: any) {
-      setError('Could not load dashboard. Is the server running?');
+    } catch {
+      setError(t.couldNotLoad);
     } finally {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, t]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -59,7 +60,7 @@ export default function DashboardScreen({ token, onLogout }: Props) {
 
   if (loading) {
     return (
-      <div className="flex flex-1 items-center justify-center bg-[#0f0f1a]">
+      <div className="flex flex-1 items-center justify-center">
         <div className="spinner" />
       </div>
     );
@@ -67,127 +68,190 @@ export default function DashboardScreen({ token, onLogout }: Props) {
 
   if (error || !data) {
     return (
-      <div className="flex flex-1 items-center justify-center bg-[#0f0f1a] px-8">
-        <p className="text-[#ff6b6b] text-center">{error || 'No data.'}</p>
+      <div className="flex flex-1 items-center justify-center px-8">
+        <p className="text-[#d92d20] text-center">{error || t.couldNotLoad}</p>
       </div>
     );
   }
 
   const hour = new Date().getHours();
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+  const greeting = hour < 12 ? t.greetingMorning : hour < 17 ? t.greetingAfternoon : t.greetingEvening;
 
   return (
-    <div className="min-h-screen bg-[#0f0f1a]">
-      <div className="max-w-2xl mx-auto px-5 py-6 pb-16">
+    <div className="max-w-2xl w-full mx-auto px-5 py-7 pb-16">
 
-        {/* Header */}
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <p className="text-[#888] text-sm">{greeting},</p>
-            <h1 className="text-3xl font-extrabold text-white mt-1">{data.user.name}</h1>
+      {/* Header */}
+      <div className="flex items-end justify-between mb-7">
+        <div>
+          <p className="label">{greeting}</p>
+          <h1 className="text-4xl font-black text-[#171716] leading-tight">{data.user.name}</h1>
+        </div>
+        <span className="label pb-1.5">{t.fitnessLabels[data.user.fitness_level]}</span>
+      </div>
+
+      {/* Stat strip */}
+      <div className="panel flex mb-8">
+        <Stat value={String(data.recent_sessions.length)} caption={`${t.statSessions} · ${t.statRecent}`} />
+        <div className="w-px bg-[#e6e5e1] my-3" />
+        <div className="flex-1 px-4 py-4 flex items-center gap-3">
+          {avgScoreNum(data.recent_sessions) !== null
+            ? <ScoreRing score={avgScoreNum(data.recent_sessions)!} size={44} />
+            : <p className="text-[#171716] font-black text-3xl num leading-none">—</p>}
+          <p className="label">{t.statAvgScore}<br />{t.statOutOf}</p>
+        </div>
+        <div className="w-px bg-[#e6e5e1] my-3" />
+        <Stat value={String(data.progress_summary.length)} caption={`${t.statExercises} · ${t.statTracked}`} />
+      </div>
+
+      {/* Injury risk */}
+      {data.injury_risk && data.injury_risk.overall_risk >= 0.4 && (
+        <div className="panel border-[#d92d2055] p-4 mb-8">
+          <p className="text-[#d92d20] font-bold text-sm mb-1">{t.injuryRisk}</p>
+          <p className="text-[#6f6e68] text-sm">{data.injury_risk.recommendation}</p>
+        </div>
+      )}
+
+      {/* Health status */}
+      <p className="label mb-2.5">{t.howDoYouFeel}</p>
+      <div className="panel p-4 mb-8">
+        {REGIONS.map(region => (
+          <div key={region} className="flex items-center justify-between gap-4 mb-3.5 last:mb-0">
+            <span className="text-[#6f6e68] text-sm font-bold w-32 flex-shrink-0">{t.regionLabels[region]}</span>
+            <div className="flex flex-1 max-w-[240px] border border-[#e6e5e1] rounded-lg overflow-hidden" dir="ltr">
+              {[1, 2, 3, 4, 5].map(n => {
+                const selected = ratings[region] === n;
+                return (
+                  <button
+                    key={n}
+                    onClick={() => setRatings(r => ({ ...r, [region]: n }))}
+                    className={`flex-1 py-1.5 text-sm font-bold num transition-colors border-l first:border-l-0 border-[#e6e5e1] ${
+                      selected ? 'bg-[#171716] text-white' : 'text-[#a09f98] hover:text-[#171716]'
+                    }`}
+                  >
+                    {n}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-          <div className="flex flex-col items-end gap-2">
-            <span className="bg-[#1a1a2e] border border-[#2a2a40] rounded-full px-4 py-1 text-[#4ade80] text-xs font-semibold capitalize">
-              {data.user.fitness_level}
-            </span>
-            <button onClick={onLogout} className="text-[#555] text-xs hover:text-white transition-colors">
-              Logout
+        ))}
+        <button
+          onClick={saveHealth}
+          disabled={savingHealth}
+          className="btn mt-4 w-full text-sm py-2.5 flex items-center justify-center gap-2"
+        >
+          {savingHealth
+            ? <><span className="spinner-sm" /> {t.saving}</>
+            : healthSaved ? t.savedBang : t.saveHealth}
+        </button>
+      </div>
+
+      {/* Recommendations */}
+      <p className="label mb-2.5">{t.recommendedForYou}</p>
+      {data.recommendations.length > 0 ? (
+        <div className="panel rows mb-8">
+          {data.recommendations.slice(0, 5).map(r => {
+            const scenarioLabel =
+              r.scenario === 'all_healthy' ? t.scenarioHealthy :
+              r.scenario === 'target_healthy_adjacent_not' ? t.scenarioTakeItEasy : t.scenarioRecovery;
+            return (
+              <div key={r.exercise.exercise_id} className="flex items-center justify-between px-4 py-3.5 gap-3">
+                <div className="min-w-0">
+                  <p className="text-[#171716] font-bold text-[15px] leading-tight">
+                    {exerciseName(r.exercise.exercise_id, r.exercise.name)}
+                  </p>
+                  <p className="text-[#a09f98] text-xs mt-0.5 truncate">{r.reason}</p>
+                </div>
+                <div className="text-end flex-shrink-0">
+                  <p className="text-accent font-black text-2xl num leading-none">{(r.score * 100).toFixed(0)}</p>
+                  <p className="label mt-1">{scenarioLabel}</p>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="panel p-4 mb-8">
+          <p className="text-[#6f6e68] text-sm font-bold mb-1">{t.noRecsTitle}</p>
+          <p className="text-[#a09f98] text-xs">{t.noRecsHint}</p>
+        </div>
+      )}
+
+      {/* Weight recommendations */}
+      {data.weight_recommendations.length > 0 && (
+        <>
+          <p className="label mb-2.5">{t.nextWeight}</p>
+          <div className="panel rows mb-8">
+            {data.weight_recommendations.map(w => {
+              const weightLabel = w.recommended_weight_kg > 0
+                ? `${w.recommended_weight_kg % 1 === 0 ? w.recommended_weight_kg.toFixed(0) : w.recommended_weight_kg.toFixed(1)}`
+                : null;
+              return (
+                <div key={w.exercise_id} className="flex items-center justify-between px-4 py-3.5 gap-3">
+                  <div className="min-w-0">
+                    <p className="text-[#171716] font-bold text-[15px] leading-tight">
+                      {exerciseName(w.exercise_id, w.exercise_name)}
+                    </p>
+                    <p className="text-[#a09f98] text-xs mt-0.5">{w.reasoning}</p>
+                  </div>
+                  <div className="text-end flex-shrink-0">
+                    {weightLabel ? (
+                      <p className="text-[#171716] font-black text-2xl num leading-none">
+                        {weightLabel} <span className="label">{t.kg}</span>
+                      </p>
+                    ) : (
+                      <p className="text-[#171716] font-black text-sm leading-none">{t.bodyweight}</p>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+
+      {/* Progress */}
+      {data.progress_summary.length > 0 && (
+        <>
+          <p className="label mb-2.5">{t.yourProgress}</p>
+          <div className="panel rows mb-8">
+            {data.progress_summary.map(m => (
+              <div key={m.exercise_id} className="flex items-center justify-between px-4 py-3.5 gap-3">
+                <div className="min-w-0">
+                  <p className="text-[#171716] font-bold text-[15px] leading-tight">
+                    {exerciseName(m.exercise_id, m.exercise_name)}
+                  </p>
+                  <p className="text-[#a09f98] text-xs mt-0.5 num">
+                    {m.total_sessions} {t.sessionsWord} · {m.total_reps} {t.repsWord} · {t.trendLabels[m.score_trend]}
+                  </p>
+                  {m.weak_joints.length > 0 && (
+                    <p className="text-[#b45309] text-xs mt-0.5 capitalize">
+                      {t.weakPrefix}: {m.weak_joints.map(([j]) => j.replace(/_/g, ' ')).join(', ')}
+                    </p>
+                  )}
+                </div>
+                <ScoreRing score={m.avg_score_recent} />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {/* Recent sessions */}
+      {data.recent_sessions.length > 0 && (
+        <>
+          <div className="flex items-center justify-between mb-2.5">
+            <p className="label">{t.recentSessions}</p>
+            <button
+              onClick={() => onNavigate('history')}
+              className="text-accent text-xs font-bold hover:text-[#171716] transition-colors"
+            >
+              {t.viewAll}
             </button>
           </div>
-        </div>
-
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          <StatCard label="Sessions"  value={String(data.recent_sessions.length)} unit="recent"  color="#4ade80" />
-          <StatCard label="Avg Score" value={avgScore(data.recent_sessions)}       unit="/ 100"   color="#60a5fa" />
-          <StatCard label="Exercises" value={String(data.progress_summary.length)} unit="tracked" color="#f59e0b" />
-        </div>
-
-        {/* Injury risk */}
-        {data.injury_risk && data.injury_risk.overall_risk >= 0.4 && (
-          <div className="bg-[#2a1a1a] border border-[#ff6b6b44] rounded-xl p-4 mb-6">
-            <p className="text-[#ff6b6b] font-bold text-sm mb-1">Injury risk detected</p>
-            <p className="text-[#ccc] text-sm">{data.injury_risk.recommendation}</p>
-          </div>
-        )}
-
-        {/* Health status */}
-        <h2 className="text-white font-bold text-lg mb-3">How do you feel today?</h2>
-        <div className="bg-[#1a1a2e] border border-[#2a2a40] rounded-xl p-4 mb-6">
-          {REGIONS.map(region => (
-            <div key={region} className="flex items-center justify-between mb-4 last:mb-0">
-              <span className="text-[#aaa] text-sm font-semibold w-28">{REGION_LABEL[region]}</span>
-              <div className="flex gap-2">
-                {[1, 2, 3, 4, 5].map(n => {
-                  const selected = ratings[region] === n;
-                  const color = n <= 2 ? '#ff6b6b' : n === 3 ? '#f59e0b' : '#4ade80';
-                  return (
-                    <button
-                      key={n}
-                      onClick={() => setRatings(r => ({ ...r, [region]: n }))}
-                      className="w-9 h-9 rounded-full border text-sm font-semibold transition-all"
-                      style={{
-                        borderColor: selected ? color : '#2a2a40',
-                        backgroundColor: selected ? color + '22' : '#0f0f1a',
-                        color: selected ? color : '#555',
-                      }}
-                    >
-                      {n}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-          <button
-            onClick={saveHealth}
-            disabled={savingHealth}
-            className="mt-4 w-full bg-[#4ade8022] border border-[#4ade8066] text-[#4ade80] text-sm font-semibold rounded-xl py-2.5 hover:bg-[#4ade8033] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            {savingHealth
-              ? <><span className="spinner-sm" /> Saving…</>
-              : healthSaved ? 'Saved!' : 'Save & refresh recommendations'}
-          </button>
-        </div>
-
-        {/* Recommendations */}
-        <h2 className="text-white font-bold text-lg mb-3">Recommended for you</h2>
-        {data.recommendations.length > 0
-          ? data.recommendations.slice(0, 5).map(r => (
-              <RecommendationCard key={r.exercise.exercise_id} rec={r} />
-            ))
-          : (
-            <div className="bg-[#1a1a2e] border border-[#2a2a40] rounded-xl p-4 mb-2.5">
-              <p className="text-[#555] text-sm font-semibold mb-1">No recommendations yet.</p>
-              <p className="text-[#444] text-xs">Rate your health above and tap Save, or make sure you selected goals during registration.</p>
-            </div>
-          )
-        }
-
-        {/* Weight recommendations */}
-        {data.weight_recommendations.length > 0 && (
-          <>
-            <h2 className="text-white font-bold text-lg mb-3 mt-2">Next Working Weight</h2>
-            {data.weight_recommendations.map(w => (
-              <WeightCard key={w.exercise_id} rec={w} />
-            ))}
-          </>
-        )}
-
-        {/* Progress */}
-        {data.progress_summary.length > 0 && (
-          <>
-            <h2 className="text-white font-bold text-lg mb-3 mt-2">Your Progress</h2>
-            {data.progress_summary.map(m => <ProgressCard key={m.exercise_id} metrics={m} />)}
-          </>
-        )}
-
-        {/* Recent sessions */}
-        {data.recent_sessions.length > 0 && (
-          <>
-            <h2 className="text-white font-bold text-lg mb-3 mt-2">Recent Sessions</h2>
-            {data.recent_sessions.map(s => (
-              <SessionCard
+          <div className="panel rows">
+            {data.recent_sessions.slice(0, 3).map(s => (
+              <SessionRow
                 key={s.session_id}
                 session={s}
                 onSetWeight={async (weightKg) => {
@@ -196,166 +260,23 @@ export default function DashboardScreen({ token, onLogout }: Props) {
                 }}
               />
             ))}
-          </>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ── Sub-components ─────────────────────────────────────────────────────────────
-
-function StatCard({ label, value, unit, color }: { label: string; value: string; unit: string; color: string }) {
-  return (
-    <div className="bg-[#1a1a2e] border border-[#2a2a40] rounded-xl p-4 flex flex-col items-center">
-      <span className="text-2xl font-extrabold" style={{ color }}>{value}</span>
-      <span className="text-[#555] text-xs mt-0.5">{unit}</span>
-      <span className="text-[#888] text-xs mt-1 font-semibold">{label}</span>
-    </div>
-  );
-}
-
-function RecommendationCard({ rec }: { rec: ExerciseRecommendation }) {
-  const scenarioColor =
-    rec.scenario === 'all_healthy' ? '#4ade80' :
-    rec.scenario === 'target_healthy_adjacent_not' ? '#f59e0b' : '#60a5fa';
-  const scenarioLabel =
-    rec.scenario === 'all_healthy' ? 'Healthy' :
-    rec.scenario === 'target_healthy_adjacent_not' ? 'Take it easy' : 'Recovery';
-
-  return (
-    <div className="bg-[#1a1a2e] border border-[#2a2a40] rounded-xl p-4 mb-2.5">
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-white font-semibold text-base">{rec.exercise.name}</span>
-        <span className="text-xs font-semibold px-2 py-0.5 rounded-full border" style={{ color: scenarioColor, borderColor: scenarioColor + '55' }}>
-          {scenarioLabel}
-        </span>
-      </div>
-      <p className="text-[#666] text-xs mb-2">{rec.reason}</p>
-      <div className="flex items-center justify-between">
-        <span className="text-[#555] text-xs">{rec.exercise.tags.slice(0, 3).map(t => `#${t}`).join('  ')}</span>
-        <span className="text-[#4ade80] font-extrabold text-base">{(rec.score * 100).toFixed(0)}</span>
-      </div>
-      <ScoreBar score={rec.score * 100} />
-    </div>
-  );
-}
-
-function ProgressCard({ metrics }: { metrics: ProgressMetrics }) {
-  const trendColor = metrics.score_trend === 'improving' ? '#4ade80' : metrics.score_trend === 'declining' ? '#ff6b6b' : '#888';
-  const trendIcon  = metrics.score_trend === 'improving' ? '↑' : metrics.score_trend === 'declining' ? '↓' : '→';
-  return (
-    <div className="bg-[#1a1a2e] border border-[#2a2a40] rounded-xl p-4 mb-2.5">
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-white font-semibold">{metrics.exercise_name}</span>
-        <span className="text-xs font-semibold capitalize" style={{ color: trendColor }}>{trendIcon} {metrics.score_trend}</span>
-      </div>
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-[#666] text-xs">{metrics.total_sessions} sessions · {metrics.total_reps} reps</span>
-        <span className="text-[#4ade80] font-extrabold text-xl">{metrics.avg_score_recent.toFixed(1)}</span>
-      </div>
-      <ScoreBar score={metrics.avg_score_recent} />
-      {metrics.weak_joints.length > 0 && (
-        <p className="text-[#f59e0b] text-xs mt-2 capitalize">
-          Weak: {metrics.weak_joints.map(([j]) => j.replace(/_/g, ' ')).join(', ')}
-        </p>
+          </div>
+        </>
       )}
     </div>
   );
 }
 
-function WeightCard({ rec }: { rec: WeightRecommendation }) {
-  const weightLabel = rec.recommended_weight_kg > 0
-    ? `${rec.recommended_weight_kg % 1 === 0 ? rec.recommended_weight_kg.toFixed(0) : rec.recommended_weight_kg.toFixed(1)} kg`
-    : 'Bodyweight';
+function Stat({ value, caption }: { value: string; caption: string }) {
   return (
-    <div className="bg-[#1a1a2e] border border-[#2a2a40] rounded-xl p-4 mb-2.5">
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-white font-semibold">{rec.exercise_name}</span>
-        <span className="text-[#60a5fa] font-extrabold text-xl">{weightLabel}</span>
-      </div>
-      <p className="text-[#666] text-xs">{rec.reasoning}</p>
+    <div className="flex-1 px-4 py-4">
+      <p className="text-[#171716] font-black text-3xl num leading-none">{value}</p>
+      <p className="label mt-1.5">{caption}</p>
     </div>
   );
 }
 
-function SessionCard({ session, onSetWeight }: {
-  session: LiveSessionOutput;
-  onSetWeight: (weightKg: number) => Promise<void>;
-}) {
-  const dateStr = new Date(session.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft]     = useState(session.weight_kg?.toString() ?? '');
-  const [saving, setSaving]   = useState(false);
-
-  async function save() {
-    const parsed = parseFloat(draft);
-    if (isNaN(parsed) || parsed < 0 || parsed > 300) return;
-    setSaving(true);
-    try {
-      await onSetWeight(parsed);
-      setEditing(false);
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  return (
-    <div className="bg-[#1a1a2e] border border-[#2a2a40] rounded-xl p-4 mb-2.5">
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-white font-semibold">{session.exercise_name}</span>
-        <span className="text-[#4ade80] font-extrabold text-xl">{session.overall_score.toFixed(0)}</span>
-      </div>
-      <div className="flex items-center justify-between mb-2">
-        <p className="text-[#666] text-xs">
-          {dateStr} · {session.reps.length} reps · {Math.round(session.duration_seconds)}s
-        </p>
-        {editing ? (
-          <span className="flex items-center gap-1.5">
-            <input
-              type="number"
-              min={0}
-              max={300}
-              step={0.5}
-              value={draft}
-              onChange={e => setDraft(e.target.value)}
-              className="w-16 bg-[#0f0f1a] border border-[#2a2a40] rounded-lg px-2 py-0.5 text-white text-xs text-right"
-              autoFocus
-            />
-            <span className="text-[#555] text-xs">kg</span>
-            <button
-              onClick={save}
-              disabled={saving}
-              className="text-[#4ade80] text-xs font-semibold hover:text-white transition-colors disabled:opacity-50"
-            >
-              {saving ? '…' : 'Save'}
-            </button>
-          </span>
-        ) : (
-          <button
-            onClick={() => setEditing(true)}
-            className="text-[#60a5fa] text-xs font-semibold hover:text-white transition-colors"
-          >
-            {session.weight_kg != null ? `${session.weight_kg} kg` : '+ log weight'}
-          </button>
-        )}
-      </div>
-      <ScoreBar score={session.overall_score} />
-    </div>
-  );
-}
-
-function ScoreBar({ score }: { score: number }) {
-  const pct   = Math.min(100, Math.max(0, score));
-  const color = pct >= 80 ? '#4ade80' : pct >= 60 ? '#f59e0b' : '#ff6b6b';
-  return (
-    <div className="h-1 bg-[#2a2a40] rounded-full overflow-hidden">
-      <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
-    </div>
-  );
-}
-
-function avgScore(sessions: LiveSessionOutput[]): string {
-  if (!sessions.length) return '—';
-  return (sessions.reduce((s, r) => s + r.overall_score, 0) / sessions.length).toFixed(1);
+function avgScoreNum(sessions: LiveSessionOutput[]): number | null {
+  if (!sessions.length) return null;
+  return sessions.reduce((s, r) => s + r.overall_score, 0) / sessions.length;
 }

@@ -8,6 +8,7 @@ import type {
   TargetGoal,
   TrainerPersonality,
 } from '../api/types';
+import { useI18n } from '../i18n';
 
 interface Props {
   onRegister: (token: AuthToken) => void;
@@ -16,69 +17,12 @@ interface Props {
 
 const TOTAL_STEPS = 6;
 
-const STEP_TITLES = [
-  'Create your account',
-  'Fitness level',
-  'Training goals',
-  'Equipment',
-  'Coach style',
-  'Any limitations?',
-];
-
-const FITNESS_LABELS: Record<FitnessLevel, string> = {
-  beginner:     'Beginner',
-  intermediate: 'Intermediate',
-  advanced:     'Advanced',
-};
-
-const FITNESS_DESC: Record<FitnessLevel, string> = {
-  beginner:     'New to fitness or returning after a break',
-  intermediate: 'Exercising regularly for 6+ months',
-  advanced:     'Training consistently for 2+ years',
-};
-
-const GOAL_LABELS: Record<TargetGoal, string> = {
-  legs:      '🦵 Legs',
-  cardio:    '❤️ Cardio',
-  abs:       '💪 Abs',
-  arms:      '🤜 Arms',
-  full_body: '🏋️ Full Body',
-  other:     '✨ Other',
-};
-
-const EQUIPMENT_LABELS: Record<Equipment, string> = {
-  dumbbells:        '🏋️ Dumbbells',
-  resistance_bands: '🔁 Bands',
-  none:             '🙌 No Equipment',
-};
-
-const TRAINER_LABELS: Record<TrainerPersonality, string> = {
-  tough:      '🔥 Tough',
-  calm:       '🧘 Calm',
-  motivating: '⚡ Motivating',
-};
-
-const TRAINER_DESC: Record<TrainerPersonality, string> = {
-  tough:      'Direct and demanding — short commands, no fluff',
-  calm:       'Gentle and patient — smooth, reassuring cues',
-  motivating: 'Energetic and encouraging — hypes you up',
-};
-
-const LIMITATION_LABELS: Record<string, string> = {
-  right_knee:     '🦵 Right Knee',
-  left_knee:      '🦵 Left Knee',
-  lower_back:     '🔙 Lower Back',
-  right_shoulder: '💪 Right Shoulder',
-  left_shoulder:  '💪 Left Shoulder',
-  right_elbow:    '🤜 Right Elbow',
-  left_elbow:     '🤛 Left Elbow',
-};
-
 function toggleMulti<T>(list: T[], item: T): T[] {
   return list.includes(item) ? list.filter(i => i !== item) : [...list, item];
 }
 
 export default function RegisterScreen({ onRegister, onGoToLogin }: Props) {
+  const { t } = useI18n();
   const [step, setStep]       = useState(1);
   const [options, setOptions] = useState<ProfileSetupOptions | null>(null);
 
@@ -98,13 +42,13 @@ export default function RegisterScreen({ onRegister, onGoToLogin }: Props) {
 
   function validateStep(): string {
     if (step === 1) {
-      if (!name.trim())  return 'Please enter your name.';
-      if (!email.trim()) return 'Please enter your email.';
-      if (!/\S+@\S+\.\S+/.test(email)) return 'Please enter a valid email.';
-      if (password.length < 6) return 'Password must be at least 6 characters.';
+      if (!name.trim())  return t.errName;
+      if (!email.trim()) return t.errEmail;
+      if (!/\S+@\S+\.\S+/.test(email)) return t.errEmailValid;
+      if (password.length < 6) return t.errPassword;
     }
-    if (step === 3 && goals.length === 0)     return 'Pick at least one goal.';
-    if (step === 4 && equipment.length === 0) return 'Pick at least one equipment option.';
+    if (step === 3 && goals.length === 0)     return t.errGoal;
+    if (step === 4 && equipment.length === 0) return t.errEquipment;
     return '';
   }
 
@@ -131,7 +75,7 @@ export default function RegisterScreen({ onRegister, onGoToLogin }: Props) {
       });
       onRegister(token);
     } catch (err: any) {
-      setError(err.message ?? 'Registration failed. Please try again.');
+      setError(err.message ?? t.registerFailed);
     } finally {
       setLoading(false);
     }
@@ -140,52 +84,54 @@ export default function RegisterScreen({ onRegister, onGoToLogin }: Props) {
   const progressPct = ((step - 1) / (TOTAL_STEPS - 1)) * 100;
 
   return (
-    <div className="min-h-screen bg-[#0f0f1a] flex items-center justify-center px-6 py-10">
+    <div className="min-h-screen flex items-center justify-center px-6 py-10">
       <div className="w-full max-w-md flex flex-col gap-6">
         {/* Progress bar */}
         <div>
-          <div className="flex justify-between text-xs text-[#666] mb-2">
-            <span>Step {step} of {TOTAL_STEPS}</span>
-            <span>{STEP_TITLES[step - 1]}</span>
+          <div className="flex justify-between mb-2">
+            <span className="label num">{t.stepOf(step, TOTAL_STEPS)}</span>
+            <span className="label">{t.stepTitles[step - 1]}</span>
           </div>
-          <div className="h-1 bg-[#2a2a40] rounded-full overflow-hidden">
+          <div className="h-[3px] bg-[#e6e5e1] rounded-full overflow-hidden">
             <div
-              className="h-full bg-[#4ade80] rounded-full transition-all duration-300"
+              className="h-full bg-[#171716] transition-all duration-300"
               style={{ width: `${progressPct}%` }}
             />
           </div>
         </div>
 
-        <h2 className="text-2xl font-bold text-white">{STEP_TITLES[step - 1]}</h2>
+        <h2 className="text-3xl font-black text-[#171716]">{t.stepTitles[step - 1]}</h2>
 
         {/* Step content */}
         <div className="flex flex-col gap-3">
           {/* Step 1 — Account */}
           {step === 1 && (
             <>
-              <Field label="Name">
+              <Field label={t.nameLabel}>
                 <input
-                  className="field-input w-full bg-[#1a1a2e] text-white border border-[#2a2a40] rounded-xl px-4 py-3 focus:outline-none focus:border-[#4ade80]"
-                  placeholder="Your name"
+                  className="field"
+                  placeholder={t.namePh}
                   value={name}
                   onChange={e => setName(e.target.value)}
                 />
               </Field>
-              <Field label="Email">
+              <Field label={t.email}>
                 <input
                   type="email"
-                  className="w-full bg-[#1a1a2e] text-white border border-[#2a2a40] rounded-xl px-4 py-3 focus:outline-none focus:border-[#4ade80]"
+                  className="field"
                   placeholder="you@example.com"
+                  dir="ltr"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   autoComplete="email"
                 />
               </Field>
-              <Field label="Password">
+              <Field label={t.password}>
                 <input
                   type="password"
-                  className="w-full bg-[#1a1a2e] text-white border border-[#2a2a40] rounded-xl px-4 py-3 focus:outline-none focus:border-[#4ade80]"
-                  placeholder="At least 6 characters"
+                  className="field"
+                  placeholder={t.passwordPh}
+                  dir="ltr"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                 />
@@ -195,122 +141,72 @@ export default function RegisterScreen({ onRegister, onGoToLogin }: Props) {
 
           {/* Step 2 — Fitness level */}
           {step === 2 && (['beginner', 'intermediate', 'advanced'] as FitnessLevel[]).map(level => (
-            <button
+            <RadioTile
               key={level}
-              type="button"
+              selected={fitnessLevel === level}
               onClick={() => setFitnessLevel(level)}
-              className={`text-left p-4 rounded-xl border transition-colors ${
-                fitnessLevel === level
-                  ? 'border-[#4ade80] bg-[#1a2e1a]'
-                  : 'border-[#2a2a40] bg-[#1a1a2e] hover:border-[#3a3a50]'
-              }`}
-            >
-              <div className="flex items-center gap-3 mb-1">
-                <span className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${fitnessLevel === level ? 'border-[#4ade80] bg-[#4ade80]' : 'border-[#444]'}`} />
-                <span className="text-white font-semibold">{FITNESS_LABELS[level]}</span>
-              </div>
-              <p className="text-[#888] text-sm ml-7">{FITNESS_DESC[level]}</p>
-            </button>
+              title={t.fitnessLabels[level]}
+              desc={t.fitnessDesc[level]}
+            />
           ))}
 
           {/* Step 3 — Goals */}
           {step === 3 && (
             <div className="grid grid-cols-3 gap-3">
-              {(options?.target_goals ?? Object.keys(GOAL_LABELS) as TargetGoal[]).map(goal => {
-                const [icon, ...words] = GOAL_LABELS[goal]?.split(' ') ?? [goal];
-                return (
-                  <button
-                    key={goal}
-                    type="button"
-                    onClick={() => setGoals(g => toggleMulti(g, goal))}
-                    className={`flex flex-col items-center justify-center gap-1 p-4 rounded-xl border min-h-[80px] transition-colors ${
-                      goals.includes(goal)
-                        ? 'border-[#4ade80] bg-[#1a2e1a]'
-                        : 'border-[#2a2a40] bg-[#1a1a2e] hover:border-[#3a3a50]'
-                    }`}
-                  >
-                    <span className="text-2xl">{icon}</span>
-                    <span className="text-[#ccc] text-xs font-medium text-center">{words.join(' ') || goal}</span>
-                  </button>
-                );
-              })}
+              {(options?.target_goals ?? Object.keys(t.goalLabels) as TargetGoal[]).map(goal => (
+                <IconTile
+                  key={goal}
+                  selected={goals.includes(goal)}
+                  onClick={() => setGoals(g => toggleMulti(g, goal))}
+                  label={t.goalLabels[goal] ?? goal}
+                />
+              ))}
             </div>
           )}
 
           {/* Step 4 — Equipment */}
           {step === 4 && (
             <div className="grid grid-cols-3 gap-3">
-              {(options?.equipment_options ?? Object.keys(EQUIPMENT_LABELS) as Equipment[]).map(eq => {
-                const [icon, ...words] = EQUIPMENT_LABELS[eq]?.split(' ') ?? [eq];
-                return (
-                  <button
-                    key={eq}
-                    type="button"
-                    onClick={() => setEquipment(e => toggleMulti(e, eq))}
-                    className={`flex flex-col items-center justify-center gap-1 p-4 rounded-xl border min-h-[80px] transition-colors ${
-                      equipment.includes(eq)
-                        ? 'border-[#4ade80] bg-[#1a2e1a]'
-                        : 'border-[#2a2a40] bg-[#1a1a2e] hover:border-[#3a3a50]'
-                    }`}
-                  >
-                    <span className="text-2xl">{icon}</span>
-                    <span className="text-[#ccc] text-xs font-medium text-center">{words.join(' ') || eq}</span>
-                  </button>
-                );
-              })}
+              {(options?.equipment_options ?? Object.keys(t.equipmentLabels) as Equipment[]).map(eq => (
+                <IconTile
+                  key={eq}
+                  selected={equipment.includes(eq)}
+                  onClick={() => setEquipment(e => toggleMulti(e, eq))}
+                  label={t.equipmentLabels[eq] ?? eq}
+                />
+              ))}
             </div>
           )}
 
           {/* Step 5 — Trainer */}
           {step === 5 && (['tough', 'calm', 'motivating'] as TrainerPersonality[]).map(style => (
-            <button
+            <RadioTile
               key={style}
-              type="button"
+              selected={trainer === style}
               onClick={() => setTrainer(style)}
-              className={`text-left p-4 rounded-xl border transition-colors ${
-                trainer === style
-                  ? 'border-[#4ade80] bg-[#1a2e1a]'
-                  : 'border-[#2a2a40] bg-[#1a1a2e] hover:border-[#3a3a50]'
-              }`}
-            >
-              <div className="flex items-center gap-3 mb-1">
-                <span className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${trainer === style ? 'border-[#4ade80] bg-[#4ade80]' : 'border-[#444]'}`} />
-                <span className="text-white font-semibold">{TRAINER_LABELS[style]}</span>
-              </div>
-              <p className="text-[#888] text-sm ml-7">{TRAINER_DESC[style]}</p>
-            </button>
+              title={t.trainerLabels[style]}
+              desc={t.trainerDesc[style]}
+            />
           ))}
 
           {/* Step 6 — Limitations */}
           {step === 6 && (
             <>
-              <p className="text-[#888] text-sm">
-                Select any joints that need extra care. The app will adapt form checks accordingly. Skip if none apply.
-              </p>
+              <p className="text-[#8b87a0] text-sm">{t.limitationsHint}</p>
               <div className="grid grid-cols-3 gap-3">
-                {(options?.limitation_options ?? Object.keys(LIMITATION_LABELS)).map(lim => {
-                  const [icon, ...words] = (LIMITATION_LABELS[lim] ?? lim).split(' ');
-                  return (
-                    <button
-                      key={lim}
-                      type="button"
-                      onClick={() => setLimitations(l => toggleMulti(l, lim))}
-                      className={`flex flex-col items-center justify-center gap-1 p-4 rounded-xl border min-h-[80px] transition-colors ${
-                        limitations.includes(lim)
-                          ? 'border-[#4ade80] bg-[#1a2e1a]'
-                          : 'border-[#2a2a40] bg-[#1a1a2e] hover:border-[#3a3a50]'
-                      }`}
-                    >
-                      <span className="text-2xl">{icon}</span>
-                      <span className="text-[#ccc] text-xs font-medium text-center">{words.join(' ') || lim}</span>
-                    </button>
-                  );
-                })}
+                {(options?.limitation_options ?? Object.keys(t.limitationLabels)).map(lim => (
+                  <IconTile
+                    key={lim}
+                    selected={limitations.includes(lim)}
+                    onClick={() => setLimitations(l => toggleMulti(l, lim))}
+                    label={t.limitationLabels[lim] ?? lim}
+                  />
+                ))}
               </div>
             </>
           )}
 
-          {error && <p className="text-[#ff6b6b] text-sm text-center">{error}</p>}
+          {error && <p className="text-[#d92d20] text-sm text-center">{error}</p>}
         </div>
 
         {/* Nav buttons */}
@@ -318,27 +214,23 @@ export default function RegisterScreen({ onRegister, onGoToLogin }: Props) {
           <button
             type="button"
             onClick={step > 1 ? () => { setError(''); setStep(s => s - 1); } : onGoToLogin}
-            className="text-[#888] text-sm px-4 py-3 hover:text-white transition-colors"
+            className="text-[#6f6e68] text-sm px-4 py-3 hover:text-[#171716] transition-colors"
           >
-            {step > 1 ? '← Back' : 'Log in'}
+            {step > 1 ? t.back : t.goToLogin}
           </button>
 
           {step < TOTAL_STEPS ? (
-            <button
-              type="button"
-              onClick={handleNext}
-              className="flex-1 bg-[#4ade80] text-[#0f0f1a] font-bold text-base rounded-xl py-4 hover:bg-[#22c55e] transition-colors"
-            >
-              Next →
+            <button type="button" onClick={handleNext} className="btn flex-1 text-base py-3.5">
+              {t.next}
             </button>
           ) : (
             <button
               type="button"
               onClick={handleSubmit}
               disabled={loading}
-              className="flex-1 bg-[#4ade80] text-[#0f0f1a] font-bold text-base rounded-xl py-4 hover:bg-[#22c55e] transition-colors disabled:opacity-60 flex items-center justify-center"
+              className="btn flex-1 text-base py-3.5 flex items-center justify-center"
             >
-              {loading ? <span className="spinner-sm" /> : 'Create Account'}
+              {loading ? <span className="spinner-sm" /> : t.createAccount}
             </button>
           )}
         </div>
@@ -350,8 +242,38 @@ export default function RegisterScreen({ onRegister, onGoToLogin }: Props) {
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-[#aaa] text-xs font-semibold mb-1 tracking-wide uppercase">{label}</label>
+      <label className="label block mb-1.5">{label}</label>
       {children}
     </div>
+  );
+}
+
+function RadioTile({ selected, onClick, title, desc }: {
+  selected: boolean; onClick: () => void; title: string; desc: string;
+}) {
+  return (
+    <button type="button" onClick={onClick} className={`tile text-start p-4 ${selected ? 'selected' : ''}`}>
+      <div className="flex items-center gap-3 mb-1">
+        <span className={`w-2.5 h-2.5 rounded-[2px] flex-shrink-0 ${selected ? 'bg-[#0e7a4a]' : 'border border-[#cfceca]'}`} />
+        <span className="text-[#171716] font-bold">{title}</span>
+      </div>
+      <p className="text-[#6f6e68] text-sm ms-[22px]">{desc}</p>
+    </button>
+  );
+}
+
+function IconTile({ selected, onClick, label }: {
+  selected: boolean; onClick: () => void; label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`tile flex items-center justify-center p-4 min-h-[60px] ${selected ? 'selected' : ''}`}
+    >
+      <span className={`text-sm font-bold text-center ${selected ? 'text-[#171716]' : 'text-[#6f6e68]'}`}>
+        {label}
+      </span>
+    </button>
   );
 }

@@ -24,8 +24,11 @@ code, comments, and commits are in English.
   dataclasses shared by API ⇄ clients.
 - **Recommendations** (`core/recommendation/`): health-scenario rules +
   community/feedback blend; `ml_ranker.py` activates at ≥20 sessions.
-- **Clients**: `frontend/` React+Vite (works against the real API);
-  `mobile/` Expo RN scaffold (fake data, frozen for now).
+- **Clients**: `frontend/` React+Vite (works against the real API) — bilingual
+  he/en with RTL (`src/i18n.tsx`, no deps), light "clinical" design system
+  (tokens in `index.css`: paper bg, black primary buttons, pine-green accent),
+  top-nav tabs: Home / Workout (placeholder) / History.
+  `mobile/` Expo RN scaffold (fake data, frozen — web won over RN).
 
 ## Commands
 
