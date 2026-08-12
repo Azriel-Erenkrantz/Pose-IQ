@@ -52,6 +52,8 @@ export interface WeightRecommendation {
   recommended_weight_kg: number;
   reasoning: string;
   confidence: number;
+  reasoning_code: string;
+  reasoning_params: Record<string, number>;
 }
 
 export interface ProgressMetrics {
@@ -93,6 +95,8 @@ export interface ExerciseRecommendation {
   personal_score: number;
   community_score: number | null;
   feedback_score: number | null;
+  reason_code: string;
+  reason_params: Record<string, number>;
 }
 
 export interface DashboardData {

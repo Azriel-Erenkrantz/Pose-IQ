@@ -8,7 +8,7 @@ from ..app_model import BodyRegion, Equipment, Exercise, CommunityRecord
 
 # ---------------------------------------------------------------------------
 # Exercise catalog
-# IDs for squat / plank / lunge / bicep_curl / shoulder_press match the
+# IDs for squat / plank / lunge / biceps_curl / shoulder_press match the
 # existing data/exercises.json used by the pose-detection system.
 # ---------------------------------------------------------------------------
 
@@ -18,7 +18,7 @@ _BW: list = []  # bodyweight — no equipment needed
 
 CATALOG: List[Exercise] = [
     # ── UPPER ────────────────────────────────────────────────────────────
-    Exercise("bicep_curl",     "Bicep Curl",
+    Exercise("biceps_curl",     "Bicep Curl",
              BodyRegion.UPPER, [BodyRegion.UPPER],
              0.30, "Dumbbell bicep curl",      ["pull", "arms"],      _D),
     Exercise("shoulder_press", "Shoulder Press",
@@ -108,8 +108,8 @@ COMMUNITY_DATA: List[CommunityRecord] = [
     CommunityRecord(str(uuid.uuid4()), "calf_raise",
                     {BodyRegion.UPPER: 5, BodyRegion.CORE: 3, BodyRegion.LOWER: 1}, 0.80,
                     datetime(2026, 6, 8)),
-    # Users with upper body injury who rated bicep_curl low (aggravates it)
-    CommunityRecord(str(uuid.uuid4()), "bicep_curl",
+    # Users with upper body injury who rated biceps_curl low (aggravates it)
+    CommunityRecord(str(uuid.uuid4()), "biceps_curl",
                     {BodyRegion.UPPER: 2, BodyRegion.CORE: 4, BodyRegion.LOWER: 5}, 0.15,
                     datetime(2026, 6, 5)),
 ]

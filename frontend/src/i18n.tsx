@@ -105,6 +105,7 @@ interface Dict {
   meanwhileText: string;
   supportedExercises: string;
   exerciseNames: Record<string, string>;
+  reasonTemplates: Record<string, (p: Record<string, number>) => string>;
 
   // Live workout
   chooseExercise: string;
@@ -243,6 +244,24 @@ const en: Dict = {
   exerciseNames: {
     squat: 'Squat', lunge: 'Lunge',
     biceps_curl: 'Biceps Curl', shoulder_press: 'Shoulder Press',
+    push_up: 'Push-up', tricep_dip: 'Tricep Dip', plank: 'Plank',
+    crunch: 'Crunch', russian_twist: 'Russian Twist', leg_raise: 'Leg Raise',
+    deadlift: 'Deadlift', calf_raise: 'Calf Raise', glute_bridge: 'Glute Bridge',
+  },
+  reasonTemplates: {
+    ml_estimate: p => `ML satisfaction estimate: ${pct(p.pct)}`,
+    no_history_unsafe: () => 'No history — cannot assess safety while not at best',
+    no_history_neutral: () => 'No history — neutral score',
+    historically_challenging: p => `Historically challenging (${pct(p.pct)}) — ideal to tackle now at full health`,
+    too_challenging_adjacent: p => `Too challenging historically (${pct(p.pct)}) — reduced score while adjacent region is limited`,
+    suitable_difficulty_adjacent: p => `Suitable difficulty (${pct(p.pct)}) — appropriate given adjacent region issue`,
+    high_difficulty_unsafe: p => `High difficulty (${pct(p.pct)}) on an affected region — not safe while injured`,
+    poor_form_unsafe: p => `Poor form history (${pct(p.pct)}) — unsafe to practise while not at best`,
+    good_form_safe: p => `Good form (${pct(p.form_pct)}), manageable difficulty (${pct(p.diff_pct)}) — safe to continue`,
+    no_weight_logged: () => 'No weight logged yet — start with bodyweight or a light load and log it after each session.',
+    form_dropped: p => `Form score dropped to ${p.score.toFixed(0)} at ${num(p.weight)} kg — reduce the load and rebuild clean technique.`,
+    ready_to_increase: p => `${p.clean} sessions at ${num(p.weight)} kg with form ≥ ${p.threshold.toFixed(0)} — ready to add ${num(p.increment)} kg.`,
+    stay_here: p => `${p.clean}/${p.needed} clean sessions at ${num(p.weight)} kg (form ≥ ${p.threshold.toFixed(0)}) — stay here until the technique is consistent.`,
   },
 
   chooseExercise: 'Choose an exercise',
@@ -387,6 +406,24 @@ const he: Dict = {
   supportedExercises: 'תרגילים נתמכים',
   exerciseNames: {
     squat: 'סקוואט', lunge: 'מכרעים', biceps_curl: 'כפיפת מרפקים', shoulder_press: 'לחיצת כתפיים',
+    push_up: 'שכיבות סמיכה', tricep_dip: 'דיפס לטריצפס', plank: 'פלאנק',
+    crunch: 'כפיפות בטן', russian_twist: 'פיתול רוסי', leg_raise: 'הרמות רגליים',
+    deadlift: 'הרמת מתים', calf_raise: 'הרמת עקבים', glute_bridge: 'גשר ישבן',
+  },
+  reasonTemplates: {
+    ml_estimate: p => `הערכת שביעות רצון (ML): ${pct(p.pct)}`,
+    no_history_unsafe: () => 'אין היסטוריה — לא ניתן להעריך בטיחות כשלא במיטבכם',
+    no_history_neutral: () => 'אין היסטוריה — ציון ניטרלי',
+    historically_challenging: p => `מאתגר היסטורית (${pct(p.pct)}) — הזמן האידיאלי לתקוף כשאתם בכושר מלא`,
+    too_challenging_adjacent: p => `מאתגר מדי היסטורית (${pct(p.pct)}) — ציון מופחת כל עוד אזור סמוך מוגבל`,
+    suitable_difficulty_adjacent: p => `רמת קושי מתאימה (${pct(p.pct)}) — הולמת את המגבלה באזור הסמוך`,
+    high_difficulty_unsafe: p => `קושי גבוה (${pct(p.pct)}) על אזור פגוע — לא בטוח בזמן פציעה`,
+    poor_form_unsafe: p => `היסטוריית טכניקה חלשה (${pct(p.pct)}) — לא בטוח לתרגל כשלא במיטבכם`,
+    good_form_safe: p => `טכניקה טובה (${pct(p.form_pct)}), קושי בר-ניהול (${pct(p.diff_pct)}) — בטוח להמשיך`,
+    no_weight_logged: () => 'עדיין לא נרשם משקל — התחילו עם משקל גוף או עומס קל ותעדו אותו אחרי כל אימון.',
+    form_dropped: p => `ציון הטכניקה ירד ל-${p.score.toFixed(0)} במשקל ${num(p.weight)} ק"ג — הפחיתו את העומס ובנו מחדש טכניקה נקייה.`,
+    ready_to_increase: p => `${p.clean} אימונים במשקל ${num(p.weight)} ק"ג עם טכניקה ≥ ${p.threshold.toFixed(0)} — מוכנים להוסיף ${num(p.increment)} ק"ג.`,
+    stay_here: p => `${p.clean}/${p.needed} אימונים נקיים במשקל ${num(p.weight)} ק"ג (טכניקה ≥ ${p.threshold.toFixed(0)}) — הישארו כאן עד שהטכניקה תתייצב.`,
   },
 
   chooseExercise: 'בחרו תרגיל',
@@ -424,6 +461,10 @@ const he: Dict = {
   },
 };
 
+// Matches Python's ':.0%' / ':g' formatting used server-side for reason_params.
+function pct(x: number): string { return `${Math.round(x * 100)}%`; }
+function num(x: number): string { return x.toString(); }
+
 const DICTS: Record<Lang, Dict> = { en, he };
 
 interface I18nCtx {
@@ -433,6 +474,7 @@ interface I18nCtx {
   dir: 'ltr' | 'rtl';
   locale: string;
   exerciseName: (id: string, fallback: string) => string;
+  formatReason: (code: string, params: Record<string, number>, fallback: string) => string;
 }
 
 const Ctx = createContext<I18nCtx | null>(null);
@@ -458,6 +500,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     lang, setLang, t, dir,
     locale: lang === 'he' ? 'he-IL' : 'en-US',
     exerciseName: (id, fallback) => t.exerciseNames[id] ?? fallback,
+    formatReason: (code, params, fallback) => t.reasonTemplates[code]?.(params) ?? fallback,
   };
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

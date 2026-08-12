@@ -19,7 +19,7 @@ interface Props {
 }
 
 export default function DashboardScreen({ token, onNavigate }: Props) {
-  const { t, exerciseName } = useI18n();
+  const { t, exerciseName, formatReason } = useI18n();
   const [data, setData]         = useState<DashboardData | null>(null);
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
@@ -160,7 +160,9 @@ export default function DashboardScreen({ token, onNavigate }: Props) {
                   <p className="text-[#171716] font-bold text-[15px] leading-tight">
                     {exerciseName(r.exercise.exercise_id, r.exercise.name)}
                   </p>
-                  <p className="text-[#a09f98] text-xs mt-0.5 truncate">{r.reason}</p>
+                  <p className="text-[#a09f98] text-xs mt-0.5 truncate">
+                    {formatReason(r.reason_code, r.reason_params, r.reason)}
+                  </p>
                 </div>
                 <div className="text-end flex-shrink-0">
                   <p className="text-accent font-black text-2xl num leading-none">{(r.score * 100).toFixed(0)}</p>
@@ -192,7 +194,9 @@ export default function DashboardScreen({ token, onNavigate }: Props) {
                     <p className="text-[#171716] font-bold text-[15px] leading-tight">
                       {exerciseName(w.exercise_id, w.exercise_name)}
                     </p>
-                    <p className="text-[#a09f98] text-xs mt-0.5">{w.reasoning}</p>
+                    <p className="text-[#a09f98] text-xs mt-0.5">
+                      {formatReason(w.reasoning_code, w.reasoning_params, w.reasoning)}
+                    </p>
                   </div>
                   <div className="text-end flex-shrink-0">
                     {weightLabel ? (

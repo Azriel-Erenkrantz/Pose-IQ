@@ -108,7 +108,7 @@ def fake_sessions() -> List[LiveSessionOutput]:
         _make_session("s3", "squat",       "Squat",        days_ago=8,  scores=[60, 62, 65, 68, 70], error_joints=["spine"]),
         _make_session("s4", "plank",       "Plank",        days_ago=2,  scores=[88, 85, 90, 87, 92], error_joints=["hips"]),
         _make_session("s5", "plank",       "Plank",        days_ago=6,  scores=[80, 82, 85, 88, 86], error_joints=["hips"]),
-        _make_session("s6", "bicep_curl",  "Bicep Curl",   days_ago=3,  scores=[91, 93, 90, 95, 92], error_joints=[]),
+        _make_session("s6", "biceps_curl",  "Bicep Curl",   days_ago=3,  scores=[91, 93, 90, 95, 92], error_joints=[]),
         _make_session("s7", "lunge",       "Lunge",        days_ago=5,  scores=[70, 73, 75, 78, 80], error_joints=["left_knee"]),
         _make_session("s8", "shoulder_press", "Shoulder Press", days_ago=7, scores=[83, 85, 88, 84, 87], error_joints=[]),
     ]
@@ -137,7 +137,7 @@ def fake_progress_metrics() -> List[ProgressMetrics]:
             weak_joints      = [("hips", 3)],
         ),
         ProgressMetrics(
-            exercise_id      = "bicep_curl",
+            exercise_id      = "biceps_curl",
             exercise_name    = "Bicep Curl",
             total_sessions   = 1,
             total_reps       = 5,

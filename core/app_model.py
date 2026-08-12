@@ -298,19 +298,31 @@ class InjuryRisk:
 class WeightRecommendation:
     """
     Dynamic load recommendation for one exercise, based on performance analysis.
+
+    `reasoning` is a fixed English sentence (kept for backward compatibility).
+    `reasoning_code` + `reasoning_params` let a client render the same message
+    in any supported language — see i18n.tsx `formatReason`.
     """
     exercise_id:            str
     exercise_name:          str
     recommended_weight_kg:  float
     reasoning:              str
     confidence:             float        # 0–1
+    reasoning_code:         str = ""
+    reasoning_params:       Dict[str, float] = field(default_factory=dict)
 
 
 # ── Recommendation ─────────────────────────────────────────────────────────────
 
 @dataclass
 class ExerciseRecommendation:
-    """One ranked recommendation produced by the recommendation engine."""
+    """
+    One ranked recommendation produced by the recommendation engine.
+
+    `reason` is a fixed English sentence (kept for backward compatibility).
+    `reason_code` + `reason_params` let a client render the same message in
+    any supported language — see i18n.tsx `formatReason`.
+    """
     exercise:        Exercise
     score:           float               # 0–1 final blended score
     reason:          str
@@ -318,6 +330,8 @@ class ExerciseRecommendation:
     personal_score:  float
     community_score: Optional[float]
     feedback_score:  Optional[float]
+    reason_code:     str = ""
+    reason_params:   Dict[str, float] = field(default_factory=dict)
 
 
 @dataclass

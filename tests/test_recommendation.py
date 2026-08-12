@@ -102,7 +102,7 @@ class TestPersonalScoring(unittest.TestCase):
         sc = scenario_all_healthy()
         recs = recommend(CATALOG, sc.target_region, sc.health, sc.history, [], [])
         sp = _rec_by_id(recs, "shoulder_press")   # avg_diff ≈ 0.815
-        bc = _rec_by_id(recs, "bicep_curl")       # avg_diff ≈ 0.290
+        bc = _rec_by_id(recs, "biceps_curl")       # avg_diff ≈ 0.290
         self.assertGreater(sp.personal_score, bc.personal_score)
 
     def test_core_pain_hard_exercise_penalised(self):
@@ -115,7 +115,7 @@ class TestPersonalScoring(unittest.TestCase):
     def test_upper_injured_dangerous_exercise_near_zero(self):
         sc = scenario_upper_injured()
         recs = recommend(CATALOG, sc.target_region, sc.health, sc.history, [], [])
-        bc = _rec_by_id(recs, "bicep_curl")       # diff=0.92 on injured region
+        bc = _rec_by_id(recs, "biceps_curl")       # diff=0.92 on injured region
         self.assertLessEqual(bc.personal_score, 0.10)
 
     def test_upper_injured_safe_exercise_scores_high(self):
@@ -386,7 +386,7 @@ class TestVariety(unittest.TestCase):
     # ── Multiplier function ───────────────────────────────────────────────────
 
     def test_no_penalty_when_not_done_recently(self):
-        history = self._history_of(["push_up", "bicep_curl", "tricep_dip"])
+        history = self._history_of(["push_up", "biceps_curl", "tricep_dip"])
         self.assertEqual(_variety_multiplier(self._ex("shoulder_press"), history), 1.0)
 
     def test_no_penalty_when_no_history(self):
@@ -400,7 +400,7 @@ class TestVariety(unittest.TestCase):
     def test_partial_penalty_proportional_to_frequency(self):
         # done 1 out of VARIETY_LOOKBACK recent sessions
         history = self._history_of(
-            ["push_up"] + ["bicep_curl"] * (VARIETY_LOOKBACK - 1)
+            ["push_up"] + ["biceps_curl"] * (VARIETY_LOOKBACK - 1)
         )
         expected = round(1.0 - VARIETY_PENALTY * (1 / VARIETY_LOOKBACK), 3)
         self.assertEqual(_variety_multiplier(self._ex("push_up"), history), expected)
@@ -410,7 +410,7 @@ class TestVariety(unittest.TestCase):
         old = self._history_of(["push_up"] * 10)
         for r in old:
             r.timestamp = datetime.now() - timedelta(days=100)
-        recent = self._history_of(["bicep_curl"] * VARIETY_LOOKBACK)
+        recent = self._history_of(["biceps_curl"] * VARIETY_LOOKBACK)
         self.assertEqual(_variety_multiplier(self._ex("push_up"), old + recent), 1.0)
 
     # ── Effect on final recommendation score ─────────────────────────────────
@@ -590,7 +590,7 @@ class TestMLRanker(unittest.TestCase):
             history = (
                 _make_records("u", "push_up",        health_map, 8, 0.45, 0.85, 1.0, 0.01) +
                 _make_records("u", "shoulder_press",  health_map, 8, 0.80, 0.55, 0.8) +
-                _make_records("u", "bicep_curl",      health_map, 8, 0.28, 0.92, 1.0) +
+                _make_records("u", "biceps_curl",      health_map, 8, 0.28, 0.92, 1.0) +
                 _make_records("u", "tricep_dip",      health_map, 2, 0.50, 0.70, 0.9)
             )
             train(history, [], model_path=self.tmp)

@@ -106,19 +106,26 @@ def _personal_score(
     history: List[ExercisePerformanceRecord],
     scenario: HealthScenario,
     health: HealthStatus,
-) -> Tuple[float, str]:
+) -> Tuple[float, str, str, dict]:
+    """
+    Returns (score, reason_text, reason_code, reason_params). reason_text is a
+    fixed English sentence kept for backward compatibility (tests, API
+    consumers that don't localize); reason_code/params let a client render
+    the same message in any supported language.
+    """
     # ML path — ALL_HEALTHY only; safety scenarios always use rule-based
     if scenario == HealthScenario.ALL_HEALTHY:
         ml = _try_ml(exercise, history, health)
         if ml is not None:
-            return ml, f"ML satisfaction estimate: {ml:.0%}"
+            return ml, f"ML satisfaction estimate: {ml:.0%}", 'ml_estimate', {'pct': ml}
 
     records = [r for r in history if r.exercise_id == exercise.exercise_id]
 
     if not records:
         if scenario == HealthScenario.TARGET_UNHEALTHY:
-            return 0.30, "No history — cannot assess safety while not at best"
-        return 0.50, "No history — neutral score"
+            return (0.30, "No history — cannot assess safety while not at best",
+                    'no_history_unsafe', {})
+        return 0.50, "No history — neutral score", 'no_history_neutral', {}
 
     recent = sorted(records, key=lambda r: r.timestamp, reverse=True)[:5]
     avg_diff = round(sum(r.difficulty_score for r in recent) / len(recent), 3)
@@ -129,7 +136,7 @@ def _personal_score(
         return score, (
             f"Historically challenging ({avg_diff:.0%}) — "
             "ideal to tackle now at full health"
-        )
+        ), 'historically_challenging', {'pct': avg_diff}
 
     if scenario == HealthScenario.TARGET_HEALTHY_ADJACENT_NOT:
         # Score peaks at ~0.45 difficulty; high difficulty = bad with adjacent pain
@@ -139,11 +146,11 @@ def _personal_score(
             return score, (
                 f"Too challenging historically ({avg_diff:.0%}) — "
                 "reduced score while adjacent region is limited"
-            )
+            ), 'too_challenging_adjacent', {'pct': avg_diff}
         return score, (
             f"Suitable difficulty ({avg_diff:.0%}) — "
             "appropriate given adjacent region issue"
-        )
+        ), 'suitable_difficulty_adjacent', {'pct': avg_diff}
 
     # TARGET_UNHEALTHY
     affected = [r for r in BodyRegion if health.get(r) < HEALTHY_THRESHOLD]
@@ -153,17 +160,17 @@ def _personal_score(
         return 0.05, (
             f"High difficulty ({avg_diff:.0%}) on an affected region — "
             "not safe while injured"
-        )
+        ), 'high_difficulty_unsafe', {'pct': avg_diff}
     if avg_form < 0.60:
         return 0.10, (
             f"Poor form history ({avg_form:.0%}) — "
             "unsafe to practise while not at best"
-        )
+        ), 'poor_form_unsafe', {'pct': avg_form}
     score = (1.0 - avg_diff) * avg_form
     return round(score, 3), (
         f"Good form ({avg_form:.0%}), manageable difficulty ({avg_diff:.0%}) — "
         "safe to continue"
-    )
+    ), 'good_form_safe', {'form_pct': avg_form, 'diff_pct': avg_diff}
 
 
 def _community_score(
@@ -245,7 +252,7 @@ def recommend(
 
     results: List[ExerciseRecommendation] = []
     for ex in filtered:
-        p_score, reason = _personal_score(ex, history, scenario, health)
+        p_score, reason, reason_code, reason_params = _personal_score(ex, history, scenario, health)
         c_score = _community_score(ex, community, health)
         f_score = _feedback_score(ex, feedbacks)
         final = _blend(p_score, c_score, f_score)
@@ -259,6 +266,8 @@ def recommend(
             personal_score=p_score,
             community_score=c_score,
             feedback_score=f_score,
+            reason_code=reason_code,
+            reason_params=reason_params,
         ))
 
     results.sort(key=lambda r: r.score, reverse=True)

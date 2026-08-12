@@ -72,6 +72,7 @@ def recommend_weight(
             reasoning             = ('No weight logged yet — start with bodyweight '
                                      'or a light load and log it after each session.'),
             confidence            = 0.2,
+            reasoning_code        = 'no_weight_logged',
         )
 
     current = logged[0].weight_kg
@@ -94,6 +95,8 @@ def recommend_weight(
                                      f'at {current:g} kg — reduce the load and rebuild '
                                      'clean technique.'),
             confidence            = 0.8,
+            reasoning_code        = 'form_dropped',
+            reasoning_params      = {'score': streak[0].overall_score, 'weight': current},
         )
 
     clean = [s for s in streak if s.overall_score >= FORM_READY_SCORE]
@@ -106,6 +109,9 @@ def recommend_weight(
                                      f'≥ {FORM_READY_SCORE:.0f} — ready to add '
                                      f'{increment:g} kg.'),
             confidence            = min(0.9, 0.6 + 0.1 * len(clean)),
+            reasoning_code        = 'ready_to_increase',
+            reasoning_params      = {'clean': len(clean), 'weight': current,
+                                      'threshold': FORM_READY_SCORE, 'increment': increment},
         )
 
     return WeightRecommendation(
@@ -116,6 +122,9 @@ def recommend_weight(
                                  f'(form ≥ {FORM_READY_SCORE:.0f}) — stay here until '
                                  'the technique is consistent.'),
         confidence            = 0.6,
+        reasoning_code        = 'stay_here',
+        reasoning_params      = {'clean': len(clean), 'needed': needed, 'weight': current,
+                                  'threshold': FORM_READY_SCORE},
     )
 
 

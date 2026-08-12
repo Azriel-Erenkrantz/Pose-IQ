@@ -50,8 +50,8 @@ def _seed_alex(user_id: str) -> None:
         _make_record(user_id, "shoulder_press", 0.82, 0.55, ["incomplete_range_of_motion"], 14),
         _make_record(user_id, "shoulder_press", 0.79, 0.60, ["speed_too_fast"], 7),
         _make_record(user_id, "shoulder_press", 0.84, 0.58, ["incomplete_range_of_motion"], 3),
-        _make_record(user_id, "bicep_curl",     0.28, 0.92, [], 12),
-        _make_record(user_id, "bicep_curl",     0.32, 0.90, [], 5),
+        _make_record(user_id, "biceps_curl",     0.28, 0.92, [], 12),
+        _make_record(user_id, "biceps_curl",     0.32, 0.90, [], 5),
         _make_record(user_id, "push_up",        0.46, 0.80, ["minor_form_break"], 10),
         _make_record(user_id, "push_up",        0.40, 0.85, [], 4),
         _make_record(user_id, "squat",          0.72, 0.68, ["knee_cave"], 9),
@@ -88,7 +88,7 @@ def run():
     # ── SCENARIO 2: Core pain — adjacent region affected ───────────
     print("[SCENARIO 2]  [Button press] Alex reports core pain (2/5).")
     print("  Expectation: shoulder_press (hard + uses core) drops sharply.")
-    print("  bicep_curl and push_up (moderate, manageable) rise.")
+    print("  biceps_curl and push_up (moderate, manageable) rise.")
 
     session = update_health_status(session.id, BodyRegion.CORE, 2)
     print_recommendations(session)
