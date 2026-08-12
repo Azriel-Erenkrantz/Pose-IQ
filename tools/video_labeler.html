@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>Pose-IQ — כלי תיוג סרטוני אימון</title>
+<style>
+  :root {
+    --bg: #f7f6f3; --panel: #ffffff; --ink: #171716; --sub: #6f6e68;
+    --line: #e6e5e1; --accent: #0f6b4c; --accent-ink: #ffffff;
+    --danger: #b3261e; --warn: #a3690a;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+    background: var(--bg); color: var(--ink); padding: 24px;
+  }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .sub { color: var(--sub); font-size: 13px; margin-bottom: 20px; }
+  .layout { display: grid; grid-template-columns: 1fr 360px; gap: 16px; align-items: start; }
+  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+  .panel {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 16px; margin-bottom: 16px;
+  }
+  .panel h2 { font-size: 14px; margin: 0 0 10px; color: var(--sub); font-weight: 700; }
+  label { font-size: 13px; font-weight: 600; display: block; margin-bottom: 4px; }
+  select, input[type=text], input[type=number], input[type=file] {
+    width: 100%; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px;
+    font-size: 14px; background: #fff; color: var(--ink); font-family: inherit;
+  }
+  .row { display: flex; gap: 10px; margin-bottom: 12px; }
+  .row > div { flex: 1; }
+  video { width: 100%; border-radius: 8px; background: #000; display: block; }
+  .transport {
+    display: flex; gap: 8px; align-items: center; justify-content: center;
+    margin-top: 10px; flex-wrap: wrap;
+  }
+  button {
+    cursor: pointer; border: 1px solid var(--line); background: #fff; color: var(--ink);
+    border-radius: 6px; padding: 8px 12px; font-size: 13px; font-weight: 600;
+    font-family: inherit;
+  }
+  button:hover { background: #f1f0ec; }
+  button.primary { background: var(--ink); color: #fff; border-color: var(--ink); }
+  button.primary:hover { opacity: .9; }
+  button.danger { color: var(--danger); }
+  button:disabled { opacity: .4; cursor: not-allowed; }
+  .phase-buttons { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .phase-buttons button { flex: 1; min-width: 100px; background: #eef7f2; border-color: #cfe6da; }
+  .phase-buttons button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .time-readout {
+    font-variant-numeric: tabular-nums; font-size: 15px; font-weight: 700;
+    text-align: center; margin-top: 8px; color: var(--sub);
+  }
+  .time-readout b { color: var(--ink); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 6px 4px; text-align: right; border-bottom: 1px solid var(--line); }
+  th { color: var(--sub); font-weight: 600; }
+  td.num { font-variant-numeric: tabular-nums; }
+  tr.open td { color: var(--warn); font-style: italic; }
+  .hint { font-size: 12px; color: var(--sub); line-height: 1.6; }
+  .hint kbd {
+    background: #f1f0ec; border: 1px solid var(--line); border-radius: 4px;
+    padding: 1px 6px; font-family: monospace; font-size: 11px;
+  }
+  textarea {
+    width: 100%; height: 160px; font-family: monospace; font-size: 12px;
+    border: 1px solid var(--line); border-radius: 6px; padding: 8px; direction: ltr;
+    text-align: left; background: #fbfbfa;
+  }
+  .status { font-size: 13px; padding: 8px 10px; border-radius: 6px; margin-top: 8px; }
+  .status.ok { background: #eef7f2; color: var(--accent); }
+  .status.warn { background: #fdf3e6; color: var(--warn); }
+  .rowbtns { display: flex; gap: 8px; margin-top: 10px; }
+  .rowbtns button { flex: 1; }
+  small.muted { color: var(--sub); }
+</style>
+</head>
+<body>
+
+<h1>כלי תיוג סרטוני אימון — Pose-IQ</h1>
+<div class="sub">
+  עובד לגמרי מקומי בדפדפן (בלי שרת, בלי אינטרנט). מייצא קובץ JSON באותו פורמט שה-trainer מצפה לו.
+</div>
+
+<div class="layout">
+
+  <div>
+    <div class="panel">
+      <h2>1. תרגיל וקובץ וידאו</h2>
+      <div class="row">
+        <div>
+          <label>תרגיל</label>
+          <select id="exercise"></select>
+        </div>
+        <div>
+          <label>FPS (למדידת פריימים — ברירת מחדל לפי הפרוטוקול)</label>
+          <input type="number" id="fps" value="30" min="1" step="1">
+        </div>
+      </div>
+      <label>קובץ וידאו</label>
+      <input type="file" id="videoFile" accept="video/*">
+      <video id="video" controls></video>
+
+      <div class="transport">
+        <button id="stepBack">⟵ פריים אחד</button>
+        <button id="playPause">▶ נגן / השהה (רווח)</button>
+        <button id="stepFwd">פריים אחד ⟶</button>
+      </div>
+      <div class="time-readout">
+        זמן: <b id="timeNow">0.000</b> שנ' &nbsp;|&nbsp; פריים: <b id="frameNow">0</b>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>2. סימון מעברי פאזה</h2>
+      <div class="hint">
+        לוחצים על כפתור הפאזה <u>שמתחילה עכשיו</u> ברגע ההעברה (זה סוגר אוטומטית את הפאזה הקודמת).
+        הסרטון נטען עם הפאזה הראשונה פתוחה כבר מ-0 שניות. מקשים: <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> לפאזות,
+        <kbd>␣</kbd> נגן/השהה, <kbd>←</kbd> <kbd>→</kbd> צעד פריים.
+      </div>
+      <div class="phase-buttons" id="phaseButtons"></div>
+      <div class="rowbtns">
+        <button id="undoBtn">↩ בטל סימון אחרון</button>
+        <button id="finishBtn" class="primary">✔ סיום — סגור קטע אחרון בזמן הנוכחי</button>
+      </div>
+      <div id="statusMsg"></div>
+    </div>
+  </div>
+
+  <div>
+    <div class="panel">
+      <h2>קטעים מתויגים</h2>
+      <table>
+        <thead><tr><th>#</th><th>פאזה</th><th>התחלה</th><th>סיום</th><th></th></tr></thead>
+        <tbody id="segTable"></tbody>
+      </table>
+      <small class="muted" id="segEmpty">טרם נטען וידאו.</small>
+    </div>
+
+    <div class="panel">
+      <h2>3. ייצוא</h2>
+      <label>video (נתיב יעד בפרויקט — להעביר את קובץ הוידאו לשם בפועל)</label>
+      <input type="text" id="videoPath">
+      <div class="row" style="margin-top:10px">
+        <div>
+          <label>skip</label>
+          <input type="number" id="skip" value="1" min="1">
+        </div>
+      </div>
+      <label>תצוגה מקדימה (JSON)</label>
+      <textarea id="jsonPreview" readonly></textarea>
+      <div class="rowbtns">
+        <button id="downloadBtn" class="primary">⬇ הורדת קובץ JSON</button>
+      </div>
+      <small class="muted">
+        שם קובץ מיוצא: <span id="outName">—</span><br>
+        להעביר אותו ל-<code>data/labeled_vidz/&lt;exercise&gt;/</code> בפרויקט.
+      </small>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// Phase cycles match core/exercise seed data & docs/filming-protocol-he.md §7.
+const EXERCISES = {
+  squat:           { label: 'סקוואט',           cycle: ['standing', 'descending', 'ascending'] },
+  lunge:           { label: 'לאנג\'',            cycle: ['standing', 'descending', 'ascending'] },
+  biceps_curl:     { label: 'כפיפת מרפקים',      cycle: ['standing', 'curling', 'lowering'] },
+  shoulder_press:  { label: 'לחיצת כתפיים',      cycle: ['start', 'pressing', 'lowering'] },
+};
+
+// data/videos/ uses "bicep_curl" (singular) for historical reasons even though
+// exercise_id is "biceps_curl" — match the existing folder so new clips land
+// next to the old ones instead of creating a second, inconsistent folder.
+const VIDEO_DIR_OVERRIDE = { biceps_curl: 'bicep_curl' };
+function videoDirFor(exerciseId) { return VIDEO_DIR_OVERRIDE[exerciseId] || exerciseId; }
+
+const $ = id => document.getElementById(id);
+const exerciseSel = $('exercise');
+const fpsInput = $('fps');
+const video = $('video');
+const videoFileInput = $('videoFile');
+const phaseButtonsEl = $('phaseButtons');
+const segTableBody = $('segTable');
+const segEmpty = $('segEmpty');
+const statusMsg = $('statusMsg');
+const videoPathInput = $('videoPath');
+const skipInput = $('skip');
+const jsonPreview = $('jsonPreview');
+const outNameEl = $('outName');
+
+let segments = [];      // {phase, start, end|null}
+let currentVideoName = '';
+
+for (const [id, def] of Object.entries(EXERCISES)) {
+  const opt = document.createElement('option');
+  opt.value = id; opt.textContent = `${def.label} (${id})`;
+  exerciseSel.appendChild(opt);
+}
+
+function fps() { return Math.max(1, parseFloat(fpsInput.value) || 30); }
+function cycle() { return EXERCISES[exerciseSel.value].cycle; }
+
+function resetLabeling() {
+  const c = cycle();
+  segments = [{ phase: c[0], start: 0, end: null }];
+  renderPhaseButtons();
+  renderSegments();
+  updateExport();
+}
+
+function renderPhaseButtons() {
+  const c = cycle();
+  phaseButtonsEl.innerHTML = '';
+  c.forEach((phase, i) => {
+    const b = document.createElement('button');
+    b.textContent = `${i + 1}. ${phase}`;
+    b.dataset.phase = phase;
+    b.onclick = () => markPhase(phase);
+    phaseButtonsEl.appendChild(b);
+  });
+  highlightActivePhase();
+}
+
+function highlightActivePhase() {
+  const open = segments[segments.length - 1];
+  [...phaseButtonsEl.children].forEach(b => {
+    b.classList.toggle('active', open && b.dataset.phase === open.phase && open.end === null);
+  });
+}
+
+function markPhase(phase) {
+  if (!video.src) { setStatus('טענו קודם קובץ וידאו.', 'warn'); return; }
+  const t = round3(video.currentTime);
+  const open = segments[segments.length - 1];
+  if (open && open.end === null) {
+    if (t <= open.start) {
+      setStatus('הזמן הנוכחי מוקדם/שווה לתחילת הקטע הפתוח — לא סומן.', 'warn');
+      return;
+    }
+    open.end = t;
+  }
+  segments.push({ phase, start: t, end: null });
+  renderSegments();
+  updateExport();
+  setStatus(`סומן: "${phase}" מתחיל ב-${t.toFixed(3)}s`, 'ok');
+}
+
+function undoLast() {
+  if (segments.length === 0) return;
+  if (segments.length === 1) {
+    segments[0].start = 0;
+    setStatus('זהו הקטע הראשון — לא ניתן להסיר, רק לערוך זמנים בטבלה.', 'warn');
+    renderSegments();
+    return;
+  }
+  segments.pop();
+  const open = segments[segments.length - 1];
+  open.end = null;
+  renderSegments();
+  updateExport();
+  setStatus('הסימון האחרון בוטל.', 'ok');
+}
+
+function finishVideo() {
+  const open = segments[segments.length - 1];
+  if (!open || open.end !== null) { setStatus('אין קטע פתוח לסגירה.', 'warn'); return; }
+  const t = round3(video.currentTime || open.start);
+  open.end = Math.max(t, open.start + 0.01);
+  renderSegments();
+  updateExport();
+  setStatus('הקטע האחרון נסגר. אפשר לייצא.', 'ok');
+}
+
+function deleteSegment(idx) {
+  segments.splice(idx, 1);
+  if (segments.length && segments[segments.length - 1].end !== null) {
+    // keep last segment open for continued labeling if it was mid-video
+  }
+  renderSegments();
+  updateExport();
+}
+
+function renderSegments() {
+  segTableBody.innerHTML = '';
+  segEmpty.style.display = segments.length ? 'none' : 'block';
+  segments.forEach((s, i) => {
+    const tr = document.createElement('tr');
+    if (s.end === null) tr.classList.add('open');
+    tr.innerHTML = `
+      <td class="num">${i + 1}</td>
+      <td>${s.phase}</td>
+      <td class="num">${s.start.toFixed(3)}</td>
+      <td class="num">${s.end === null ? '(פתוח)' : s.end.toFixed(3)}</td>
+      <td><button data-idx="${i}" class="danger delBtn">מחק</button></td>
+    `;
+    segTableBody.appendChild(tr);
+  });
+  [...segTableBody.querySelectorAll('.delBtn')].forEach(b => {
+    b.onclick = () => deleteSegment(parseInt(b.dataset.idx, 10));
+  });
+  highlightActivePhase();
+}
+
+function round3(n) { return Math.round(n * 1000) / 1000; }
+
+function setStatus(msg, kind) {
+  statusMsg.innerHTML = `<div class="status ${kind}">${msg}</div>`;
+}
+
+function updateExport() {
+  const closed = segments.filter(s => s.end !== null);
+  const data = {
+    exercise_id: exerciseSel.value,
+    video: videoPathInput.value || `data/videos/${videoDirFor(exerciseSel.value)}/good/${currentVideoName}`,
+    skip: parseInt(skipInput.value, 10) || 1,
+    labels: closed.map(s => ({ start_sec: s.start, end_sec: s.end, phase: s.phase })),
+  };
+  jsonPreview.value = JSON.stringify(data, null, 2);
+  const base = currentVideoName ? currentVideoName.replace(/\.[^.]+$/, '') : 'labels';
+  outNameEl.textContent = `${base}.json`;
+}
+
+// ── Video loading ────────────────────────────────────────────────────────────
+
+videoFileInput.addEventListener('change', () => {
+  const file = videoFileInput.files[0];
+  if (!file) return;
+  currentVideoName = file.name;
+  video.src = URL.createObjectURL(file);
+  videoPathInput.value = `data/videos/${videoDirFor(exerciseSel.value)}/good/${file.name}`;
+  video.addEventListener('loadedmetadata', () => {
+    video.currentTime = 0;
+    resetLabeling();
+  }, { once: true });
+});
+
+exerciseSel.addEventListener('change', () => {
+  if (video.src) resetLabeling();
+  if (currentVideoName) videoPathInput.value = `data/videos/${videoDirFor(exerciseSel.value)}/good/${currentVideoName}`;
+});
+
+skipInput.addEventListener('input', updateExport);
+videoPathInput.addEventListener('input', updateExport);
+
+// ── Transport ────────────────────────────────────────────────────────────────
+
+function step(dir) {
+  if (!video.src) return;
+  video.pause();
+  video.currentTime = Math.max(0, video.currentTime + dir / fps());
+}
+$('stepBack').onclick = () => step(-1);
+$('stepFwd').onclick = () => step(1);
+$('playPause').onclick = () => { video.paused ? video.play() : video.pause(); };
+$('undoBtn').onclick = undoLast;
+$('finishBtn').onclick = finishVideo;
+
+video.addEventListener('timeupdate', () => {
+  $('timeNow').textContent = video.currentTime.toFixed(3);
+  $('frameNow').textContent = Math.round(video.currentTime * fps());
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  const c = cycle();
+  if (e.key >= '1' && e.key <= String(c.length)) {
+    markPhase(c[parseInt(e.key, 10) - 1]);
+    e.preventDefault();
+  } else if (e.code === 'Space') {
+    video.paused ? video.play() : video.pause();
+    e.preventDefault();
+  } else if (e.key === 'ArrowLeft') {
+    step(-1); e.preventDefault();
+  } else if (e.key === 'ArrowRight') {
+    step(1); e.preventDefault();
+  }
+});
+
+$('downloadBtn').onclick = () => {
+  const open = segments[segments.length - 1];
+  if (open && open.end === null) {
+    setStatus('יש קטע פתוח שלא נסגר — לחצו "סיום" קודם.', 'warn');
+    return;
+  }
+  updateExport();
+  const blob = new Blob([jsonPreview.value], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = outNameEl.textContent;
+  a.click();
+};
+
+renderPhaseButtons();
+updateExport();
+</script>
+</body>
+</html>
