@@ -3,9 +3,11 @@ import type {
   ProfileSetupOptions, ProgressMetrics, RepPayload, SavedSession, User,
 } from './types';
 
-// iOS Simulator can reach the Mac's localhost directly.
-// Physical device: replace with your Mac's local IP (e.g. http://192.168.x.x:5001)
-const API_BASE = 'http://localhost:5001';
+// Configurable via .env (VITE_API_BASE) — see .env.example. Falls back to the
+// local Flask dev server so `npm run dev` works with zero setup.
+// iOS Simulator can reach the Mac's localhost directly via the fallback.
+// Physical device: set VITE_API_BASE to your Mac's local IP (e.g. http://192.168.x.x:5000).
+const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:5000';
 
 // ── Low-level helpers ──────────────────────────────────────────────────────────
 

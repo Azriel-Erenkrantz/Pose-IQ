@@ -16,6 +16,7 @@ Routes here don't touch storage — they call service.py only.
 from __future__ import annotations
 
 import dataclasses
+import os
 from datetime import datetime
 from enum import Enum
 from functools import wraps
@@ -42,7 +43,12 @@ from core.recommendation.bridge import recommend_for_user
 from core.recommendation.overload import recommend_weights_for_user
 
 app = Flask(__name__)
-CORS(app)
+
+# FRONTEND_ORIGIN: comma-separated allowed origins for the deployed frontend
+# (e.g. "https://pose-iq.vercel.app"). Defaults to "*" so local dev and the
+# desktop pipeline work with zero setup — tighten this in production via env.
+_origins = os.environ.get('FRONTEND_ORIGIN', '*')
+CORS(app, origins=_origins.split(',') if _origins != '*' else '*')
 
 
 # ── Serialization ──────────────────────────────────────────────────────────────
