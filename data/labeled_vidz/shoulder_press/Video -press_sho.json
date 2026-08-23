@@ -1,0 +1,217 @@
+{
+  "exercise_id": "shoulder_press",
+  "video": "data/videos/shoulder_press/good/Video -press_sho.mp4",
+  "skip": 1,
+  "labels": [
+    {
+      "start_sec": 0,
+      "end_sec": 3.415,
+      "phase": "start"
+    },
+    {
+      "start_sec": 3.415,
+      "end_sec": 4.372,
+      "phase": "pressing"
+    },
+    {
+      "start_sec": 4.372,
+      "end_sec": 5.767,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 5.767,
+      "end_sec": 5.867,
+      "phase": "start"
+    },
+    {
+      "start_sec": 5.867,
+      "end_sec": 6.636,
+      "phase": "pressing"
+    },
+    {
+      "start_sec": 6.636,
+      "end_sec": 7.459,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 7.459,
+      "end_sec": 8.226,
+      "phase": "start"
+    },
+    {
+      "start_sec": 8.226,
+      "end_sec": 9.393,
+      "phase": "pressing"
+    },
+    {
+      "start_sec": 9.393,
+      "end_sec": 10.854,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 10.854,
+      "end_sec": 10.921,
+      "phase": "start"
+    },
+    {
+      "start_sec": 10.921,
+      "end_sec": 11.705,
+      "phase": "pressing"
+    },
+    {
+      "start_sec": 11.705,
+      "end_sec": 12.479,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 12.479,
+      "end_sec": 13.112,
+      "phase": "start"
+    },
+    {
+      "start_sec": 13.112,
+      "end_sec": 14.007,
+      "phase": "pressing"
+    },
+    {
+      "start_sec": 14.007,
+      "end_sec": 15.427,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 15.427,
+      "end_sec": 15.494,
+      "phase": "start"
+    },
+    {
+      "start_sec": 15.494,
+      "end_sec": 16.19,
+      "phase": "pressing"
+    },
+    {
+      "start_sec": 16.19,
+      "end_sec": 17.542,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 17.542,
+      "end_sec": 17.609,
+      "phase": "start"
+    },
+    {
+      "start_sec": 17.609,
+      "end_sec": 18.346,
+      "phase": "pressing"
+    },
+    {
+      "start_sec": 18.346,
+      "end_sec": 19.494,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 19.494,
+      "end_sec": 19.561,
+      "phase": "start"
+    },
+    {
+      "start_sec": 19.561,
+      "end_sec": 20.326,
+      "phase": "pressing"
+    },
+    {
+      "start_sec": 20.326,
+      "end_sec": 21.659,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 21.659,
+      "end_sec": 21.726,
+      "phase": "start"
+    },
+    {
+      "start_sec": 21.726,
+      "end_sec": 22.364,
+      "phase": "pressing"
+    },
+    {
+      "start_sec": 22.364,
+      "end_sec": 24.206,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 24.206,
+      "end_sec": 24.34,
+      "phase": "start"
+    },
+    {
+      "start_sec": 24.34,
+      "end_sec": 25.159,
+      "phase": "pressing"
+    },
+    {
+      "start_sec": 25.159,
+      "end_sec": 26.779,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 26.779,
+      "end_sec": 26.846,
+      "phase": "start"
+    },
+    {
+      "start_sec": 26.846,
+      "end_sec": 27.757,
+      "phase": "pressing"
+    },
+    {
+      "start_sec": 27.757,
+      "end_sec": 29.446,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 29.446,
+      "end_sec": 29.579,
+      "phase": "start"
+    },
+    {
+      "start_sec": 29.579,
+      "end_sec": 30.584,
+      "phase": "pressing"
+    },
+    {
+      "start_sec": 30.584,
+      "end_sec": 32.246,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 32.246,
+      "end_sec": 32.346,
+      "phase": "start"
+    },
+    {
+      "start_sec": 32.346,
+      "end_sec": 33.186,
+      "phase": "pressing"
+    },
+    {
+      "start_sec": 33.186,
+      "end_sec": 34.686,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 34.686,
+      "end_sec": 34.752,
+      "phase": "start"
+    },
+    {
+      "start_sec": 34.752,
+      "end_sec": 35.552,
+      "phase": "pressing"
+    },
+    {
+      "start_sec": 35.552,
+      "end_sec": 36.1,
+      "phase": "lowering"
+    }
+  ]
+}

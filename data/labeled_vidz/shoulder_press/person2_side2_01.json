@@ -1,0 +1,47 @@
+{
+  "exercise_id": "shoulder_press",
+  "video": "data/videos/shoulder_press/good/person2_side2_01.mp4",
+  "skip": 1,
+  "labels": [
+    {
+      "start_sec": 0,
+      "end_sec": 0.367,
+      "phase": "start"
+    },
+    {
+      "start_sec": 0.367,
+      "end_sec": 3.334,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 3.334,
+      "end_sec": 3.401,
+      "phase": "start"
+    },
+    {
+      "start_sec": 3.401,
+      "end_sec": 4.706,
+      "phase": "pressing"
+    },
+    {
+      "start_sec": 4.706,
+      "end_sec": 7.284,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 7.284,
+      "end_sec": 8.377,
+      "phase": "start"
+    },
+    {
+      "start_sec": 8.377,
+      "end_sec": 10.237,
+      "phase": "pressing"
+    },
+    {
+      "start_sec": 10.237,
+      "end_sec": 13.231,
+      "phase": "lowering"
+    }
+  ]
+}

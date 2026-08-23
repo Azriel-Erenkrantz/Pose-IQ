@@ -1,28 +1,32 @@
 {
   "exercise_id": "biceps_curl",
   "video": "data/videos/bicep_curl/good/dumb2.mp4",
-  "fps": 30.0,
   "skip": 1,
   "labels": [
     {
-      "start_sec": 0.0,
-      "end_sec": 0.23,
+      "start_sec": 0,
+      "end_sec": 0.6,
       "phase": "standing"
     },
     {
-      "start_sec": 1.37,
-      "end_sec": 2.37,
+      "start_sec": 0.6,
+      "end_sec": 1.433,
+      "phase": "curling"
+    },
+    {
+      "start_sec": 1.433,
+      "end_sec": 2.333,
       "phase": "lowering"
     },
     {
-      "start_sec": 2.37,
+      "start_sec": 2.333,
       "end_sec": 2.6,
       "phase": "standing"
     },
     {
-      "start_sec": 2.9,
-      "end_sec": 3.13,
-      "phase": "standing"
+      "start_sec": 2.6,
+      "end_sec": 3.933,
+      "phase": "curling"
     }
   ]
 }

@@ -1,0 +1,47 @@
+{
+  "exercise_id": "shoulder_press",
+  "video": "data/videos/shoulder_press/good/slow_front_01.mp4",
+  "skip": 1,
+  "labels": [
+    {
+      "start_sec": 0,
+      "end_sec": 0.033,
+      "phase": "start"
+    },
+    {
+      "start_sec": 0.033,
+      "end_sec": 2.118,
+      "phase": "start"
+    },
+    {
+      "start_sec": 2.118,
+      "end_sec": 2.185,
+      "phase": "start"
+    },
+    {
+      "start_sec": 2.185,
+      "end_sec": 3.218,
+      "phase": "pressing"
+    },
+    {
+      "start_sec": 3.218,
+      "end_sec": 7.43,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 7.43,
+      "end_sec": 7.463,
+      "phase": "start"
+    },
+    {
+      "start_sec": 7.463,
+      "end_sec": 8.53,
+      "phase": "pressing"
+    },
+    {
+      "start_sec": 8.53,
+      "end_sec": 11.446,
+      "phase": "lowering"
+    }
+  ]
+}

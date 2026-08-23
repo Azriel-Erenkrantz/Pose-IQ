@@ -1,0 +1,57 @@
+{
+  "exercise_id": "lunge",
+  "video": "data/videos/lunge/good/person1_side1_01.mp4",
+  "skip": 1,
+  "labels": [
+    {
+      "start_sec": 0,
+      "end_sec": 0.1,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 0.1,
+      "end_sec": 0.833,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 0.833,
+      "end_sec": 1.667,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 1.667,
+      "end_sec": 1.833,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 1.833,
+      "end_sec": 2.9,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 2.9,
+      "end_sec": 3.733,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 3.733,
+      "end_sec": 4,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 4,
+      "end_sec": 5.2,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 5.2,
+      "end_sec": 5.867,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 5.867,
+      "end_sec": 6.867,
+      "phase": "standing"
+    }
+  ]
+}

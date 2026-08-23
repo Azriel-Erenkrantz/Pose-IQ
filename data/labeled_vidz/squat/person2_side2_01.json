@@ -1,0 +1,52 @@
+{
+  "exercise_id": "squat",
+  "video": "data/videos/squat/good/person2_side2_01.mp4",
+  "skip": 1,
+  "labels": [
+    {
+      "start_sec": 0.067,
+      "end_sec": 1.047,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 1.047,
+      "end_sec": 2.38,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 2.38,
+      "end_sec": 3.346,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 3.346,
+      "end_sec": 5.494,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 5.494,
+      "end_sec": 6.842,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 6.842,
+      "end_sec": 7.042,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 7.042,
+      "end_sec": 10.111,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 10.111,
+      "end_sec": 11.387,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 11.387,
+      "end_sec": 11.397,
+      "phase": "standing"
+    }
+  ]
+}

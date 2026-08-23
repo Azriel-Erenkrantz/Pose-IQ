@@ -1,138 +1,77 @@
 {
   "exercise_id": "shoulder_press",
   "video": "data/videos/shoulder_press/good/Video Project 2.mp4",
-  "fps": 30.0,
   "skip": 1,
   "labels": [
     {
-      "start_sec": 0.0,
-      "end_sec": 0.23,
+      "start_sec": 0,
+      "end_sec": 1.193,
       "phase": "start"
     },
     {
-      "start_sec": 0.23,
-      "end_sec": 0.67,
+      "start_sec": 1.193,
+      "end_sec": 6.919,
+      "phase": "pressing"
+    },
+    {
+      "start_sec": 6.919,
+      "end_sec": 15.09,
       "phase": "lowering"
     },
     {
-      "start_sec": 0.67,
-      "end_sec": 3.13,
+      "start_sec": 15.09,
+      "end_sec": 15.156,
+      "phase": "start"
+    },
+    {
+      "start_sec": 15.156,
+      "end_sec": 16.277,
       "phase": "pressing"
     },
     {
-      "start_sec": 3.13,
-      "end_sec": 3.37,
-      "phase": "start"
-    },
-    {
-      "start_sec": 3.9,
-      "end_sec": 4.13,
-      "phase": "start"
-    },
-    {
-      "start_sec": 4.27,
-      "end_sec": 5.6,
-      "phase": "pressing"
-    },
-    {
-      "start_sec": 5.6,
-      "end_sec": 5.83,
-      "phase": "start"
-    },
-    {
-      "start_sec": 5.83,
-      "end_sec": 6.07,
-      "phase": "pressing"
-    },
-    {
-      "start_sec": 6.07,
-      "end_sec": 6.7,
-      "phase": "start"
-    },
-    {
-      "start_sec": 6.7,
-      "end_sec": 9.8,
+      "start_sec": 16.277,
+      "end_sec": 17.742,
       "phase": "lowering"
     },
     {
-      "start_sec": 9.9,
-      "end_sec": 10.13,
+      "start_sec": 17.742,
+      "end_sec": 17.909,
       "phase": "start"
     },
     {
-      "start_sec": 10.37,
-      "end_sec": 10.6,
-      "phase": "start"
+      "start_sec": 17.909,
+      "end_sec": 19.121,
+      "phase": "pressing"
     },
     {
-      "start_sec": 10.6,
-      "end_sec": 14.83,
+      "start_sec": 19.121,
+      "end_sec": 20.534,
       "phase": "lowering"
     },
     {
-      "start_sec": 14.97,
-      "end_sec": 15.2,
+      "start_sec": 20.534,
+      "end_sec": 20.667,
       "phase": "start"
     },
     {
-      "start_sec": 15.2,
-      "end_sec": 15.63,
+      "start_sec": 20.667,
+      "end_sec": 21.8,
       "phase": "pressing"
     },
     {
-      "start_sec": 15.63,
-      "end_sec": 16.33,
-      "phase": "start"
-    },
-    {
-      "start_sec": 16.33,
-      "end_sec": 17.5,
+      "start_sec": 21.8,
+      "end_sec": 23.279,
       "phase": "lowering"
     },
     {
-      "start_sec": 17.57,
-      "end_sec": 17.8,
+      "start_sec": 23.279,
+      "end_sec": 23.479,
       "phase": "start"
     },
     {
-      "start_sec": 17.83,
-      "end_sec": 18.37,
+      "start_sec": 23.479,
+      "end_sec": 24.652,
       "phase": "pressing"
-    },
-    {
-      "start_sec": 18.37,
-      "end_sec": 19.07,
-      "phase": "start"
-    },
-    {
-      "start_sec": 19.07,
-      "end_sec": 20.2,
-      "phase": "lowering"
-    },
-    {
-      "start_sec": 20.2,
-      "end_sec": 20.43,
-      "phase": "start"
-    },
-    {
-      "start_sec": 20.5,
-      "end_sec": 21.3,
-      "phase": "pressing"
-    },
-    {
-      "start_sec": 21.3,
-      "end_sec": 21.53,
-      "phase": "start"
-    },
-    {
-      "start_sec": 23.37,
-      "end_sec": 23.8,
-      "phase": "pressing"
-    },
-    {
-      "start_sec": 23.8,
-      "end_sec": 24.03,
-      "phase": "start"
     }
   ]
 }

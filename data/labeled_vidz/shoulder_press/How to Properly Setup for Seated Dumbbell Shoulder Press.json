@@ -1,243 +1,67 @@
 {
   "exercise_id": "shoulder_press",
   "video": "data/videos/shoulder_press/good/How to Properly Setup for Seated Dumbbell Shoulder Press.mp4",
-  "fps": 30.0,
   "skip": 1,
   "labels": [
     {
-      "start_sec": 0.0,
-      "end_sec": 0.23,
+      "start_sec": 0,
+      "end_sec": 0.033,
       "phase": "start"
     },
     {
-      "start_sec": 0.23,
-      "end_sec": 0.93,
+      "start_sec": 0.033,
+      "end_sec": 1.7,
+      "phase": "start"
+    },
+    {
+      "start_sec": 1.7,
+      "end_sec": 4.133,
       "phase": "pressing"
     },
     {
-      "start_sec": 0.93,
-      "end_sec": 1.17,
-      "phase": "start"
-    },
-    {
-      "start_sec": 1.6,
-      "end_sec": 1.83,
-      "phase": "start"
-    },
-    {
-      "start_sec": 1.83,
-      "end_sec": 2.2,
+      "start_sec": 4.133,
+      "end_sec": 5.033,
       "phase": "lowering"
     },
     {
-      "start_sec": 2.3,
-      "end_sec": 2.53,
-      "phase": "start"
-    },
-    {
-      "start_sec": 2.53,
-      "end_sec": 2.87,
+      "start_sec": 5.033,
+      "end_sec": 6.333,
       "phase": "pressing"
     },
     {
-      "start_sec": 2.87,
-      "end_sec": 3.1,
-      "phase": "start"
-    },
-    {
-      "start_sec": 3.1,
-      "end_sec": 3.33,
+      "start_sec": 6.333,
+      "end_sec": 6.5,
       "phase": "lowering"
     },
     {
-      "start_sec": 3.33,
-      "end_sec": 3.57,
+      "start_sec": 6.5,
+      "end_sec": 10.567,
+      "phase": "start"
+    },
+    {
+      "start_sec": 10.567,
+      "end_sec": 11.933,
       "phase": "pressing"
     },
     {
-      "start_sec": 3.57,
-      "end_sec": 3.8,
-      "phase": "start"
-    },
-    {
-      "start_sec": 3.8,
-      "end_sec": 4.07,
+      "start_sec": 11.933,
+      "end_sec": 15.9,
       "phase": "lowering"
     },
     {
-      "start_sec": 4.23,
-      "end_sec": 4.47,
+      "start_sec": 15.9,
+      "end_sec": 15.966,
       "phase": "start"
     },
     {
-      "start_sec": 4.47,
-      "end_sec": 5.03,
-      "phase": "lowering"
-    },
-    {
-      "start_sec": 5.03,
-      "end_sec": 5.37,
+      "start_sec": 15.966,
+      "end_sec": 17.233,
       "phase": "pressing"
     },
     {
-      "start_sec": 5.37,
-      "end_sec": 5.67,
-      "phase": "start"
-    },
-    {
-      "start_sec": 5.67,
-      "end_sec": 6.13,
+      "start_sec": 17.233,
+      "end_sec": 18.215,
       "phase": "lowering"
-    },
-    {
-      "start_sec": 6.13,
-      "end_sec": 6.37,
-      "phase": "start"
-    },
-    {
-      "start_sec": 6.43,
-      "end_sec": 6.67,
-      "phase": "start"
-    },
-    {
-      "start_sec": 6.67,
-      "end_sec": 7.43,
-      "phase": "lowering"
-    },
-    {
-      "start_sec": 7.43,
-      "end_sec": 8.2,
-      "phase": "pressing"
-    },
-    {
-      "start_sec": 8.2,
-      "end_sec": 8.43,
-      "phase": "start"
-    },
-    {
-      "start_sec": 8.7,
-      "end_sec": 8.93,
-      "phase": "start"
-    },
-    {
-      "start_sec": 9.07,
-      "end_sec": 9.5,
-      "phase": "pressing"
-    },
-    {
-      "start_sec": 9.5,
-      "end_sec": 9.73,
-      "phase": "start"
-    },
-    {
-      "start_sec": 9.73,
-      "end_sec": 9.97,
-      "phase": "lowering"
-    },
-    {
-      "start_sec": 9.97,
-      "end_sec": 10.27,
-      "phase": "pressing"
-    },
-    {
-      "start_sec": 10.27,
-      "end_sec": 10.5,
-      "phase": "start"
-    },
-    {
-      "start_sec": 10.63,
-      "end_sec": 10.87,
-      "phase": "start"
-    },
-    {
-      "start_sec": 10.9,
-      "end_sec": 11.13,
-      "phase": "start"
-    },
-    {
-      "start_sec": 11.53,
-      "end_sec": 12.23,
-      "phase": "start"
-    },
-    {
-      "start_sec": 12.23,
-      "end_sec": 12.5,
-      "phase": "lowering"
-    },
-    {
-      "start_sec": 12.5,
-      "end_sec": 12.73,
-      "phase": "start"
-    },
-    {
-      "start_sec": 12.73,
-      "end_sec": 13.17,
-      "phase": "lowering"
-    },
-    {
-      "start_sec": 13.17,
-      "end_sec": 13.4,
-      "phase": "start"
-    },
-    {
-      "start_sec": 13.47,
-      "end_sec": 13.8,
-      "phase": "pressing"
-    },
-    {
-      "start_sec": 13.8,
-      "end_sec": 14.1,
-      "phase": "start"
-    },
-    {
-      "start_sec": 14.1,
-      "end_sec": 14.63,
-      "phase": "lowering"
-    },
-    {
-      "start_sec": 14.63,
-      "end_sec": 14.87,
-      "phase": "start"
-    },
-    {
-      "start_sec": 15.0,
-      "end_sec": 15.23,
-      "phase": "start"
-    },
-    {
-      "start_sec": 15.37,
-      "end_sec": 15.6,
-      "phase": "start"
-    },
-    {
-      "start_sec": 15.93,
-      "end_sec": 16.23,
-      "phase": "start"
-    },
-    {
-      "start_sec": 16.23,
-      "end_sec": 16.5,
-      "phase": "lowering"
-    },
-    {
-      "start_sec": 16.5,
-      "end_sec": 16.73,
-      "phase": "start"
-    },
-    {
-      "start_sec": 16.9,
-      "end_sec": 17.13,
-      "phase": "start"
-    },
-    {
-      "start_sec": 17.13,
-      "end_sec": 17.73,
-      "phase": "pressing"
-    },
-    {
-      "start_sec": 17.73,
-      "end_sec": 17.97,
-      "phase": "start"
     }
   ]
 }

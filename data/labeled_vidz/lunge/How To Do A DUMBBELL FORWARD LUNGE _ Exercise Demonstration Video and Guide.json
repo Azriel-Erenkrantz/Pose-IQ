@@ -1,0 +1,242 @@
+{
+  "exercise_id": "lunge",
+  "video": "data/videos/lunge/good/How To Do A DUMBBELL FORWARD LUNGE _ Exercise Demonstration Video and Guide.mp4",
+  "skip": 1,
+  "labels": [
+    {
+      "start_sec": 0,
+      "end_sec": 2.57,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 2.57,
+      "end_sec": 3.703,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 3.703,
+      "end_sec": 4.737,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 4.737,
+      "end_sec": 4.903,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 4.903,
+      "end_sec": 6.203,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 6.203,
+      "end_sec": 7.237,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 7.237,
+      "end_sec": 7.503,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 7.503,
+      "end_sec": 8.737,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 8.737,
+      "end_sec": 10.027,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 10.027,
+      "end_sec": 10.16,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 10.16,
+      "end_sec": 11.593,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 11.593,
+      "end_sec": 11.793,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 11.793,
+      "end_sec": 13.227,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 13.227,
+      "end_sec": 14.493,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 14.493,
+      "end_sec": 14.627,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 14.627,
+      "end_sec": 15.76,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 15.76,
+      "end_sec": 17.027,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 17.027,
+      "end_sec": 17.16,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 17.16,
+      "end_sec": 18.327,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 18.327,
+      "end_sec": 19.36,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 19.36,
+      "end_sec": 19.56,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 19.56,
+      "end_sec": 20.893,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 20.893,
+      "end_sec": 21.793,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 21.793,
+      "end_sec": 22.126,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 22.126,
+      "end_sec": 23.393,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 23.393,
+      "end_sec": 24.693,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 24.693,
+      "end_sec": 24.893,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 24.893,
+      "end_sec": 26.026,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 26.026,
+      "end_sec": 27.26,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 27.26,
+      "end_sec": 27.36,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 27.36,
+      "end_sec": 28.593,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 28.593,
+      "end_sec": 29.493,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 29.493,
+      "end_sec": 29.793,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 29.793,
+      "end_sec": 31.093,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 31.093,
+      "end_sec": 32.326,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 32.326,
+      "end_sec": 32.393,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 32.393,
+      "end_sec": 33.426,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 33.426,
+      "end_sec": 34.426,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 34.426,
+      "end_sec": 34.893,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 34.893,
+      "end_sec": 36.126,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 36.126,
+      "end_sec": 37.16,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 37.16,
+      "end_sec": 37.426,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 37.426,
+      "end_sec": 38.726,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 38.726,
+      "end_sec": 40.026,
+      "phase": "ascending"
+    },
+    {
+      "start_sec": 40.026,
+      "end_sec": 40.06,
+      "phase": "standing"
+    },
+    {
+      "start_sec": 40.06,
+      "end_sec": 41.193,
+      "phase": "descending"
+    },
+    {
+      "start_sec": 41.193,
+      "end_sec": 42.193,
+      "phase": "ascending"
+    }
+  ]
+}

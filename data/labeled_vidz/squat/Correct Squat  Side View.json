@@ -1,57 +1,41 @@
 {
   "exercise_id": "squat",
   "video": "data/videos/squat/good/Correct Squat  Side View.mp4",
-  "fps": 29.97002997002997,
   "skip": 1,
   "labels": [
     {
-      "start_sec": 0.0,
-      "end_sec": 0.23,
+      "start_sec": 0,
+      "end_sec": 0.363,
       "phase": "standing"
     },
     {
-      "start_sec": 0.23,
-      "end_sec": 1.6,
+      "start_sec": 0.363,
+      "end_sec": 1.819,
       "phase": "descending"
     },
     {
-      "start_sec": 1.6,
-      "end_sec": 2.6,
+      "start_sec": 1.819,
+      "end_sec": 3.019,
       "phase": "ascending"
     },
     {
-      "start_sec": 2.6,
-      "end_sec": 2.84,
+      "start_sec": 3.019,
+      "end_sec": 3.485,
       "phase": "standing"
     },
     {
-      "start_sec": 3.34,
-      "end_sec": 3.57,
-      "phase": "standing"
-    },
-    {
-      "start_sec": 3.57,
-      "end_sec": 4.6,
+      "start_sec": 3.485,
+      "end_sec": 4.819,
       "phase": "descending"
     },
     {
-      "start_sec": 4.6,
-      "end_sec": 5.57,
+      "start_sec": 4.819,
+      "end_sec": 5.919,
       "phase": "ascending"
     },
     {
-      "start_sec": 5.57,
-      "end_sec": 5.81,
-      "phase": "standing"
-    },
-    {
-      "start_sec": 5.94,
-      "end_sec": 6.27,
-      "phase": "ascending"
-    },
-    {
-      "start_sec": 6.27,
-      "end_sec": 6.51,
+      "start_sec": 5.919,
+      "end_sec": 6.628,
       "phase": "standing"
     }
   ]

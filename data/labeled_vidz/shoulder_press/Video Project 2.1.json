@@ -1,43 +1,37 @@
 {
   "exercise_id": "shoulder_press",
   "video": "data/videos/shoulder_press/good/Video Project 2.1.mp4",
-  "fps": 30.0,
   "skip": 1,
   "labels": [
     {
-      "start_sec": 0.33,
-      "end_sec": 0.63,
+      "start_sec": 2.055,
+      "end_sec": 2.121,
       "phase": "start"
     },
     {
-      "start_sec": 0.63,
-      "end_sec": 1.53,
-      "phase": "lowering"
-    },
-    {
-      "start_sec": 1.53,
-      "end_sec": 1.77,
-      "phase": "start"
-    },
-    {
-      "start_sec": 2.53,
-      "end_sec": 3.23,
-      "phase": "start"
-    },
-    {
-      "start_sec": 3.23,
-      "end_sec": 4.1,
-      "phase": "lowering"
-    },
-    {
-      "start_sec": 4.1,
-      "end_sec": 4.9,
+      "start_sec": 2.121,
+      "end_sec": 3.119,
       "phase": "pressing"
     },
     {
-      "start_sec": 4.9,
-      "end_sec": 5.6,
+      "start_sec": 3.119,
+      "end_sec": 4.286,
+      "phase": "lowering"
+    },
+    {
+      "start_sec": 4.286,
+      "end_sec": 4.486,
       "phase": "start"
+    },
+    {
+      "start_sec": 4.486,
+      "end_sec": 5.281,
+      "phase": "pressing"
+    },
+    {
+      "start_sec": 5.281,
+      "end_sec": 6.2,
+      "phase": "lowering"
     }
   ]
 }

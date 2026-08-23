@@ -1,68 +1,47 @@
 {
   "exercise_id": "squat",
   "video": "data/videos/squat/good/Back Squat (side view) - FostaFit (720p, h264).mp4",
-  "fps": 30.0,
   "skip": 1,
   "labels": [
     {
-      "start_sec": 0.13,
-      "end_sec": 0.37,
+      "start_sec": 0,
+      "end_sec": 0.436,
       "phase": "standing"
     },
     {
-      "start_sec": 0.37,
-      "end_sec": 2.0,
+      "start_sec": 0.436,
+      "end_sec": 2.318,
       "phase": "descending"
     },
     {
-      "start_sec": 2.1,
-      "end_sec": 2.33,
-      "phase": "standing"
-    },
-    {
-      "start_sec": 2.33,
-      "end_sec": 3.5,
+      "start_sec": 2.318,
+      "end_sec": 3.522,
       "phase": "ascending"
     },
     {
-      "start_sec": 3.5,
-      "end_sec": 3.73,
+      "start_sec": 3.522,
+      "end_sec": 4.088,
       "phase": "standing"
     },
     {
-      "start_sec": 3.8,
-      "end_sec": 4.13,
-      "phase": "ascending"
-    },
-    {
-      "start_sec": 4.13,
-      "end_sec": 4.5,
-      "phase": "standing"
-    },
-    {
-      "start_sec": 4.5,
-      "end_sec": 6.0,
+      "start_sec": 4.088,
+      "end_sec": 6.524,
       "phase": "descending"
     },
     {
-      "start_sec": 6.1,
-      "end_sec": 6.33,
-      "phase": "standing"
-    },
-    {
-      "start_sec": 6.4,
-      "end_sec": 6.63,
-      "phase": "standing"
-    },
-    {
-      "start_sec": 6.63,
-      "end_sec": 7.63,
+      "start_sec": 6.524,
+      "end_sec": 7.717,
       "phase": "ascending"
     },
     {
-      "start_sec": 7.63,
-      "end_sec": 7.87,
+      "start_sec": 7.717,
+      "end_sec": 7.951,
       "phase": "standing"
+    },
+    {
+      "start_sec": 7.951,
+      "end_sec": 7.960999999999999,
+      "phase": "descending"
     }
   ]
 }
