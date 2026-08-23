@@ -23,7 +23,7 @@ code, comments, and commits are in English.
   (`frontend/src/pose/stateMachine.ts`).
 - **DB**: MongoDB (`core/db/get_db()`, `MONGODB_URI` env, default localhost).
   Collections: users, tokens (TTL), sessions, exercises, exercise_angles,
-  ratings (user's own 1-5 exercise ratings, feeds the recommendation ranker).
+  ratings (1-5 exercise ratings — feeds the recommendation ranker).
   The old SQLAlchemy/Postgres layer was deleted — docs mentioning it are stale.
 - **API** (`api/app.py`, Flask): auth, profile, health ratings, history,
   progress, ratings, dashboard (embeds recommendations). Run:
@@ -32,15 +32,18 @@ code, comments, and commits are in English.
   dataclasses shared by API ⇄ clients.
 - **Recommendations** (`core/recommendation/`, rewritten 2026-08-23): pure
   rating-based — a hand-rolled linear regression per exercise (gradient
-  descent, no numpy/scikit-learn), one trained per exercise on
-  `fake_ratings.py`'s synthetic dataset, predicting from the real user's own
-  ratings on the *other* exercises (`PUT /api/user/<id>/ratings/<exercise_id>`).
-  Trained artifact is a committed plain-JSON file, `data/recommendation_ranker.json`
-  (not the gitignored `data/models/`) — retrain via
-  `python -m core.recommendation.train_ranker`. No community/feedback/health-
-  scenario blending anymore (that machinery, plus the dormant ML ranker that
-  could never load on the deployed API since it needed scikit-learn, was
-  deleted, not kept).
+  descent, no numpy/scikit-learn), predicting from the user's own ratings on
+  the *other* exercises (`PUT /api/user/<id>/ratings/<exercise_id>`). Training
+  data is pulled entirely from Mongo's `ratings` collection — every rating
+  in there shapes the learned weights, not just each rater's own inference
+  input. Trained once per server process, lazily on the first request
+  (`api/app.py`'s `before_request` hook — not eagerly at import time, so
+  tests can still patch `get_db` before it fires), not on every dashboard
+  load. Artifact caches to `data/models/recommendation_ranker.json`
+  (gitignored — it's regenerated from Mongo, not a fixed thing to commit).
+  No community/feedback/health-scenario blending anymore (that machinery, plus the
+  dormant ML ranker that could never load on the deployed API since it
+  needed scikit-learn, was deleted, not kept).
 - **Clients**: `frontend/` React+Vite (works against the real API) — bilingual
   he/en with RTL (`src/i18n.tsx`, no deps), light "clinical" design system
   (tokens in `index.css`: paper bg, black primary buttons, pine-green accent),
@@ -62,7 +65,7 @@ python -m pytest stale/tests/ -q    # desktop-pipeline-only suite (44 tests)
 python -m core.exercise.seed        # seed exercises into Mongo (idempotent)
 python -m core.ml.trainer           # retrain phase models + write exercise_angles
 python -m core.ml.eval "data/labeled_vidz/squat/<file>.json"   # held-out eval
-python -m core.recommendation.train_ranker   # retrain the rating-based ranker on fake data
+python -m core.recommendation.train_ranker   # force an immediate ranker retrain from Mongo
 ```
 
 Setup order on a fresh DB: seed → trainer → register a user → web app

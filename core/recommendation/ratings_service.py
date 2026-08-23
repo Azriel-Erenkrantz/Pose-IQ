@@ -1,14 +1,14 @@
 """
-Storage for the user's own exercise ratings.
+Storage for users' exercise ratings.
 
 Collection 'ratings' — one document per (user_id, exercise_id), upserted
-on every re-rate. This is the only real (non-fake) data the ranker ever
-sees, and only at inference time — never used to retrain the model.
+on every re-rate. This is the only data the recommendation ranker trains
+on and predicts from.
 """
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Dict
+from typing import Dict, List
 
 from core.app_model import Rating
 from core.db import get_db
@@ -28,3 +28,13 @@ def get_user_ratings(user_id: str) -> Dict[str, int]:
     """exercise_id -> rating, for every exercise this user has rated."""
     docs = get_db().ratings.find({'user_id': user_id}, {'exercise_id': 1, 'rating': 1})
     return {doc['exercise_id']: doc['rating'] for doc in docs}
+
+
+def get_all_ratings_for_training() -> List[Dict[str, int]]:
+    """Every user's ratings, grouped one dict per user — the shape
+    ranker.train() needs."""
+    db = get_db()
+    by_user: Dict[str, Dict[str, int]] = {}
+    for doc in db.ratings.find():
+        by_user.setdefault(doc['user_id'], {})[doc['exercise_id']] = doc['rating']
+    return list(by_user.values())

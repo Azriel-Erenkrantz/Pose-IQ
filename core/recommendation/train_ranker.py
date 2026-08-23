@@ -1,9 +1,12 @@
 """
-Train the rating-based ranker on fake data and write the result to
-data/recommendation_ranker.json (committed — not the gitignored
-data/models/, so it ships with the deployed API).
+Force a retrain of the recommendation ranker right now, against whatever
+ratings currently exist in Mongo.
 
-Run after changing fake_ratings.py:
+api/app.py already does this automatically once per server process (on
+the first request) — this CLI is for forcing a fresh retrain without
+restarting the server, or for local inspection.
+
+Run:
     python -m core.recommendation.train_ranker
 """
 from __future__ import annotations

@@ -35,10 +35,29 @@ from core.app_model import (
 from core.user import service
 from core.recommendation.catalog import CATALOG
 from core.recommendation.ranker import recommend_for_user
+from core.recommendation.ranker import train as train_ranker
 from core.recommendation.overload import recommend_weights_for_user
 from core.recommendation import ratings_service
 
 app = Flask(__name__)
+
+# Train the recommendation ranker once per server process, against
+# whatever's in Mongo (fake dataset + every real user's ratings) — not
+# eagerly at import time, since that would hit MONGODB_URI before tests get
+# a chance to patch get_db() to mongomock (patched after import, before the
+# first test request). A before_request hook runs on the first real
+# request instead, which for a human is effectively "when they open the
+# app." If Mongo isn't reachable yet, the flag stays False and it retries
+# on the next request rather than caching a permanent failure.
+_ranker_trained = False
+
+
+@app.before_request
+def _ensure_ranker_trained():
+    global _ranker_trained
+    if not _ranker_trained:
+        train_ranker()
+        _ranker_trained = True
 
 # FRONTEND_ORIGIN: comma-separated allowed origins for the deployed frontend
 # (e.g. "https://pose-iq.vercel.app"). Defaults to "*" so local dev and the

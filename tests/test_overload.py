@@ -173,13 +173,19 @@ class MongoMockMixin(unittest.TestCase):
         self._mock_db = mongomock.MongoClient()['poseiq_test']
         self._patch_svc = patch('core.user.service.get_db', return_value=self._mock_db)
         self._patch_wh  = patch('core.user.workout_history.get_db', return_value=self._mock_db)
+        # api/app.py's before_request trains the recommendation ranker from
+        # Mongo on the first request in this process — patch it too, or the
+        # test client's first request reaches out to a real database.
+        self._patch_rank = patch('core.recommendation.ratings_service.get_db', return_value=self._mock_db)
         self._patch_svc.start()
         self._patch_wh.start()
+        self._patch_rank.start()
         self.client = app.test_client()
 
     def tearDown(self):
         self._patch_svc.stop()
         self._patch_wh.stop()
+        self._patch_rank.stop()
 
 
 def _register(email='athlete@x.com'):

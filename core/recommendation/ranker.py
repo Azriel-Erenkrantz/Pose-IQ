@@ -4,10 +4,11 @@ Rating-based exercise ranker.
 One tiny linear regression per exercise, trained on nothing but ratings:
     predicted(E) = bias_E + weights_E . [rating(other_1), rating(other_2), rating(other_3)]
 
-Training data is core/recommendation/fake_ratings.py — synthetic users
-only, never real ones (see train_ranker.py). Inference uses the real,
-logged-in user's own ratings on the *other* exercises to predict how
-they'd rate the one they haven't tried (or re-rank the ones they have).
+Training data comes entirely from Mongo's 'ratings' collection
+(ratings_service.get_all_ratings_for_training) — every user's ratings,
+shaping both the learned weights and each user's own predictions. Trained
+fresh once per server process (api/app.py, on first request) rather than
+shipped as a fixed committed artifact.
 
 No numpy/scikit-learn: everything here is plain Python, so it runs
 identically on the lightweight deployed API (which doesn't install ML
@@ -20,17 +21,22 @@ import os
 from typing import Dict, List, Optional, Tuple
 
 from ..app_model import Exercise, ExerciseRecommendation
-from .fake_ratings import EXERCISE_IDS, FAKE_RATINGS
+from .catalog import CATALOG
 
+EXERCISE_IDS = [e.exercise_id for e in CATALOG]
+
+# Lives under the gitignored data/models/ — this is now a runtime-generated
+# cache of the Mongo-trained model, regenerated on every server start, not a
+# fixed artifact to commit. See train_ranker.py to regenerate it manually.
 MODEL_PATH = os.path.normpath(
-    os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'recommendation_ranker.json')
+    os.path.join(os.path.dirname(__file__), '..', '..', 'data', 'models', 'recommendation_ranker.json')
 )
 
 
 # ── Training ───────────────────────────────────────────────────────────────────
 
 def _mean_ratings(ratings: List[Dict[str, int]]) -> Dict[str, float]:
-    """Average rating per exercise across all fake users who rated it."""
+    """Average rating per exercise across every user who rated it."""
     sums = {ex: 0.0 for ex in EXERCISE_IDS}
     counts = {ex: 0 for ex in EXERCISE_IDS}
     for user in ratings:
@@ -63,10 +69,12 @@ def _train_one(X: List[List[float]], y: List[float], epochs: int, lr: float) -> 
 
 def train(ratings: Optional[List[Dict[str, int]]] = None, epochs: int = 3000, lr: float = 0.01) -> dict:
     """
-    Fit one regression per exercise on the given ratings (fake data by
-    default) and persist the result to MODEL_PATH as plain JSON.
+    Fit one regression per exercise on the given ratings — pulled from
+    Mongo by default — and persist the result to MODEL_PATH as plain JSON.
     """
-    ratings = FAKE_RATINGS if ratings is None else ratings
+    if ratings is None:
+        from . import ratings_service
+        ratings = ratings_service.get_all_ratings_for_training()
     means = _mean_ratings(ratings)
 
     models: Dict[str, dict] = {}
@@ -81,13 +89,26 @@ def train(ratings: Optional[List[Dict[str, int]]] = None, epochs: int = 3000, lr
             X.append([user.get(o, means[o]) for o in others])
             y.append(float(user[target]))
 
-        weights, bias = _train_one(X, y, epochs, lr)
+        if X:
+            weights, bias = _train_one(X, y, epochs, lr)
+        else:
+            # Nobody has rated this exercise at all (e.g. Mongo not seeded
+            # yet) — fall back to "always predict the mean" rather than
+            # crashing on an empty training set.
+            weights, bias = [0.0] * len(others), means[target]
         models[target] = {"others": others, "weights": weights, "bias": bias}
 
     model = {"means": means, "models": models}
     os.makedirs(os.path.dirname(MODEL_PATH), exist_ok=True)
     with open(MODEL_PATH, 'w', encoding='utf-8') as f:
         json.dump(model, f, indent=2)
+
+    # Make the freshly trained model live immediately — without this,
+    # calling train() again in a process that already served a request
+    # (which lazily populates _model_cache) would silently keep serving
+    # the stale cached model until the process restarts.
+    global _model_cache
+    _model_cache = model
     return model
 
 
@@ -118,7 +139,7 @@ def recommend_for_user(
 ) -> List[ExerciseRecommendation]:
     """
     Rank the given exercises for one user, using only that user's own
-    ratings (on the *other* exercises) and the fake-data-trained model.
+    ratings (on the *other* exercises) and the trained model.
     """
     model = _load_model()
 
