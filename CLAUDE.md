@@ -141,9 +141,22 @@ embedded in the dashboard (`weight_recommendations`).
    verified working end-to-end by the user)
 6. ~~Weight tracking + progressive-overload recommendations~~ (done,
    overload.py + API + frontend, 2026-07-14)
-7. Cloud: Mongo Atlas + API on Render/Railway + frontend on Vercel + CI
+7. **Cloud deploy — in progress (2026-08-23).** ~~Mongo Atlas cluster~~ (done —
+   `PoseIQ` cluster, `azikrantz_db_user`, network access `0.0.0.0/0` open since
+   Render's IPs are dynamic; connection string in the user's hands, not
+   committed anywhere). Added `requirements-api.txt` (flask/flask-cors/
+   gunicorn/pymongo/python-dotenv only — verified `import api.app` never
+   pulls in mediapipe/opencv/scikit-learn, so the deployed API doesn't need
+   them) + `render.yaml` blueprint pointing at it. Next: Render web service
+   (connect GitHub, set `MONGODB_URI`/`MONGODB_DB`/`FRONTEND_ORIGIN` env
+   vars), then Vercel for `frontend/`, then wire `FRONTEND_ORIGIN` to the
+   Vercel URL for CORS. Not yet: Render service created, Vercel deploy, CI
+   deploy step.
 8. Bad-form clips → binary quality classifier (planned; filming protocol
    already covers bad-form clips with per-mistake tags)
 
-`docs/pose-iq-status-he.md` is the Hebrew status doc for the advisor — it
-predates the Mongo migration and ML rewrite; update it before any submission.
+`docs/pose-iq-status-he.md` is the Hebrew status doc for the advisor —
+~~rewritten 2026-08-23~~ to match the current architecture (was describing a
+stale Desktop/Postgres/5-exercise version). `docs/pose-iq-status-he.html` was
+rewritten to match; `.pdf` still needs manual re-export (open the .html,
+Ctrl+P → save as PDF — no pandoc in this environment).

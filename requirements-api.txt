@@ -1,0 +1,12 @@
+# Minimal deps for the deployed Flask API (Render). Excludes mediapipe /
+# opencv / scikit-learn / joblib / pyttsx3 — those are only needed for the
+# local ML training pipeline and the Desktop app, never imported when the
+# Flask app itself loads (verified: `import api.app` pulls in none of them).
+# Keeping this separate keeps Render's free-tier build fast and small.
+# See requirements.txt for the full local-dev set.
+
+flask>=3.1
+flask-cors>=5.0
+gunicorn>=23.0
+pymongo>=4.10
+python-dotenv>=1.0
