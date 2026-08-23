@@ -76,9 +76,8 @@ interface Dict {
   recommendedForYou: string;
   noRecsTitle: string;
   noRecsHint: string;
-  scenarioHealthy: string;
-  scenarioTakeItEasy: string;
-  scenarioRecovery: string;
+  rateExercise: string;
+  stars: string;
   nextWeight: string;
   yourProgress: string;
   trendLabels: Record<'improving' | 'stable' | 'declining', string>;
@@ -215,9 +214,8 @@ const en: Dict = {
   recommendedForYou: 'Recommended for you',
   noRecsTitle: 'No recommendations yet.',
   noRecsHint: 'Rate your health above and tap Save, or make sure you selected goals during registration.',
-  scenarioHealthy: 'Healthy',
-  scenarioTakeItEasy: 'Take it easy',
-  scenarioRecovery: 'Recovery',
+  rateExercise: 'Rate this exercise',
+  stars: 'stars',
   nextWeight: 'Next Working Weight',
   yourProgress: 'Your Progress',
   trendLabels: { improving: 'improving', stable: 'stable', declining: 'declining' },
@@ -249,15 +247,9 @@ const en: Dict = {
     deadlift: 'Deadlift', calf_raise: 'Calf Raise', glute_bridge: 'Glute Bridge',
   },
   reasonTemplates: {
-    ml_estimate: p => `ML satisfaction estimate: ${pct(p.pct)}`,
-    no_history_unsafe: () => 'No history — cannot assess safety while not at best',
-    no_history_neutral: () => 'No history — neutral score',
-    historically_challenging: p => `Historically challenging (${pct(p.pct)}) — ideal to tackle now at full health`,
-    too_challenging_adjacent: p => `Too challenging historically (${pct(p.pct)}) — reduced score while adjacent region is limited`,
-    suitable_difficulty_adjacent: p => `Suitable difficulty (${pct(p.pct)}) — appropriate given adjacent region issue`,
-    high_difficulty_unsafe: p => `High difficulty (${pct(p.pct)}) on an affected region — not safe while injured`,
-    poor_form_unsafe: p => `Poor form history (${pct(p.pct)}) — unsafe to practise while not at best`,
-    good_form_safe: p => `Good form (${pct(p.form_pct)}), manageable difficulty (${pct(p.diff_pct)}) — safe to continue`,
+    rated_by_you: p => `You rated this ${p.rating.toFixed(0)}/5`,
+    predicted_from_ratings: () => 'Predicted from your other ratings',
+    no_ratings_yet: () => "New to you — based on other users' ratings",
     no_weight_logged: () => 'No weight logged yet — start with bodyweight or a light load and log it after each session.',
     form_dropped: p => `Form score dropped to ${p.score.toFixed(0)} at ${num(p.weight)} kg — reduce the load and rebuild clean technique.`,
     ready_to_increase: p => `${p.clean} sessions at ${num(p.weight)} kg with form ≥ ${p.threshold.toFixed(0)} — ready to add ${num(p.increment)} kg.`,
@@ -378,9 +370,8 @@ const he: Dict = {
   recommendedForYou: 'מומלץ עבורך',
   noRecsTitle: 'אין המלצות עדיין.',
   noRecsHint: 'דרגו את ההרגשה למעלה ולחצו שמירה, או ודאו שבחרתם מטרות בהרשמה.',
-  scenarioHealthy: 'בריא',
-  scenarioTakeItEasy: 'בעדינות',
-  scenarioRecovery: 'שיקום',
+  rateExercise: 'דרגו תרגיל זה',
+  stars: 'כוכבים',
   nextWeight: 'המשקל הבא שלך',
   yourProgress: 'ההתקדמות שלך',
   trendLabels: { improving: 'משתפר', stable: 'יציב', declining: 'יורד' },
@@ -411,15 +402,9 @@ const he: Dict = {
     deadlift: 'הרמת מתים', calf_raise: 'הרמת עקבים', glute_bridge: 'גשר ישבן',
   },
   reasonTemplates: {
-    ml_estimate: p => `הערכת שביעות רצון (ML): ${pct(p.pct)}`,
-    no_history_unsafe: () => 'אין היסטוריה — לא ניתן להעריך בטיחות כשלא במיטבכם',
-    no_history_neutral: () => 'אין היסטוריה — ציון ניטרלי',
-    historically_challenging: p => `מאתגר היסטורית (${pct(p.pct)}) — הזמן האידיאלי לתקוף כשאתם בכושר מלא`,
-    too_challenging_adjacent: p => `מאתגר מדי היסטורית (${pct(p.pct)}) — ציון מופחת כל עוד אזור סמוך מוגבל`,
-    suitable_difficulty_adjacent: p => `רמת קושי מתאימה (${pct(p.pct)}) — הולמת את המגבלה באזור הסמוך`,
-    high_difficulty_unsafe: p => `קושי גבוה (${pct(p.pct)}) על אזור פגוע — לא בטוח בזמן פציעה`,
-    poor_form_unsafe: p => `היסטוריית טכניקה חלשה (${pct(p.pct)}) — לא בטוח לתרגל כשלא במיטבכם`,
-    good_form_safe: p => `טכניקה טובה (${pct(p.form_pct)}), קושי בר-ניהול (${pct(p.diff_pct)}) — בטוח להמשיך`,
+    rated_by_you: p => `דירגתם זאת ${p.rating.toFixed(0)}/5`,
+    predicted_from_ratings: () => 'חיזוי לפי הדירוגים האחרים שלכם',
+    no_ratings_yet: () => 'חדש עבורכם — מבוסס על דירוגי משתמשים אחרים',
     no_weight_logged: () => 'עדיין לא נרשם משקל — התחילו עם משקל גוף או עומס קל ותעדו אותו אחרי כל אימון.',
     form_dropped: p => `ציון הטכניקה ירד ל-${p.score.toFixed(0)} במשקל ${num(p.weight)} ק"ג — הפחיתו את העומס ובנו מחדש טכניקה נקייה.`,
     ready_to_increase: p => `${p.clean} אימונים במשקל ${num(p.weight)} ק"ג עם טכניקה ≥ ${p.threshold.toFixed(0)} — מוכנים להוסיף ${num(p.increment)} ק"ג.`,
@@ -461,8 +446,7 @@ const he: Dict = {
   },
 };
 
-// Matches Python's ':.0%' / ':g' formatting used server-side for reason_params.
-function pct(x: number): string { return `${Math.round(x * 100)}%`; }
+// Matches Python's ':g' formatting used server-side for reason_params.
 function num(x: number): string { return x.toString(); }
 
 const DICTS: Record<Lang, Dict> = { en, he };

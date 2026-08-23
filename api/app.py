@@ -33,8 +33,10 @@ from core.app_model import (
     TrainerPersonality,
 )
 from core.user import service
-from core.recommendation.bridge import recommend_for_user
+from core.recommendation.catalog import CATALOG
+from core.recommendation.ranker import recommend_for_user
 from core.recommendation.overload import recommend_weights_for_user
+from core.recommendation import ratings_service
 
 app = Flask(__name__)
 
@@ -310,6 +312,28 @@ def get_weight_recommendations(user_id: str):
     return ok(recommend_weights_for_user(user, service.get_history(user_id)))
 
 
+@app.put("/api/user/<user_id>/ratings/<exercise_id>")
+@require_auth
+def set_rating(user_id: str, exercise_id: str):
+    body = request.get_json(silent=True) or {}
+    if "rating" not in body:
+        return err("Missing field: rating")
+    try:
+        rating = int(body["rating"])
+    except (TypeError, ValueError):
+        return err("rating must be an integer")
+    if not 1 <= rating <= 5:
+        return err("rating must be between 1 and 5")
+    saved = ratings_service.save_rating(user_id, exercise_id, rating)
+    return ok(saved)
+
+
+@app.get("/api/user/<user_id>/ratings")
+@require_auth
+def get_ratings(user_id: str):
+    return ok(ratings_service.get_user_ratings(user_id))
+
+
 @app.get("/api/dashboard/<user_id>")
 @require_auth
 def get_dashboard(user_id: str):
@@ -317,13 +341,13 @@ def get_dashboard(user_id: str):
     if user is None:
         return err("User not found", 404)
 
-    health   = service.get_health_status(user_id)
     sessions = service.get_history(user_id)
-    recs     = recommend_for_user(user, health, sessions)
+    user_ratings = ratings_service.get_user_ratings(user_id)
+    recs = recommend_for_user(user_ratings, CATALOG)
 
     dashboard = DashboardData(
         user             = user,
-        health_status    = health,
+        health_status    = service.get_health_status(user_id),
         recommendations  = recs,
         recent_sessions  = sessions[:5],
         progress_summary = service.get_progress(user_id),

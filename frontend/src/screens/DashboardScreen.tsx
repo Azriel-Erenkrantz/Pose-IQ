@@ -5,6 +5,7 @@ import type {
   BodyRegion,
   DashboardData,
   LiveSessionOutput,
+  UserRatings,
 } from '../api/types';
 import ScoreRing from '../components/ScoreRing';
 import SessionRow from '../components/SessionCard';
@@ -24,6 +25,7 @@ export default function DashboardScreen({ token, onNavigate }: Props) {
   const [loading, setLoading]   = useState(true);
   const [error, setError]       = useState('');
   const [ratings, setRatings]   = useState<Record<BodyRegion, number>>({ upper: 5, core: 5, lower: 5 });
+  const [exerciseRatings, setExerciseRatings] = useState<UserRatings>({});
   const [savingHealth, setSavingHealth] = useState(false);
   const [healthSaved, setHealthSaved]   = useState(false);
 
@@ -31,8 +33,12 @@ export default function DashboardScreen({ token, onNavigate }: Props) {
     setLoading(true);
     setError('');
     try {
-      const dashboard = await userApi.getDashboard(token.user_id, token.token);
+      const [dashboard, exRatings] = await Promise.all([
+        userApi.getDashboard(token.user_id, token.token),
+        userApi.getRatings(token.user_id, token.token),
+      ]);
       setData(dashboard);
+      setExerciseRatings(exRatings);
       const r = dashboard.health_status.ratings;
       setRatings({ upper: r.upper ?? 5, core: r.core ?? 5, lower: r.lower ?? 5 });
     } catch {
@@ -150,27 +156,21 @@ export default function DashboardScreen({ token, onNavigate }: Props) {
       <p className="label mb-2.5">{t.recommendedForYou}</p>
       {data.recommendations.length > 0 ? (
         <div className="panel rows mb-8">
-          {data.recommendations.slice(0, 5).map(r => {
-            const scenarioLabel =
-              r.scenario === 'all_healthy' ? t.scenarioHealthy :
-              r.scenario === 'target_healthy_adjacent_not' ? t.scenarioTakeItEasy : t.scenarioRecovery;
-            return (
-              <div key={r.exercise.exercise_id} className="flex items-center justify-between px-4 py-3.5 gap-3">
-                <div className="min-w-0">
-                  <p className="text-[#171716] font-bold text-[15px] leading-tight">
-                    {exerciseName(r.exercise.exercise_id, r.exercise.name)}
-                  </p>
-                  <p className="text-[#a09f98] text-xs mt-0.5 truncate">
-                    {formatReason(r.reason_code, r.reason_params, r.reason)}
-                  </p>
-                </div>
-                <div className="text-end flex-shrink-0">
-                  <p className="text-accent font-black text-2xl num leading-none">{(r.score * 100).toFixed(0)}</p>
-                  <p className="label mt-1">{scenarioLabel}</p>
-                </div>
+          {data.recommendations.slice(0, 5).map(r => (
+            <div key={r.exercise.exercise_id} className="flex items-center justify-between px-4 py-3.5 gap-3">
+              <div className="min-w-0">
+                <p className="text-[#171716] font-bold text-[15px] leading-tight">
+                  {exerciseName(r.exercise.exercise_id, r.exercise.name)}
+                </p>
+                <p className="text-[#a09f98] text-xs mt-0.5 truncate">
+                  {formatReason(r.reason_code, r.reason_params, r.reason)}
+                </p>
               </div>
-            );
-          })}
+              <p className="text-accent font-black text-2xl num leading-none flex-shrink-0">
+                {(r.score * 100).toFixed(0)}
+              </p>
+            </div>
+          ))}
         </div>
       ) : (
         <div className="panel p-4 mb-8">
@@ -258,9 +258,14 @@ export default function DashboardScreen({ token, onNavigate }: Props) {
               <SessionRow
                 key={s.session_id}
                 session={s}
+                myRating={exerciseRatings[s.exercise_id]}
                 onSetWeight={async (weightKg) => {
                   await userApi.setSessionWeight(token.user_id, s.session_id, weightKg, token.token);
                   await load();
+                }}
+                onSetRating={async (rating) => {
+                  await userApi.setRating(token.user_id, s.exercise_id, rating, token.token);
+                  setExerciseRatings(prev => ({ ...prev, [s.exercise_id]: rating }));
                 }}
               />
             ))}

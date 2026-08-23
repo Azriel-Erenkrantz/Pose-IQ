@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { userApi } from '../api/client';
-import type { AuthToken, LiveSessionOutput, ProgressMetrics } from '../api/types';
+import type { AuthToken, LiveSessionOutput, ProgressMetrics, UserRatings } from '../api/types';
 import ScoreRing from '../components/ScoreRing';
 import SessionRow from '../components/SessionCard';
 import { useI18n } from '../i18n';
@@ -13,17 +13,20 @@ export default function HistoryScreen({ token }: Props) {
   const { t, exerciseName } = useI18n();
   const [sessions, setSessions] = useState<LiveSessionOutput[] | null>(null);
   const [progress, setProgress] = useState<ProgressMetrics[]>([]);
+  const [ratings, setRatings]   = useState<UserRatings>({});
   const [error, setError]       = useState('');
 
   const load = useCallback(async () => {
     setError('');
     try {
-      const [hist, prog] = await Promise.all([
+      const [hist, prog, rat] = await Promise.all([
         userApi.getHistory(token.user_id, token.token),
         userApi.getProgress(token.user_id, token.token),
+        userApi.getRatings(token.user_id, token.token),
       ]);
       setSessions(hist);
       setProgress(prog);
+      setRatings(rat);
     } catch {
       setError(t.couldNotLoad);
     }
@@ -87,9 +90,13 @@ export default function HistoryScreen({ token }: Props) {
               <SessionRow
                 key={s.session_id}
                 session={s}
+                myRating={ratings[s.exercise_id]}
                 onSetWeight={async (weightKg) => {
                   await userApi.setSessionWeight(token.user_id, s.session_id, weightKg, token.token);
                   await load();
+                }}
+                onSetRating={async (rating) => {
+                  await userApi.setRating(token.user_id, s.exercise_id, rating, token.token);
                 }}
               />
             ))}

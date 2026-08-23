@@ -1,6 +1,6 @@
 import type {
   AuthToken, DashboardData, ExerciseDef, HealthStatus, LiveSessionOutput,
-  ProfileSetupOptions, ProgressMetrics, RepPayload, SavedSession, User,
+  ProfileSetupOptions, ProgressMetrics, RepPayload, SavedSession, User, UserRatings,
 } from './types';
 
 // Configurable via .env (VITE_API_BASE) — see .env.example. Falls back to the
@@ -11,46 +11,60 @@ const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:5000';
 
 // ── Low-level helpers ──────────────────────────────────────────────────────────
 
-async function get<T>(path: string, token?: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
+// Runs a fetch() and turns every failure mode into a clean, readable Error:
+//   - fetch() itself throwing (server unreachable, DNS, CORS) → "Could not
+//     reach the server" instead of the browser's raw "Failed to fetch".
+//   - a non-JSON response body (e.g. a 500's raw HTML error page) → a
+//     status-based message instead of a cryptic JSON-parse SyntaxError.
+//   - a JSON error body ({"error": "..."}) → that message, as before.
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, init);
+  } catch {
+    throw new Error('Could not reach the server. Is it running?');
+  }
+
+  let data: any = null;
+  try {
+    data = await res.json();
+  } catch {
+    if (!res.ok) throw new Error(`Server error (HTTP ${res.status})`);
+    throw new Error('Unexpected response from server');
+  }
+
+  if (!res.ok) throw new Error(data?.error ?? `HTTP ${res.status}`);
   return data as T;
 }
 
+async function get<T>(path: string, token?: string): Promise<T> {
+  return request<T>(path, {
+    headers: token ? { Authorization: `Bearer ${token}` } : {},
+  });
+}
+
 async function post<T>(path: string, body: unknown): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  return request<T>(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
-  return data as T;
 }
 
 async function put<T>(path: string, body: unknown, token: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  return request<T>(path, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify(body),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
-  return data as T;
 }
 
 async function postAuth<T>(path: string, body: unknown, token: string): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  return request<T>(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body: JSON.stringify(body),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error ?? `HTTP ${res.status}`);
-  return data as T;
 }
 
 // ── Auth ───────────────────────────────────────────────────────────────────────
@@ -85,6 +99,10 @@ export const userApi = {
   setSessionWeight: (id: string, sessionId: string, weightKg: number | null, token: string) =>
     put<{ session_id: string; weight_kg: number | null }>(
       `/api/user/${id}/sessions/${sessionId}/weight`, { weight_kg: weightKg }, token),
+  getRatings: (id: string, token: string) => get<UserRatings>(`/api/user/${id}/ratings`, token),
+  setRating: (id: string, exerciseId: string, rating: number, token: string) =>
+    put<{ user_id: string; exercise_id: string; rating: number }>(
+      `/api/user/${id}/ratings/${exerciseId}`, { rating }, token),
   getExercises: () => get<ExerciseDef[]>('/api/exercises'),
   saveWorkoutSession: (
     id: string,

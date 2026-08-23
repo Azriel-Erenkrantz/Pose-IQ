@@ -2,14 +2,14 @@ import cv2
 import time
 import logging
 
-from core.detection.camera_stream import CameraStream
-from core.detection.pose_detector import PoseDetector
-from core.detection.angle_calculator import AngleCalculator
-from core.exercise.posture_rules import PostureRules
+from stale.core.detection.camera_stream import CameraStream
+from stale.core.detection.pose_detector import PoseDetector
+from stale.core.detection.angle_calculator import AngleCalculator
+from stale.core.exercise.posture_rules import PostureRules
 from core.exercise.exercise_model import ExerciseModel
-from core.exercise.exercise_state_machine import ExerciseStateMachine
+from stale.core.exercise.exercise_state_machine import ExerciseStateMachine
 from core.user.workout_history import WorkoutHistory, new_session, rep_form_score, RepRecord, JOINT_TO_MUSCLE
-from core.coaching.voice_coach import VoiceCoach
+from stale.core.coaching.voice_coach import VoiceCoach
 from core.ml.angles import compute_angles, frame_from_live
 from core.ml.classifier import classify_trained, DeltaTracker
 from core.ml.smoother import PhaseSmoother

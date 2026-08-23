@@ -7,7 +7,6 @@ export type Equipment = 'dumbbells' | 'resistance_bands' | 'none';
 export type TargetGoal = 'legs' | 'cardio' | 'abs' | 'arms' | 'full_body' | 'other';
 export type ScoreTrend = 'improving' | 'stable' | 'declining';
 export type BodyRegion = 'upper' | 'core' | 'lower';
-export type HealthScenario = 'all_healthy' | 'target_healthy_adjacent_not' | 'target_unhealthy';
 
 export interface User {
   user_id: string;
@@ -91,13 +90,12 @@ export interface ExerciseRecommendation {
   exercise: ExerciseInfo;
   score: number;
   reason: string;
-  scenario: HealthScenario;
-  personal_score: number;
-  community_score: number | null;
-  feedback_score: number | null;
   reason_code: string;
   reason_params: Record<string, number>;
 }
+
+// exercise_id -> rating (1-5); GET /api/user/<id>/ratings
+export type UserRatings = Record<string, number>;
 
 export interface DashboardData {
   user: User;

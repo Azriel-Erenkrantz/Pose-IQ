@@ -1,24 +1,11 @@
-from ..app_model import (
-    BodyRegion,
-    Exercise,
-    ExercisePerformanceRecord,
-    ExerciseRecommendation,
-    HealthScenario,
-    HealthStatus,
-    RecommendationSession as UserSession,
-    UserFeedback,
-)
-from .recommender import recommend, detect_scenario
+from ..app_model import BodyRegion, Exercise, ExerciseRecommendation, Rating
+from .ranker import recommend_for_user, train
 
 __all__ = [
     "BodyRegion",
     "Exercise",
-    "ExercisePerformanceRecord",
     "ExerciseRecommendation",
-    "HealthScenario",
-    "HealthStatus",
-    "UserSession",
-    "UserFeedback",
-    "recommend",
-    "detect_scenario",
+    "Rating",
+    "recommend_for_user",
+    "train",
 ]

@@ -38,3 +38,6 @@ def _ensure_indexes(db: Database) -> None:
     db.exercise_angles.create_index(
         [('exercise_id', ASCENDING), ('phase', ASCENDING)], unique=True
     )
+    db.ratings.create_index(
+        [('user_id', ASCENDING), ('exercise_id', ASCENDING)], unique=True
+    )
