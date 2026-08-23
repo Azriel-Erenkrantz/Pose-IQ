@@ -1,9 +1,9 @@
 """
 Fake data for the user module.
 
-Used during UI development and testing — no real user, no files needed.
-Every function returns a valid app_model instance so the mobile app
-and API layer can be built and tested without a real user or DB.
+Used by the test suite — no real user, no files needed. Every function
+returns a valid app_model instance so the user/API layer can be tested
+without a real user or DB.
 """
 from __future__ import annotations
 

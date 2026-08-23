@@ -9,13 +9,12 @@ All other modules depend on this file; this file depends on nothing.
 
 Boundary map
 ------------
-[Camera + ML model]  →  LiveSessionOutput, RepResult, LiveFeedback
+[Camera + ML model]  →  LiveSessionOutput, RepResult
 [Session layer]      →  LiveSessionOutput  →  [History / DB]
 [Recommendation]     →  ExerciseRecommendation  →  [UI]
 [User]               →  User, HealthStatus  →  [All parts]
 [Auth]               →  RegisterRequest, LoginRequest, AuthToken
-[UI screens]         →  DashboardData, SessionScreenData, HistoryScreenData,
-                        ProfileSetupScreenData
+[UI screens]         →  DashboardData, ProfileSetupScreenData
 
 DB table mapping (one dataclass → one table)
 --------------------------------------------
@@ -27,13 +26,11 @@ RepResult              → rep_records  (FK: session_id)
 InjuryRisk             → injury_risks
 WeightRecommendation   → weight_recommendations
 ExerciseRecommendation → recommendations  (optional — can be computed on the fly)
-LiveFeedback           → ephemeral, not persisted
 ProgressMetrics        → computed view, not a table
 AuthToken              → auth_tokens  (or JWT — no table needed)
 """
 from __future__ import annotations
 
-import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
@@ -216,18 +213,6 @@ class RepResult:
 
 
 @dataclass
-class LiveFeedback:
-    """
-    Real-time signal emitted frame-by-frame during a rep.
-    Ephemeral — shown on screen, never stored.
-    """
-    timestamp:         datetime
-    form_score:        float             # 0–100, instantaneous
-    active_violations: List[str]        # joints currently wrong
-    coaching_message:  str              # e.g. "straighten your back"
-
-
-@dataclass
 class LiveSessionOutput:
     """
     Contract at the boundary with the ML model + camera.
@@ -389,27 +374,13 @@ class RecommendationSession:
     feedbacks:            List[UserFeedback]           = field(default_factory=list)
 
 
-@dataclass
-class RecommendationInput:
-    """
-    Everything the recommendation engine needs from the user layer.
-    Built by the API; passed to recommendation/bridge.recommend_for_user().
-    """
-    fitness_level:   FitnessLevel
-    target_goals:    List[TargetGoal]
-    equipment:       List[Equipment]
-    limited_joints:  List[str]          # already mapped — not raw limitation strings
-    health_status:   HealthStatus
-    session_history: List[LiveSessionOutput]
-
-
 # ── UI screen data contracts ───────────────────────────────────────────────────
 
 @dataclass
 class ProfileSetupScreenData:
     """
     Static options the onboarding screen needs to render its pickers.
-    Returned by the API; mobile app renders these as selectable lists.
+    Returned by the API; the client renders these as selectable lists.
     """
     fitness_levels:       List[FitnessLevel]
     trainer_personalities: List[TrainerPersonality]
@@ -428,24 +399,3 @@ class DashboardData:
     progress_summary: List[ProgressMetrics]
     injury_risk:      Optional[InjuryRisk]  = None
     weight_recommendations: List[WeightRecommendation] = field(default_factory=list)
-
-
-@dataclass
-class SessionScreenData:
-    """
-    Everything the live exercise screen needs.
-    live_feedback is None between reps; populated frame-by-frame during a rep.
-    """
-    user:           User
-    exercise:       Exercise
-    completed_reps: List[RepResult]
-    live_feedback:  Optional[LiveFeedback]  = None
-    session_id:     str                     = field(default_factory=lambda: str(uuid.uuid4()))
-
-
-@dataclass
-class HistoryScreenData:
-    """Everything the history / progress screen needs."""
-    user:     User
-    sessions: List[LiveSessionOutput]
-    metrics:  Dict[str, ProgressMetrics]    # keyed by exercise_id

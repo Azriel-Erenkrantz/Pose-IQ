@@ -1,7 +1,7 @@
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional
 
 from core.db import get_db
 
@@ -132,15 +132,6 @@ class WorkoutHistory:
             'score_trend': _trend(scores),
             'weak_joints': weak_joints[:3],
         }
-
-    def get_weak_muscle_groups(self) -> List[Tuple[str, int]]:
-        joint_errors: Dict[str, int] = {}
-        for s in self.sessions:
-            for rep in s.rep_records:
-                for joint in rep.error_joints:
-                    joint_errors[joint] = joint_errors.get(joint, 0) + 1
-        sorted_joints = sorted(joint_errors.items(), key=lambda x: x[1], reverse=True)
-        return sorted_joints[:3]
 
 
 def _trend(values: List[float]) -> str:

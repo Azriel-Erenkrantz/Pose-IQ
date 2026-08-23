@@ -246,8 +246,3 @@ class DeltaTracker:
         self._prev = dict(angles)
         self._prev_t = now
         return {j: sum(d) / len(d) for j, d in self._history.items() if d}
-
-    def reset(self):
-        self._prev = None
-        self._prev_t = None
-        self._history.clear()

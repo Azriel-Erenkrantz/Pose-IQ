@@ -7,10 +7,6 @@ Run from the project root:
 All responses are JSON. Auth endpoints return an AuthToken.
 Protected endpoints expect:  Authorization: Bearer <token>
 
-Dev endpoints (/api/dev/*) bypass auth and return fake data —
-use them while building the mobile UI before a real user exists.
-
-When MongoDB replaces JSON files: only service.py changes.
 Routes here don't touch storage — they call service.py only.
 """
 from __future__ import annotations
@@ -29,7 +25,6 @@ from core.app_model import (
     BodyRegion,
     DashboardData,
     HealthStatus,
-    HistoryScreenData,
     LoginRequest,
     RegisterRequest,
     Equipment,
@@ -38,7 +33,6 @@ from core.app_model import (
     TrainerPersonality,
 )
 from core.user import service
-from core.user import fake_data
 from core.recommendation.bridge import recommend_for_user
 from core.recommendation.overload import recommend_weights_for_user
 
@@ -339,47 +333,6 @@ def get_dashboard(user_id: str):
     return ok(dashboard)
 
 
-# ── Dev / fake-data routes (no auth, for mobile UI development) ───────────────
-
-@app.get("/api/dev/user")
-def dev_user():
-    return ok(fake_data.fake_user())
-
-
-@app.get("/api/dev/history")
-def dev_history():
-    return ok(fake_data.fake_sessions())
-
-
-@app.get("/api/dev/progress")
-def dev_progress():
-    return ok(fake_data.fake_progress_metrics())
-
-
-@app.get("/api/dev/dashboard")
-def dev_dashboard():
-    user     = fake_data.fake_user()
-    health   = fake_data.fake_health_status()
-    sessions = fake_data.fake_sessions()
-    progress = fake_data.fake_progress_metrics()
-    risk     = fake_data.fake_injury_risk()
-
-    dashboard = DashboardData(
-        user             = user,
-        health_status    = health,
-        recommendations  = [],
-        recent_sessions  = sessions[:5],
-        progress_summary = progress,
-        injury_risk      = risk,
-    )
-    return ok(dashboard)
-
-
-@app.get("/api/dev/options")
-def dev_options():
-    return ok(service.get_profile_setup_options())
-
-
 # ── Health check ───────────────────────────────────────────────────────────────
 
 @app.get("/api/ping")
@@ -388,4 +341,4 @@ def ping():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run()

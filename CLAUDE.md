@@ -28,7 +28,8 @@ code, comments, and commits are in English.
   he/en with RTL (`src/i18n.tsx`, no deps), light "clinical" design system
   (tokens in `index.css`: paper bg, black primary buttons, pine-green accent),
   top-nav tabs: Home / Workout / History.
-  `mobile/` Expo RN scaffold (fake data, frozen — web won over RN).
+  (An Expo RN mobile scaffold was tried and dropped — web won; removed
+  2026-08-23, see `docs/pose-iq-status-he.md` §7 for the decision writeup.)
 - **In-browser live workout** (`frontend/src/pose/` + WorkoutScreen):
   MediaPipe Tasks JS (pose_landmarker_lite from Google CDN, GPU) →
   `angles.ts` / `stateMachine.ts` / `postureRules.ts` are faithful TS ports
@@ -151,7 +152,13 @@ embedded in the dashboard (`weight_recommendations`).
    (connect GitHub, set `MONGODB_URI`/`MONGODB_DB`/`FRONTEND_ORIGIN` env
    vars), then Vercel for `frontend/`, then wire `FRONTEND_ORIGIN` to the
    Vercel URL for CORS. Not yet: Render service created, Vercel deploy, CI
-   deploy step.
+   deploy step. Pre-deploy cleanup (2026-08-23): removed the frozen `mobile/`
+   Expo scaffold, the no-auth `/api/dev/*` fake-data routes (`core/user/
+   fake_data.py` kept — still exercised directly by `tests/test_user.py`),
+   and the orphaned `core/recommendation/demo.py`/`simulation.py` prototype
+   (pre-dated `bridge.py`, never wired to the real API — had to strip the
+   dead `from .simulation import ...` re-export from `recommendation/
+   __init__.py` too, since every submodule import runs that first).
 8. Bad-form clips → binary quality classifier (planned; filming protocol
    already covers bad-form clips with per-mistake tags)
 

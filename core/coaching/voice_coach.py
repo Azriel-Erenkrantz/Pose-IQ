@@ -11,13 +11,12 @@ except ImportError:
 
 from core.coaching.coach_messages import (
     get_start_message, get_phase_message, get_rep_message,
-    get_error_message, get_encouragement, get_session_end_message,
+    get_error_message, get_session_end_message,
 )
 
 _ERROR_COOLDOWN        = 8.0   # seconds between same joint error
 _PHASE_COOLDOWN        = 1.5
 _REP_COOLDOWN          = 1.0
-_ENCOURAGEMENT_COOLDOWN = 15.0
 
 
 class VoiceCoach:
@@ -54,10 +53,6 @@ class VoiceCoach:
     def on_error(self, joint: str):
         text = get_error_message(self.style, joint)
         self._say(text, key=f"err_{joint}", cooldown=_ERROR_COOLDOWN)
-
-    def on_encouragement(self):
-        text = get_encouragement(self.style)
-        self._say(text, key="enc", cooldown=_ENCOURAGEMENT_COOLDOWN)
 
     def on_session_end(self):
         text = get_session_end_message(self.style)

@@ -152,10 +152,3 @@ class ExerciseStateMachine:
             'started': self.started,
             'readiness': readiness or {},
         }
-
-    def reset(self):
-        self.current_phase_index = 0
-        self.rep_count = 0
-        self.transition_counter = 0
-        self.started = False
-        self.missing_frames_counter = 0

@@ -161,11 +161,3 @@ def scenario_new_user() -> FakeScenario:
         feedbacks=[],
         description="New user, no history: all personal scores should be 0.50",
     )
-
-
-ALL_SCENARIOS = [
-    scenario_all_healthy,
-    scenario_core_pain,
-    scenario_upper_injured,
-    scenario_new_user,
-]

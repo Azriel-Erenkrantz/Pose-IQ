@@ -25,7 +25,6 @@ Exercises: **squat, lunge, biceps curl, shoulder press**.
                                      ┌──────────┴───────────────────┐
                                      │ Clients                      │
                                      │ frontend/ — React web app    │
-                                     │ mobile/   — Expo RN scaffold │
                                      └──────────────────────────────┘
 ```
 
@@ -40,7 +39,6 @@ Exercises: **squat, lunge, biceps curl, shoulder press**.
 | Contracts | `core/app_model.py` | Single source of truth for all data types (API ⇄ clients) |
 | API | `api/app.py` | Flask REST API |
 | Web | `frontend/` | React + Vite (login, onboarding, dashboard) |
-| Mobile | `mobile/` | Expo React Native scaffold |
 
 ## Setup
 

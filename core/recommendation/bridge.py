@@ -1,16 +1,14 @@
 """
 Integration adapter: connects app_model types to the recommendation engine.
 
-Two entry points:
+Entry point:
   recommend_for_user()  — call from the API; takes User + HealthStatus + session history
-  from_pipeline_session() — call from the CLI pipeline after a workout session
 
 from_live_session() is the internal converter used by recommend_for_user().
 """
 from __future__ import annotations
 
 import uuid
-from datetime import datetime
 from typing import Dict, List, Optional
 
 from ..app_model import (
@@ -122,42 +120,6 @@ def from_live_session(
         user_id=session.user_id,
         session_id=session.session_id,
         timestamp=session.date,
-        difficulty_score=round(1.0 - form, 3),
-        form_quality_score=form,
-        completion_rate=1.0,
-        violations=violations,
-        reps_completed=session.total_reps,
-        sets_completed=1,
-        health_snapshot=health_snapshot or {r: 3 for r in BodyRegion},
-    )
-
-
-def from_pipeline_session(
-    session,                                          # user.workout_history.WorkoutSession
-    user_id: str,
-    health_snapshot: Optional[Dict[BodyRegion, int]] = None,
-) -> ExercisePerformanceRecord:
-    """
-    Convert a completed WorkoutSession (CLI pipeline) into an ExercisePerformanceRecord.
-    Call AFTER history.save_session() so session.overall_score is already set.
-    """
-    form = round(session.overall_score / 100.0, 3)
-    violations = list({
-        joint
-        for rep in session.rep_records
-        for joint in rep.error_joints
-    })
-    timestamp = (
-        datetime.fromisoformat(session.date)
-        if isinstance(session.date, str)
-        else session.date
-    )
-    return ExercisePerformanceRecord(
-        id=str(uuid.uuid4()),
-        exercise_id=session.exercise_id,
-        user_id=user_id,
-        session_id=session.session_id,
-        timestamp=timestamp,
         difficulty_score=round(1.0 - form, 3),
         form_quality_score=form,
         completion_rate=1.0,

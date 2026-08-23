@@ -54,18 +54,6 @@ class Exercise:
                 return phase
         return None
 
-    def get_phase_by_order(self, order: int) -> Optional[Phase]:
-        for phase in self.phases:
-            if phase.order == order:
-                return phase
-        return None
-
-    def initial_phase(self) -> Optional[Phase]:
-        for phase in self.phases:
-            if phase.is_initial:
-                return phase
-        return self.phases[0] if self.phases else None
-
 
 class ExerciseModel:
     def __init__(self, data_path: str = None):

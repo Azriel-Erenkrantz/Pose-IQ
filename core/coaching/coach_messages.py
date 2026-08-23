@@ -1,7 +1,5 @@
 import random
 
-COACH_STYLES = ['tough', 'calm', 'motivator']
-
 _MESSAGES = {
     'tough': {
         'start': [
@@ -139,10 +137,6 @@ def get_error_message(style: str, joint: str) -> str:
     error_msgs = _MESSAGES.get(style, _MESSAGES['motivator'])['error']
     options = error_msgs.get(joint) or error_msgs['generic']
     return random.choice(options)
-
-
-def get_encouragement(style: str) -> str:
-    return random.choice(_MESSAGES.get(style, _MESSAGES['motivator'])['encouragement'])
 
 
 def get_session_end_message(style: str) -> str:

@@ -98,10 +98,3 @@ export const userApi = {
     token: string,
   ) => postAuth<SavedSession>(`/api/user/${id}/sessions`, body, token),
 };
-
-// ── Dev / fake-data (no auth needed, for UI development) ──────────────────────
-
-export const devApi = {
-  dashboard: () => get<DashboardData>('/api/dev/dashboard'),
-  options:   () => get<ProfileSetupOptions>('/api/dev/options'),
-};

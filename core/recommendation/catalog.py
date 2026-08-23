@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import List, Optional
+from typing import List
 import uuid
 
 from ..app_model import BodyRegion, Equipment, Exercise, CommunityRecord
@@ -60,14 +60,6 @@ CATALOG: List[Exercise] = [
              BodyRegion.LOWER, [BodyRegion.LOWER, BodyRegion.CORE],
              0.30, "Lying hip extension",         ["glutes", "core"],  _BW),
 ]
-
-
-def get_by_id(exercise_id: str) -> Optional[Exercise]:
-    return next((e for e in CATALOG if e.exercise_id == exercise_id), None)
-
-
-def get_by_region(region: BodyRegion) -> List[Exercise]:
-    return [e for e in CATALOG if e.primary_region == region]
 
 
 # ---------------------------------------------------------------------------
