@@ -17,7 +17,7 @@ import mongomock
 
 from core.recommendation import ratings_service
 from core.recommendation.catalog import CATALOG
-from core.recommendation.ranker import _train_one, recommend_for_user, train
+from core.recommendation.ranker import _fit, recommend_for_user, train
 
 
 # ── Gradient descent ─────────────────────────────────────────────────────────
@@ -30,7 +30,7 @@ class TestTrainOne(unittest.TestCase):
         X = [[1, 1], [2, 1], [1, 3], [4, 2], [3, 3], [2, 4]]
         y = [2 * x0 - 1 * x1 + 3 for x0, x1 in X]
 
-        weights, bias = _train_one(X, y, epochs=3000, lr=0.01)
+        weights, bias = _fit(X, y, epochs=3000, lr=0.01)
 
         self.assertAlmostEqual(weights[0], 2.0, delta=0.2)
         self.assertAlmostEqual(weights[1], -1.0, delta=0.2)
