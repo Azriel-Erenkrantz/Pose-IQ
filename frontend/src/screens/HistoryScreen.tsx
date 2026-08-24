@@ -97,6 +97,7 @@ export default function HistoryScreen({ token }: Props) {
                 }}
                 onSetRating={async (rating) => {
                   await userApi.setRating(token.user_id, s.exercise_id, rating, token.token);
+                  setRatings(prev => ({ ...prev, [s.exercise_id]: rating }));
                 }}
               />
             ))}

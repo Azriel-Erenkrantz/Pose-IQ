@@ -70,6 +70,7 @@ export function computeAngles(lms: Landmarks, width: number, height: number): Re
     const shoulder = lms[`${side}_shoulder`];
     const hip = lms[`${side}_hip`];
     if (!shoulder || !hip) continue;
+    if (shoulder.visibility < MIN_VISIBILITY || hip.visibility < MIN_VISIBILITY) continue;
     const sPx = { x: shoulder.x * width, y: shoulder.y * height, z: shoulder.z * width };
     const hPx = { x: hip.x * width, y: hip.y * height, z: hip.z * width };
     const vertical = { x: hPx.x, y: hPx.y - 50, z: hPx.z };

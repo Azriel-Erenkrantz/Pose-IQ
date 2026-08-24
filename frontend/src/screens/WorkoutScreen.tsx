@@ -334,7 +334,7 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
                   {status !== null && (
                     <span className="text-[#ffd37a]">
                       {' — '}
-                      {status === 'missing' ? t.cameraHint.split('.')[1] ?? status
+                      {status === 'missing' ? t.adjustMissing
                         : status === 'too low' ? t.adjustStraighten : t.adjustBend}
                     </span>
                   )}

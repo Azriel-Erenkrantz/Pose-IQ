@@ -127,12 +127,13 @@ export class ExerciseStateMachine {
     // explanation the user (or the UI) can see.
     const required = new Set([...this.exercise.mandatory_start_joints, ...Object.keys(phase.angles)]);
     for (const joint of required) {
-      if (!(joint in angles)) status[joint] = 'missing';
-    }
-    if (Object.values(status).includes('missing')) return status;
-
-    for (const [joint, range] of Object.entries(phase.angles)) {
-      status[joint] = direction(range, angles[joint]);
+      if (!(joint in angles)) {
+        status[joint] = 'missing';
+      } else if (joint in phase.angles) {
+        status[joint] = direction(phase.angles[joint], angles[joint]);
+      } else {
+        status[joint] = null;
+      }
     }
     return status;
   }

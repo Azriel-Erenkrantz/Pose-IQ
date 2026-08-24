@@ -130,6 +130,7 @@ interface Dict {
   voiceLabel: string;
   adjustStraighten: string;
   adjustBend: string;
+  adjustMissing: string;
   jointLabels: Record<string, string>;
 }
 
@@ -273,6 +274,7 @@ const en: Dict = {
   voiceLabel: 'Voice',
   adjustStraighten: 'straighten',
   adjustBend: 'bend more',
+  adjustMissing: "can't see it — step back or adjust the camera",
   jointLabels: {
     right_knee: 'Right knee', left_knee: 'Left knee',
     right_hip: 'Right hip', left_hip: 'Left hip',
@@ -422,6 +424,7 @@ const he: Dict = {
   voiceLabel: 'קול',
   adjustStraighten: 'ליישר',
   adjustBend: 'לכופף יותר',
+  adjustMissing: 'לא רואים — התרחקו או כווננו את המצלמה',
   jointLabels: {
     right_knee: 'ברך ימין', left_knee: 'ברך שמאל',
     right_hip: 'ירך ימין', left_hip: 'ירך שמאל',

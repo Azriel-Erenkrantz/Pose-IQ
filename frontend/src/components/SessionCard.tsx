@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { LiveSessionOutput } from '../api/types';
 import { useI18n } from '../i18n';
 
@@ -16,6 +16,11 @@ export default function SessionRow({ session, myRating, onSetWeight, onSetRating
   const [saving, setSaving]   = useState(false);
   const [rating, setRating]   = useState(myRating ?? 0);
   const [ratingSaving, setRatingSaving] = useState(false);
+
+  // Other rows for the same exercise (or a later load()) can change the
+  // shared rating after this row already mounted — re-sync to the prop
+  // instead of staying pinned to the value seen at mount.
+  useEffect(() => { setRating(myRating ?? 0); }, [myRating]);
 
   async function rate(value: number) {
     if (ratingSaving) return;
