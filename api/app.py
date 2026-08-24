@@ -16,7 +16,7 @@ import os
 from datetime import datetime
 from enum import Enum
 from functools import wraps
-from typing import Any
+from typing import Any, List, Optional, Tuple
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -238,6 +238,34 @@ def get_history(user_id: str):
     return ok(service.get_history(user_id))
 
 
+def _validate_weight(raw: Any) -> Tuple[Optional[float], Optional[str]]:
+    """None passes through as "not logged"; anything else must parse as a
+    plausible body-weight-plus-load number. Returns (weight, error) — error
+    is None on success."""
+    if raw is None:
+        return None, None
+    try:
+        weight = float(raw)
+    except (TypeError, ValueError):
+        return None, "weight_kg must be a number or null"
+    if not 0 <= weight <= 300:
+        return None, "weight_kg must be between 0 and 300"
+    return weight, None
+
+
+def _parse_rep_records(reps: List[dict]) -> List[dict]:
+    """Raises KeyError/TypeError/ValueError on a malformed rep — the caller
+    turns that into a 400 rather than a 500."""
+    return [
+        {
+            "rep_number":   int(r["rep_number"]),
+            "error_joints": list(r.get("error_joints", [])),
+            "form_score":   float(r["form_score"]),
+        }
+        for r in reps
+    ]
+
+
 @app.post("/api/user/<user_id>/sessions")
 @require_auth
 def create_session(user_id: str):
@@ -248,25 +276,13 @@ def create_session(user_id: str):
     if not exercise_id or not isinstance(reps, list) or not reps:
         return err("exercise_id and a non-empty reps list are required")
 
-    weight = body.get("weight_kg")
-    if weight is not None:
-        try:
-            weight = float(weight)
-        except (TypeError, ValueError):
-            return err("weight_kg must be a number or null")
-        if not 0 <= weight <= 300:
-            return err("weight_kg must be between 0 and 300")
+    weight, weight_error = _validate_weight(body.get("weight_kg"))
+    if weight_error:
+        return err(weight_error)
 
     try:
         duration = float(body.get("duration_seconds", 0) or 0)
-        rep_records = [
-            {
-                "rep_number":   int(r["rep_number"]),
-                "error_joints": list(r.get("error_joints", [])),
-                "form_score":   float(r["form_score"]),
-            }
-            for r in reps
-        ]
+        rep_records = _parse_rep_records(reps)
     except (KeyError, TypeError, ValueError) as e:
         return err(f"Invalid reps payload: {e}")
 

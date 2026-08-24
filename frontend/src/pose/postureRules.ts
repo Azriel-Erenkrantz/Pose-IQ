@@ -66,6 +66,57 @@ export class PostureRules {
     return { ...r, min: Math.round((mid - half) * 10) / 10, max: Math.round((mid + half) * 10) / 10 };
   }
 
+  /** A required joint isn't visible this frame — flag it once the debounce
+   * counter clears FRAMES_TO_MISSING (a brief occlusion isn't worth alarming
+   * over). Resets to a fresh count each time the joint reappears, since the
+   * caller resets `counters[joint]` to 0 the moment it's seen again. */
+  private missingJointIssue(joint: string, range: AngleRangeDef): PostureIssue | null {
+    this.counters[joint] = (this.counters[joint] ?? 0) + 1;
+    if (this.counters[joint] < FRAMES_TO_MISSING) return null;
+    return {
+      joint,
+      severity: 'high',
+      message: `Can't see your ${joint.replace(/_/g, ' ')} — make sure it's in frame`,
+      direction: 'missing',
+      value: null,
+      expectedMin: range.min,
+      expectedMax: range.max,
+    };
+  }
+
+  /** A visible joint outside its (fitness/limitation-adjusted) angle range —
+   * flag it once the debounce counter clears FRAMES_TO_ALERT, using the
+   * exercise's own correction copy when it has one. */
+  private outOfRangeIssue(joint: string, adjusted: AngleRangeDef, value: number): PostureIssue | null {
+    if (contains(adjusted, value)) {
+      this.counters[joint] = 0;
+      return null;
+    }
+
+    this.counters[joint] = (this.counters[joint] ?? 0) + 1;
+    if (this.counters[joint] < FRAMES_TO_ALERT) return null;
+
+    const direction = value < adjusted.min ? 'too_low' : 'too_high';
+    let severity = (adjusted.corrections['severity'] ?? 'medium') as PostureIssue['severity'];
+    let message = adjusted.corrections[direction] ??
+      `${direction.replace('_', ' ')} (${value.toFixed(0)}°, expected ${adjusted.min.toFixed(0)}–${adjusted.max.toFixed(0)}°)`;
+
+    if (this.limitedJoints.includes(joint)) {
+      severity = 'low';
+      message = `[Adapted] ${message}`;
+    }
+
+    return {
+      joint,
+      severity,
+      message,
+      direction,
+      value: Math.round(value),
+      expectedMin: adjusted.min,
+      expectedMax: adjusted.max,
+    };
+  }
+
   analyze(
     angles: Record<string, number>,
     activeRules: Record<string, AngleRangeDef>,
@@ -73,54 +124,15 @@ export class PostureRules {
     const issues: PostureIssue[] = [];
 
     for (const [joint, range] of Object.entries(activeRules)) {
-      if (!(joint in angles)) {
-        this.counters[joint] = (this.counters[joint] ?? 0) + 1;
-        if (this.counters[joint] >= FRAMES_TO_MISSING) {
-          issues.push({
-            joint,
-            severity: 'high',
-            message: `Can't see your ${joint.replace(/_/g, ' ')} — make sure it's in frame`,
-            direction: 'missing',
-            value: null,
-            expectedMin: range.min,
-            expectedMax: range.max,
-          });
-        }
-        continue;
-      }
-
-      const value = angles[joint];
-      const adjusted = this.adjustRange(joint, range);
-
-      if (contains(adjusted, value)) {
-        this.counters[joint] = 0;
-        continue;
-      }
-
-      this.counters[joint] = (this.counters[joint] ?? 0) + 1;
-      if (this.counters[joint] < FRAMES_TO_ALERT) continue;
-
-      const direction = value < adjusted.min ? 'too_low' : 'too_high';
-      let severity = (adjusted.corrections['severity'] ?? 'medium') as PostureIssue['severity'];
-      let message = adjusted.corrections[direction] ??
-        `${direction.replace('_', ' ')} (${value.toFixed(0)}°, expected ${adjusted.min.toFixed(0)}–${adjusted.max.toFixed(0)}°)`;
-
-      if (this.limitedJoints.includes(joint)) {
-        severity = 'low';
-        message = `[Adapted] ${message}`;
-      }
-
-      issues.push({
-        joint,
-        severity,
-        message,
-        direction,
-        value: Math.round(value),
-        expectedMin: adjusted.min,
-        expectedMax: adjusted.max,
-      });
+      const issue = joint in angles
+        ? this.outOfRangeIssue(joint, this.adjustRange(joint, range), angles[joint])
+        : this.missingJointIssue(joint, range);
+      if (issue) issues.push(issue);
     }
 
+    // A joint that's no longer part of the active rules (e.g. the exercise
+    // moved to a phase that doesn't check it) shouldn't keep counting
+    // toward a stale alert the next time it becomes relevant.
     for (const joint of Object.keys(this.counters)) {
       if (!(joint in activeRules)) this.counters[joint] = 0;
     }

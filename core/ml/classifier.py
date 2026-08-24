@@ -83,6 +83,45 @@ def score_phase(phase: Phase, angles: Dict[str, float]) -> PhaseScore:
     return PhaseScore(phase, avg, matched, total)
 
 
+def _direction_from_delta(delta: float) -> str:
+    """Classify a signed angle delta (degrees, this-frame minus last-frame)
+    into a motion direction label — small jitter counts as 'stable' rather
+    than flipping direction on noise."""
+    if delta < -1.0:
+        return 'decreasing'
+    if delta > 1.0:
+        return 'increasing'
+    return 'stable'
+
+
+def _tiebreak_by_direction(
+    best: PhaseScore,
+    runner_up: PhaseScore,
+    prev_primary_angle: Optional[float],
+    current_primary_angle: Optional[float],
+    observed_delta: Optional[float],
+) -> Optional[Phase]:
+    """
+    When the top two phases are near-tied on angle score alone (e.g. a
+    squat's descending/ascending phases share the same angle range), use
+    which way the primary joint is actually moving to pick between them.
+
+    Returns the runner-up's phase if the observed motion matches it,
+    otherwise None — meaning the caller should keep the top-scored phase.
+    """
+    if best.phase.motion_direction == runner_up.phase.motion_direction:
+        return None   # same direction on both — motion can't distinguish them
+
+    if observed_delta is None and prev_primary_angle is not None and current_primary_angle is not None:
+        observed_delta = current_primary_angle - prev_primary_angle
+    if observed_delta is None:
+        return None   # no motion signal available at all
+
+    if runner_up.phase.motion_direction == _direction_from_delta(observed_delta):
+        return runner_up.phase
+    return None
+
+
 def classify(
     exercise: Exercise,
     angles: Dict[str, float],
@@ -103,30 +142,16 @@ def classify(
 
     scored = [score_phase(p, angles) for p in exercise.phases]
     scored.sort(key=lambda s: s.score, reverse=True)
-
     best = scored[0]
 
-    # Tiebreak: if top two scores are within 5% of each other and their
-    # motion_direction differs, use the observed direction to pick.
+    # Only bother tie-breaking when the top two are close enough that the
+    # angle score alone can't be trusted to have picked correctly.
     if len(scored) > 1 and (best.score - scored[1].score) < 0.05:
-        runner_up = scored[1]
-        if observed_delta is None and (
-            prev_primary_angle is not None and current_primary_angle is not None
-        ):
-            observed_delta = current_primary_angle - prev_primary_angle
-        if (
-            best.phase.motion_direction != runner_up.phase.motion_direction
-            and observed_delta is not None
-        ):
-            if observed_delta < -1.0:
-                observed_dir = 'decreasing'
-            elif observed_delta > 1.0:
-                observed_dir = 'increasing'
-            else:
-                observed_dir = 'stable'
-
-            if runner_up.phase.motion_direction == observed_dir:
-                return runner_up.phase
+        tiebroken = _tiebreak_by_direction(
+            best, scored[1], prev_primary_angle, current_primary_angle, observed_delta
+        )
+        if tiebroken is not None:
+            return tiebroken
 
     return best.phase
 

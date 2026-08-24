@@ -18,7 +18,7 @@ import hmac
 import os
 import uuid
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from core.app_model import (
     AuthToken,
@@ -265,6 +265,46 @@ def save_workout_session(
 
 # ── Progress metrics ───────────────────────────────────────────────────────────
 
+def _score_trend(sorted_sessions: List[LiveSessionOutput]) -> ScoreTrend:
+    """Oldest-to-newest score movement across this exercise's history.
+    Needs at least 2 sessions to have a direction; a swing of more than 3
+    points either way counts as a real trend rather than noise."""
+    if len(sorted_sessions) < 2:
+        return ScoreTrend.STABLE
+    diff = sorted_sessions[-1].overall_score - sorted_sessions[0].overall_score
+    if diff > 3:
+        return ScoreTrend.IMPROVING
+    if diff < -3:
+        return ScoreTrend.DECLINING
+    return ScoreTrend.STABLE
+
+
+def _weak_joints_ranked(sessions: List[LiveSessionOutput]) -> List[Tuple[str, int]]:
+    """How often each joint showed a form error across all of this
+    exercise's sessions, most-frequent first."""
+    joint_counts: Dict[str, int] = {}
+    for s in sessions:
+        for j in s.weak_joints:
+            joint_counts[j] = joint_counts.get(j, 0) + 1
+    return sorted(joint_counts.items(), key=lambda x: x[1], reverse=True)
+
+
+def _progress_for_exercise(ex_id: str, sessions: List[LiveSessionOutput]) -> ProgressMetrics:
+    sorted_sessions = sorted(sessions, key=lambda s: s.date)
+    recent = sorted_sessions[-3:]
+    avg_score = round(sum(s.overall_score for s in recent) / len(recent), 1)
+
+    return ProgressMetrics(
+        exercise_id      = ex_id,
+        exercise_name    = sessions[0].exercise_name,
+        total_sessions   = len(sessions),
+        total_reps       = sum(s.total_reps for s in sessions),
+        avg_score_recent = avg_score,
+        score_trend      = _score_trend(sorted_sessions),
+        weak_joints      = _weak_joints_ranked(sessions),
+    )
+
+
 def get_progress(user_id: str) -> List[ProgressMetrics]:
     """Compute per-exercise progress metrics from session history."""
     sessions = get_history(user_id)
@@ -275,34 +315,7 @@ def get_progress(user_id: str) -> List[ProgressMetrics]:
     for s in sessions:
         by_exercise.setdefault(s.exercise_id, []).append(s)
 
-    metrics = []
-    for ex_id, ex_sessions in by_exercise.items():
-        sorted_sessions = sorted(ex_sessions, key=lambda s: s.date)
-        recent = sorted_sessions[-3:]
-        avg_score = round(sum(s.overall_score for s in recent) / len(recent), 1)
-
-        if len(sorted_sessions) >= 2:
-            diff  = sorted_sessions[-1].overall_score - sorted_sessions[0].overall_score
-            trend = ScoreTrend.IMPROVING if diff > 3 else (ScoreTrend.DECLINING if diff < -3 else ScoreTrend.STABLE)
-        else:
-            trend = ScoreTrend.STABLE
-
-        joint_counts: Dict[str, int] = {}
-        for s in ex_sessions:
-            for j in s.weak_joints:
-                joint_counts[j] = joint_counts.get(j, 0) + 1
-
-        metrics.append(ProgressMetrics(
-            exercise_id      = ex_id,
-            exercise_name    = ex_sessions[0].exercise_name,
-            total_sessions   = len(ex_sessions),
-            total_reps       = sum(s.total_reps for s in ex_sessions),
-            avg_score_recent = avg_score,
-            score_trend      = trend,
-            weak_joints      = sorted(joint_counts.items(), key=lambda x: x[1], reverse=True),
-        ))
-
-    return metrics
+    return [_progress_for_exercise(ex_id, ex_sessions) for ex_id, ex_sessions in by_exercise.items()]
 
 
 # ── Onboarding options ─────────────────────────────────────────────────────────

@@ -41,6 +41,37 @@ interface Props {
   onNavigate: (tab: Tab) => void;
 }
 
+// ── Camera acquisition ───────────────────────────────────────────────────────
+
+/** Try the ideal resolution first; some cameras reject those constraints, so
+ * fall back to a bare video request before giving up. */
+async function acquireCamera(): Promise<MediaStream> {
+  try {
+    return await navigator.mediaDevices.getUserMedia({
+      video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+      audio: false,
+    });
+  } catch (first: any) {
+    try {
+      return await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+    } catch (e: any) {
+      throw new Error(e?.name ?? first?.name ?? 'UnknownError');
+    }
+  }
+}
+
+/** The <video> element mounts only after the mode switches to 'live', so a
+ * single tick isn't always enough — poll briefly for the ref instead. */
+async function waitForVideoElement(
+  ref: React.RefObject<HTMLVideoElement | null>,
+): Promise<HTMLVideoElement> {
+  for (let i = 0; i < 40 && !ref.current; i++) {
+    await new Promise(r => setTimeout(r, 25));
+  }
+  if (!ref.current) throw new Error('video element never mounted');
+  return ref.current;
+}
+
 export default function WorkoutScreen({ token, onNavigate }: Props) {
   const { t, lang, exerciseName } = useI18n();
 
@@ -110,6 +141,34 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
     flashTimerRef.current = window.setTimeout(() => setFlash(''), 1200);
   }
 
+  /** Track every joint that's had a form issue this rep, and speak the
+   * high-severity ones out loud — but not more than once per 4s per joint,
+   * so a sustained issue doesn't spam the voice coach every frame. */
+  function handlePostureIssues(issues: PostureIssue[], now: number) {
+    for (const issue of issues) {
+      repErrorsRef.current.add(issue.joint);
+      if (issue.severity !== 'high') continue;
+      const lastSpoken = lastSpokenRef.current[issue.joint] ?? 0;
+      if (now - lastSpoken <= 4000) continue;
+      lastSpokenRef.current[issue.joint] = now;
+      speak(issue.message);
+    }
+  }
+
+  /** Log a finished rep (with whichever joints had issues during it) and
+   * reset the per-rep issue tracker for the next one. */
+  function recordCompletedRep(repCount: number) {
+    const errors = [...repErrorsRef.current];
+    repsRef.current.push({
+      rep_number: repCount,
+      error_joints: errors,
+      form_score: repFormScore(errors),
+    });
+    repErrorsRef.current = new Set();
+    showFlash(t.repFlash(repCount));
+    speak(String(repCount));
+  }
+
   // ── Live loop ─────────────────────────────────────────────────────────────
   const startWorkout = useCallback(async (exercise: ExerciseDef) => {
     setStarting(true);
@@ -126,20 +185,11 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
 
     let stream: MediaStream;
     try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
-        audio: false,
-      });
-    } catch (first: any) {
-      try {
-        // Some cameras reject the ideal constraints — retry with the basics.
-        stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
-      } catch (e: any) {
-        const name = e?.name ?? first?.name ?? 'UnknownError';
-        setSetupError(`${t.cameraError} (${name})`);
-        setStarting(false);
-        return;
-      }
+      stream = await acquireCamera();
+    } catch (e: any) {
+      setSetupError(`${t.cameraError} (${e.message})`);
+      setStarting(false);
+      return;
     }
 
     try {
@@ -160,14 +210,7 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
       setMode('live');
 
       streamRef.current = stream;
-      // The <video> mounts with the mode change — poll briefly for the ref
-      // instead of assuming a single tick is enough.
-      let video = videoRef.current;
-      for (let i = 0; i < 40 && !video; i++) {
-        await new Promise(r => setTimeout(r, 25));
-        video = videoRef.current;
-      }
-      if (!video) throw new Error('video element never mounted');
+      const video = await waitForVideoElement(videoRef);
       video.srcObject = stream;
       await video.play();
 
@@ -189,16 +232,7 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
         let issues: PostureIssue[] = [];
         if (detection && result.started) {
           issues = rules.analyze(angles, sm.activeRules());
-          for (const issue of issues) {
-            repErrorsRef.current.add(issue.joint);
-            if (issue.severity === 'high') {
-              const last = lastSpokenRef.current[issue.joint] ?? 0;
-              if (now - last > 4000) {
-                lastSpokenRef.current[issue.joint] = now;
-                speak(issue.message);
-              }
-            }
-          }
+          handlePostureIssues(issues, now);
 
           if (!wasStartedRef.current) {
             wasStartedRef.current = true;
@@ -207,15 +241,7 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
           }
 
           if (result.completedRep) {
-            const errors = [...repErrorsRef.current];
-            repsRef.current.push({
-              rep_number: result.repCount,
-              error_joints: errors,
-              form_score: repFormScore(errors),
-            });
-            repErrorsRef.current = new Set();
-            showFlash(t.repFlash(result.repCount));
-            speak(String(result.repCount));
+            recordCompletedRep(result.repCount);
           }
         }
 
@@ -512,10 +538,95 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
 
 // ── Canvas overlay ────────────────────────────────────────────────────────────
 // Skeleton + joints + angle chips, drawn mirrored to match the selfie video.
+// Split into one function per visual layer — each just needs the raw
+// landmarks and a couple of mirror-coordinate helpers.
+
+type RawPoint = { x: number; y: number; visibility: number };
+type MirrorFn = (n: number) => number;
+
+const MIN_DRAW_VISIBILITY = 0.4;
+
+/** Which skeleton lines and joints should render red — the ones a current
+ * posture issue is about. */
+function issueHighlights(issues: PostureIssue[]): { redLines: Set<string>; badJoints: Set<string> } {
+  const redLines = new Set<string>();
+  const badJoints = new Set<string>();
+  for (const issue of issues) {
+    badJoints.add(issue.joint);
+    for (const [s, e] of ERROR_TO_LINES[issue.joint] ?? []) {
+      redLines.add(`${s}-${e}`);
+    }
+  }
+  return { redLines, badJoints };
+}
+
+function drawSkeleton(ctx: CanvasRenderingContext2D, raw: RawPoint[], redLines: Set<string>,
+                      mx: MirrorFn, my: MirrorFn, vw: number) {
+  ctx.lineWidth = Math.max(3, vw / 320);
+  ctx.lineCap = 'round';
+  for (const [s, e] of SKELETON_CONNECTIONS) {
+    const ps = raw[s], pe = raw[e];
+    if (!ps || !pe || ps.visibility < MIN_DRAW_VISIBILITY || pe.visibility < MIN_DRAW_VISIBILITY) continue;
+    ctx.strokeStyle = redLines.has(`${s}-${e}`) ? '#ff5c5c' : 'rgba(255,255,255,.92)';
+    ctx.beginPath();
+    ctx.moveTo(mx(ps.x), my(ps.y));
+    ctx.lineTo(mx(pe.x), my(pe.y));
+    ctx.stroke();
+  }
+}
+
+/** Draws a dot per visible joint (excluding face landmarks 0-10) and
+ * returns the dot radius used, so the angle chips can size themselves
+ * relative to it. */
+function drawJoints(ctx: CanvasRenderingContext2D, raw: RawPoint[], badJoints: Set<string>,
+                    mx: MirrorFn, my: MirrorFn, vw: number): number {
+  const badAnchors = new Set<number>();
+  for (const j of badJoints) {
+    if (JOINT_ANCHOR[j] !== undefined) badAnchors.add(JOINT_ANCHOR[j]);
+  }
+  const r = Math.max(5, vw / 220);
+  raw.forEach((p, idx) => {
+    if (idx <= 10 || p.visibility < MIN_DRAW_VISIBILITY) return;
+    ctx.fillStyle = badAnchors.has(idx) ? '#ff5c5c' : '#2fbf71';
+    ctx.beginPath();
+    ctx.arc(mx(p.x), my(p.y), badAnchors.has(idx) ? r * 1.4 : r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+  return r;
+}
+
+/** Labeled angle badges next to the current phase's diagnostic joints. */
+function drawAngleChips(ctx: CanvasRenderingContext2D, raw: RawPoint[], diagnosticJoints: string[],
+                        angles: Record<string, number>, mx: MirrorFn, my: MirrorFn, vw: number, jointRadius: number) {
+  const chipFont = Math.max(13, vw / 55);
+  ctx.font = `800 ${chipFont}px Heebo, sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  for (const joint of diagnosticJoints) {
+    const idx = JOINT_ANCHOR[joint];
+    const angle = angles[joint];
+    if (idx === undefined || angle === undefined) continue;
+    const p = raw[idx];
+    if (!p || p.visibility < MIN_DRAW_VISIBILITY) continue;
+
+    const label = `${Math.round(angle)}°`;
+    const w = ctx.measureText(label).width + chipFont;
+    const h = chipFont * 1.7;
+    const cx = mx(p.x) + jointRadius * 3 + w / 2;
+    const cy = my(p.y) - h;
+
+    ctx.fillStyle = 'rgba(23,23,22,.9)';
+    ctx.beginPath();
+    ctx.roundRect(cx - w / 2, cy - h / 2, w, h, 6);
+    ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.fillText(label, cx, cy + 1);
+  }
+}
 
 function drawOverlay(
   canvas: HTMLCanvasElement | null,
-  raw: { x: number; y: number; visibility: number }[] | null,
+  raw: RawPoint[] | null,
   vw: number,
   vh: number,
   issues: PostureIssue[],
@@ -532,68 +643,11 @@ function drawOverlay(
   ctx.clearRect(0, 0, vw, vh);
   if (!raw) return;
 
-  const mx = (x: number) => (1 - x) * vw;   // mirror to match scaleX(-1) video
-  const my = (y: number) => y * vh;
+  const mx: MirrorFn = (x) => (1 - x) * vw;   // mirror to match scaleX(-1) video
+  const my: MirrorFn = (y) => y * vh;
 
-  const redLines = new Set<string>();
-  const badJoints = new Set<string>();
-  for (const issue of issues) {
-    badJoints.add(issue.joint);
-    for (const [s, e] of ERROR_TO_LINES[issue.joint] ?? []) {
-      redLines.add(`${s}-${e}`);
-    }
-  }
-
-  // Limb segments
-  ctx.lineWidth = Math.max(3, vw / 320);
-  ctx.lineCap = 'round';
-  for (const [s, e] of SKELETON_CONNECTIONS) {
-    const ps = raw[s], pe = raw[e];
-    if (!ps || !pe || ps.visibility < 0.4 || pe.visibility < 0.4) continue;
-    ctx.strokeStyle = redLines.has(`${s}-${e}`) ? '#ff5c5c' : 'rgba(255,255,255,.92)';
-    ctx.beginPath();
-    ctx.moveTo(mx(ps.x), my(ps.y));
-    ctx.lineTo(mx(pe.x), my(pe.y));
-    ctx.stroke();
-  }
-
-  // Joint dots
-  const badAnchors = new Set<number>();
-  for (const j of badJoints) {
-    if (JOINT_ANCHOR[j] !== undefined) badAnchors.add(JOINT_ANCHOR[j]);
-  }
-  const r = Math.max(5, vw / 220);
-  raw.forEach((p, idx) => {
-    if (idx <= 10 || p.visibility < 0.4) return;
-    ctx.fillStyle = badAnchors.has(idx) ? '#ff5c5c' : '#2fbf71';
-    ctx.beginPath();
-    ctx.arc(mx(p.x), my(p.y), badAnchors.has(idx) ? r * 1.4 : r, 0, Math.PI * 2);
-    ctx.fill();
-  });
-
-  // Angle chips at the current phase's diagnostic joints
-  const chipFont = Math.max(13, vw / 55);
-  ctx.font = `800 ${chipFont}px Heebo, sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  for (const joint of diagnosticJoints) {
-    const idx = JOINT_ANCHOR[joint];
-    const angle = angles[joint];
-    if (idx === undefined || angle === undefined) continue;
-    const p = raw[idx];
-    if (!p || p.visibility < 0.4) continue;
-
-    const label = `${Math.round(angle)}°`;
-    const w = ctx.measureText(label).width + chipFont;
-    const h = chipFont * 1.7;
-    const cx = mx(p.x) + r * 3 + w / 2;
-    const cy = my(p.y) - h;
-
-    ctx.fillStyle = 'rgba(23,23,22,.9)';
-    ctx.beginPath();
-    ctx.roundRect(cx - w / 2, cy - h / 2, w, h, 6);
-    ctx.fill();
-    ctx.fillStyle = '#fff';
-    ctx.fillText(label, cx, cy + 1);
-  }
+  const { redLines, badJoints } = issueHighlights(issues);
+  drawSkeleton(ctx, raw, redLines, mx, my, vw);
+  const jointRadius = drawJoints(ctx, raw, badJoints, mx, my, vw);
+  drawAngleChips(ctx, raw, diagnosticJoints, angles, mx, my, vw, jointRadius);
 }

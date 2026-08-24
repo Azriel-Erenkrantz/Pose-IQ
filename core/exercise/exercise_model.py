@@ -55,6 +55,96 @@ class Exercise:
         return None
 
 
+# ---------------------------------------------------------------------------
+# Shared assembly helpers — both loaders (JSON seed file and Mongo) build the
+# same Phase/Exercise shape; only *where the angle numbers come from* differs
+# (embedded in the seed JSON vs. a separate exercise_angles collection), so
+# that's the only part each loader implements itself.
+# ---------------------------------------------------------------------------
+
+def _build_global_constraints(raw: Dict[str, dict]) -> Dict[str, AngleRange]:
+    return {
+        joint: AngleRange(min=r['min'], max=r['max'], corrections=r.get('corrections', {}))
+        for joint, r in raw.items()
+    }
+
+
+def _derive_primary_joints(phases_data: List[dict]) -> List[str]:
+    """Diagnostic joints of every non-initial phase, in first-seen order —
+    these are the joints whose angles actually distinguish this exercise's
+    movement phases (the initial/resting phase is excluded since it doesn't
+    help tell one exercise's reps apart from another's)."""
+    seen: set = set()
+    primary: List[str] = []
+    for phase_data in phases_data:
+        if phase_data.get('is_initial', False):
+            continue
+        for joint in phase_data.get('diagnostic_joints', []):
+            if joint not in seen:
+                seen.add(joint)
+                primary.append(joint)
+    return primary
+
+
+def _build_phase(phase_data: dict, angles: Dict[str, AngleRange]) -> Phase:
+    return Phase(
+        name=phase_data['name'],
+        order=phase_data['order'],
+        angles=angles,
+        instruction=phase_data.get('instruction', ''),
+        is_initial=phase_data.get('is_initial', False),
+        diagnostic_joints=phase_data.get('diagnostic_joints', []),
+        motion_direction=phase_data.get('motion_direction', 'stable'),
+    )
+
+
+def _assemble_exercise(ex_data: dict, phases: List[Phase]) -> Exercise:
+    return Exercise(
+        id=ex_data['id'],
+        name=ex_data['name'],
+        description=ex_data['description'],
+        muscle_groups=ex_data['muscle_groups'],
+        phases=phases,
+        primary_joints=_derive_primary_joints(ex_data.get('phases', [])),
+        mandatory_start_joints=ex_data.get('mandatory_start_joints', []),
+        global_constraints=_build_global_constraints(ex_data.get('global_constraints', {})),
+    )
+
+
+def _seed_phase_angles(phase_data: dict) -> Dict[str, AngleRange]:
+    """Angle ranges straight from the seed JSON — supports both the bare
+    seed format (joints: {corrections only}, no numbers yet) and the fuller
+    format (angle_ranges: {min, max, mean, std, corrections})."""
+    raw = phase_data.get('angle_ranges', phase_data.get('joints', {}))
+    angles = {}
+    for joint, r in raw.items():
+        if 'min' not in r:
+            continue  # seed format — no angle data yet, skip
+        angles[joint] = AngleRange(
+            min=r['min'], max=r['max'], corrections=r.get('corrections', {}),
+            mean=r.get('mean'), std=r.get('std'),
+        )
+    return angles
+
+
+def _mongo_phase_angles(phase_data: dict, measured: Dict[str, dict]) -> Dict[str, AngleRange]:
+    """Angle ranges for one phase, joining the exercise's phase/joint
+    structure (phase_data) against measured min/max/mean/std for that phase
+    (measured, from the exercise_angles collection) — a joint with no
+    measurement yet (trainer.py hasn't run) is skipped, same as the seed
+    loader skips joints with no numbers."""
+    angles = {}
+    for joint, joint_def in phase_data.get('joints', {}).items():
+        stats = measured.get(joint)
+        if stats is None:
+            continue
+        angles[joint] = AngleRange(
+            min=stats['min'], max=stats['max'], corrections=joint_def.get('corrections', {}),
+            mean=stats.get('mean'), std=stats.get('std'),
+        )
+    return angles
+
+
 class ExerciseModel:
     def __init__(self, data_path: str = None):
         if data_path is None:
@@ -70,60 +160,11 @@ class ExerciseModel:
             data = json.load(f)
 
         for ex_data in data['exercises']:
-            phases = []
-            for phase_data in sorted(ex_data['phases'], key=lambda p: p['order']):
-                # Support both seed format (joints: {corrections only}) and
-                # full format (angle_ranges: {min, max, mean, std, corrections})
-                angles = {}
-                for joint, r in phase_data.get('angle_ranges', phase_data.get('joints', {})).items():
-                    if 'min' not in r:
-                        continue  # seed format — no angle data yet, skip
-                    angles[joint] = AngleRange(
-                        min=r['min'],
-                        max=r['max'],
-                        corrections=r.get('corrections', {}),
-                        mean=r.get('mean'),
-                        std=r.get('std'),
-                    )
-                phases.append(Phase(
-                    name=phase_data['name'],
-                    order=phase_data['order'],
-                    angles=angles,
-                    instruction=phase_data.get('instruction', ''),
-                    is_initial=phase_data.get('is_initial', False),
-                    diagnostic_joints=phase_data.get('diagnostic_joints', []),
-                    motion_direction=phase_data.get('motion_direction', 'stable'),
-                ))
-
-            global_constraints = {
-                joint: AngleRange(
-                    min=r['min'],
-                    max=r['max'],
-                    corrections=r.get('corrections', {}),
-                )
-                for joint, r in ex_data.get('global_constraints', {}).items()
-            }
-
-            # Derive primary_joints from diagnostic joints of non-initial phases
-            seen: set = set()
-            primary_joints: List[str] = []
-            for ph in ex_data.get('phases', []):
-                if not ph.get('is_initial', False):
-                    for j in ph.get('diagnostic_joints', []):
-                        if j not in seen:
-                            seen.add(j)
-                            primary_joints.append(j)
-
-            exercise = Exercise(
-                id=ex_data['id'],
-                name=ex_data['name'],
-                description=ex_data['description'],
-                muscle_groups=ex_data['muscle_groups'],
-                phases=phases,
-                primary_joints=primary_joints,
-                mandatory_start_joints=ex_data.get('mandatory_start_joints', []),
-                global_constraints=global_constraints,
-            )
+            phases = [
+                _build_phase(phase_data, _seed_phase_angles(phase_data))
+                for phase_data in sorted(ex_data['phases'], key=lambda p: p['order'])
+            ]
+            exercise = _assemble_exercise(ex_data, phases)
             self.exercises[exercise.id] = exercise
 
     @classmethod
@@ -139,73 +180,19 @@ class ExerciseModel:
         instance.exercises = {}
 
         for ex_doc in db.exercises.find():
-            ex_id = ex_doc['id']
-
-            # Load all angle data for this exercise keyed by phase name
+            # Measured angle stats for this exercise, keyed by phase name —
+            # looked up per-phase below when building each Phase's angles.
             angle_by_phase: Dict[str, dict] = {
                 doc['phase']: doc['joints']
-                for doc in db.exercise_angles.find({'exercise_id': ex_id})
+                for doc in db.exercise_angles.find({'exercise_id': ex_doc['id']})
             }
 
-            phases = []
-            for phase_data in sorted(ex_doc.get('phases', []), key=lambda p: p['order']):
-                phase_angle_data = angle_by_phase.get(phase_data['name'], {})
-                angles: Dict[str, AngleRange] = {}
-
-                for joint, joint_def in phase_data.get('joints', {}).items():
-                    stats = phase_angle_data.get(joint)
-                    if stats is None:
-                        # No measured data yet — skip until Model 2 has run
-                        continue
-                    angles[joint] = AngleRange(
-                        min=stats['min'],
-                        max=stats['max'],
-                        corrections=joint_def.get('corrections', {}),
-                        mean=stats.get('mean'),
-                        std=stats.get('std'),
-                    )
-
-                phases.append(Phase(
-                    name=phase_data['name'],
-                    order=phase_data['order'],
-                    angles=angles,
-                    instruction=phase_data.get('instruction', ''),
-                    is_initial=phase_data.get('is_initial', False),
-                    diagnostic_joints=phase_data.get('diagnostic_joints', []),
-                    motion_direction=phase_data.get('motion_direction', 'stable'),
-                ))
-
-            # Global constraints keep their min/max in the exercises collection
-            global_constraints: Dict[str, AngleRange] = {
-                joint: AngleRange(
-                    min=r['min'],
-                    max=r['max'],
-                    corrections=r.get('corrections', {}),
-                )
-                for joint, r in ex_doc.get('global_constraints', {}).items()
-            }
-
-            # primary_joints = diagnostic joints across all non-initial phases (in order)
-            seen: set = set()
-            pj: List[str] = []
-            for ph_data in ex_doc.get('phases', []):
-                if not ph_data.get('is_initial', False):
-                    for j in ph_data.get('diagnostic_joints', []):
-                        if j not in seen:
-                            seen.add(j)
-                            pj.append(j)
-
-            exercise = Exercise(
-                id=ex_id,
-                name=ex_doc['name'],
-                description=ex_doc['description'],
-                muscle_groups=ex_doc['muscle_groups'],
-                phases=phases,
-                primary_joints=pj,
-                mandatory_start_joints=ex_doc.get('mandatory_start_joints', []),
-                global_constraints=global_constraints,
-            )
-            instance.exercises[ex_id] = exercise
+            phases = [
+                _build_phase(phase_data, _mongo_phase_angles(phase_data, angle_by_phase.get(phase_data['name'], {})))
+                for phase_data in sorted(ex_doc.get('phases', []), key=lambda p: p['order'])
+            ]
+            exercise = _assemble_exercise(ex_doc, phases)
+            instance.exercises[exercise.id] = exercise
 
         return instance
 

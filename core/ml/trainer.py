@@ -144,6 +144,88 @@ def _build_frame_labels(labels: List[dict], n_frames: int, fps: float, skip: int
 # Sample collection from hand-labeled files
 # ---------------------------------------------------------------------------
 
+def _split_train_eval(
+    exercise_id: str, label_files: List[Path], verbose: bool,
+) -> Tuple[List[Path], Optional[Path]]:
+    """Hold out the last file alphabetically as the eval set — unless
+    there's only one file, in which case there's nothing to hold out and
+    it's used for training instead."""
+    if len(label_files) == 1:
+        if verbose:
+            print(f'  [{exercise_id}] only 1 label file — using for training, no eval holdout')
+        return label_files, None
+
+    eval_file, train_files = label_files[-1], label_files[:-1]
+    if verbose:
+        print(f'  [{exercise_id}] train={len(train_files)} files  eval={eval_file.name}')
+    return train_files, eval_file
+
+
+def _process_label_file(
+    lf: Path, default_skip: int,
+    phase_angles: Dict[str, Dict[str, List[float]]],
+    verbose: bool,
+) -> Tuple[List[np.ndarray], List[str]]:
+    """
+    Turn one hand-labeled video into training rows: extract pose → angles →
+    a feature vector per labeled frame. Also appends each frame's raw angle
+    values into `phase_angles` (mutated in place), so the caller can later
+    compute min/max/mean/std across every training file, not just this one.
+
+    Returns ([], []) on any failure (video not found, unreadable, no labeled
+    frames) — a bad clip is skipped, not fatal to the whole training run.
+    """
+    from core.ml.angles import compute_angles
+    from core.ml.extractor import extract_frames
+
+    data = json.loads(lf.read_text(encoding='utf-8'))
+    video_path = _resolve_video(data['video'], lf)
+    if video_path is None:
+        if verbose:
+            print(f'    {lf.name}: video not found, skipping')
+        return [], []
+
+    file_skip = data.get('skip', default_skip)
+    if verbose:
+        print(f'    {lf.name} ...', end=' ', flush=True)
+
+    try:
+        frames = extract_frames(video_path, skip=file_skip)
+        if len(frames) < 5:
+            if verbose:
+                print('too short, skipped')
+            return [], []
+
+        per_frame = [compute_angles(f) for f in frames]
+        fps = _video_fps(video_path)
+        frame_labels = _build_frame_labels(data['labels'], len(frames), fps, file_skip)
+        if not frame_labels:
+            if verbose:
+                print('no labeled frames — check timestamps')
+            return [], []
+
+        rate = fps / file_skip   # extracted frames per second → deltas in °/sec
+        X_rows, y_rows = [], []
+        for i, angles in enumerate(per_frame):
+            if i not in frame_labels:
+                continue
+            phase = frame_labels[i]
+            X_rows.append(angles_to_features(angles, rolling_deltas(per_frame, i, rate=rate)))
+            y_rows.append(phase)
+            for joint, value in angles.items():
+                phase_angles[phase][joint].append(value)
+
+        if verbose:
+            phases = list(dict.fromkeys(frame_labels.values()))
+            print(f'{len(frames)} frames → {len(y_rows)} labeled  {phases}')
+        return X_rows, y_rows
+
+    except Exception as exc:
+        if verbose:
+            print(f'ERROR: {exc}')
+        return [], []
+
+
 def collect_samples_from_labels(
     exercise_id: str,
     labels_root: Path = LABELS_DIR,
@@ -160,8 +242,6 @@ def collect_samples_from_labels(
     Returns (X, y, eval_label_path, phase_angles).
     """
     from collections import defaultdict
-    from core.ml.angles import compute_angles
-    from core.ml.extractor import extract_frames
 
     label_dir = labels_root / exercise_id
     if not label_dir.exists():
@@ -175,67 +255,16 @@ def collect_samples_from_labels(
             print(f'  [{exercise_id}] no .json label files found')
         return np.empty((0, N_FEATURES)), [], None, {}
 
-    if len(label_files) == 1:
-        if verbose:
-            print(f'  [{exercise_id}] only 1 label file — using for training, no eval holdout')
-        train_files, eval_file = label_files, None
-    else:
-        eval_file   = label_files[-1]
-        train_files = label_files[:-1]
-        if verbose:
-            print(f'  [{exercise_id}] train={len(train_files)} files  eval={eval_file.name}')
+    train_files, eval_file = _split_train_eval(exercise_id, label_files, verbose)
 
     X_rows, y_rows = [], []
     # phase → joint → [angle values]  accumulated across all training videos
     phase_angles: Dict[str, Dict[str, List[float]]] = defaultdict(lambda: defaultdict(list))
 
     for lf in train_files:
-        data = json.loads(lf.read_text(encoding='utf-8'))
-        video_path = _resolve_video(data['video'], lf)
-        if video_path is None:
-            if verbose:
-                print(f'    {lf.name}: video not found, skipping')
-            continue
-
-        file_skip = data.get('skip', skip)
-        if verbose:
-            print(f'    {lf.name} ...', end=' ', flush=True)
-
-        try:
-            frames = extract_frames(video_path, skip=file_skip)
-            if len(frames) < 5:
-                if verbose:
-                    print('too short, skipped')
-                continue
-
-            per_frame = [compute_angles(f) for f in frames]
-            fps       = _video_fps(video_path)
-            frame_labels = _build_frame_labels(data['labels'], len(frames), fps, file_skip)
-
-            if not frame_labels:
-                if verbose:
-                    print('no labeled frames — check timestamps')
-                continue
-
-            rate = fps / file_skip   # extracted frames per second → deltas in °/sec
-            labeled = 0
-            for i, angles in enumerate(per_frame):
-                if i not in frame_labels:
-                    continue
-                phase = frame_labels[i]
-                X_rows.append(angles_to_features(angles, rolling_deltas(per_frame, i, rate=rate)))
-                y_rows.append(phase)
-                for joint, value in angles.items():
-                    phase_angles[phase][joint].append(value)
-                labeled += 1
-
-            if verbose:
-                phases = list(dict.fromkeys(frame_labels.values()))
-                print(f'{len(frames)} frames → {labeled} labeled  {phases}')
-
-        except Exception as exc:
-            if verbose:
-                print(f'ERROR: {exc}')
+        file_X, file_y = _process_label_file(lf, skip, phase_angles, verbose)
+        X_rows.extend(file_X)
+        y_rows.extend(file_y)
 
     if not X_rows:
         return np.empty((0, N_FEATURES)), [], eval_file, dict(phase_angles)
