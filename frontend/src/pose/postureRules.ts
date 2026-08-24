@@ -5,8 +5,11 @@
 import type { AngleRangeDef, FitnessLevel } from '../api/types';
 import { contains } from './stateMachine';
 
-const FRAMES_TO_ALERT = 8;
-const FRAMES_TO_MISSING = 5;
+// Widened from 8/5 — the measured angle ranges these compare against are
+// noisy (thin, mixed-quality training data), so require more sustained
+// evidence before nagging the user about a form issue or a lost joint.
+const FRAMES_TO_ALERT = 12;
+const FRAMES_TO_MISSING = 8;
 
 // Mirrors User.threshold_modifier in core/app_model.py
 export const THRESHOLD_MODIFIER: Record<FitnessLevel, number> = {

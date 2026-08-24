@@ -15,7 +15,6 @@ export interface StateMachineResult {
   phaseCount: number;
   instruction: string;
   repCount: number;
-  violations: Record<string, string>;
   transitioned: boolean;
   completedRep: boolean;
   started: boolean;
@@ -60,7 +59,7 @@ export class ExerciseStateMachine {
   update(angles: Record<string, number>): StateMachineResult {
     if (Object.keys(angles).length === 0) {
       this.missingFramesCounter += 1;
-      return this.result({}, false);
+      return this.result(false);
     }
 
     // Auto-recovery: user was lost for a while and is back — re-sync to the
@@ -81,22 +80,23 @@ export class ExerciseStateMachine {
           this.started = true;
         }
       }
-      return this.result({}, false, false, readiness);
+      return this.result(false, false, readiness);
     }
 
-    const violations = this.checkViolations(angles, this.activeRules());
-
-    // Transition when the NEXT phase's requirements hold for several frames.
+    // Transition when the NEXT phase's requirements hold for several NET
+    // frames — a single noisy frame only costs 1 point of progress rather
+    // than wiping out an otherwise-good run, so brief tracking jitter mid-rep
+    // doesn't force starting the count over from zero.
     if (this.anglesMatchPhase(angles, this.nextPhase)) {
       this.transitionCounter += 1;
       if (this.transitionCounter >= FRAMES_TO_TRANSITION) {
         return this.advance();
       }
     } else {
-      this.transitionCounter = 0;
+      this.transitionCounter = Math.max(0, this.transitionCounter - 1);
     }
 
-    return this.result(violations, false);
+    return this.result(false);
   }
 
   private advance(): StateMachineResult {
@@ -104,7 +104,7 @@ export class ExerciseStateMachine {
     this.currentPhaseIndex = (this.currentPhaseIndex + 1) % this.exercise.phases.length;
     const completedRep = this.currentPhaseIndex === 0;
     if (completedRep) this.repCount += 1;
-    return this.result({}, true, completedRep);
+    return this.result(true, completedRep);
   }
 
   private anglesMatchPhase(angles: Record<string, number>, phase: PhaseDef): boolean {
@@ -115,37 +115,24 @@ export class ExerciseStateMachine {
     return true;
   }
 
-  private checkViolations(
-    angles: Record<string, number>,
-    rules: Record<string, AngleRangeDef>,
-  ): Record<string, string> {
-    const violations: Record<string, string> = {};
-    for (const [joint, range] of Object.entries(rules)) {
-      if (!(joint in angles)) {
-        violations[joint] = 'missing (required)';
-        continue;
-      }
-      const dir = direction(range, angles[joint]);
-      if (dir) violations[joint] = dir;
-    }
-    return violations;
-  }
-
   private checkReadiness(
     angles: Record<string, number>,
     phase: PhaseDef,
   ): Record<string, ReadinessStatus> {
     const status: Record<string, ReadinessStatus> = {};
 
-    for (const joint of this.exercise.mandatory_start_joints) {
+    // Joints the phase itself needs are just as required as the exercise's
+    // declared mandatory ones — flag both, so a missing joint always shows
+    // up here instead of silently blocking anglesMatchPhase() with no
+    // explanation the user (or the UI) can see.
+    const required = new Set([...this.exercise.mandatory_start_joints, ...Object.keys(phase.angles)]);
+    for (const joint of required) {
       if (!(joint in angles)) status[joint] = 'missing';
     }
     if (Object.values(status).includes('missing')) return status;
 
     for (const [joint, range] of Object.entries(phase.angles)) {
-      if (joint in angles) {
-        status[joint] = direction(range, angles[joint]);
-      }
+      status[joint] = direction(range, angles[joint]);
     }
     return status;
   }
@@ -176,7 +163,6 @@ export class ExerciseStateMachine {
   }
 
   private result(
-    violations: Record<string, string>,
     transitioned: boolean,
     completedRep = false,
     readiness: Record<string, ReadinessStatus> = {},
@@ -187,7 +173,6 @@ export class ExerciseStateMachine {
       phaseCount: this.exercise.phases.length,
       instruction: this.currentPhase.instruction,
       repCount: this.repCount,
-      violations,
       transitioned,
       completedRep,
       started: this.started,
