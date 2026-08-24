@@ -181,14 +181,6 @@ class TestCreateSessionEndpoint(MongoMockMixin):
         self.assertEqual(len(history[0]['reps']), 3)
         self.assertEqual(history[0]['reps'][1]['error_joints'], ['spine'])
 
-    def test_feeds_weight_recommendations(self):
-        self._post(VALID_BODY)
-        self._post(VALID_BODY)
-        recs = self.client.get(f'/api/user/{self.uid}/weights',
-                               headers=self.auth).get_json()
-        self.assertEqual(recs[0]['exercise_id'], 'squat')
-        self.assertGreater(recs[0]['recommended_weight_kg'], 20.0)
-
     def test_missing_exercise_id_rejected(self):
         body = {**VALID_BODY}
         del body['exercise_id']

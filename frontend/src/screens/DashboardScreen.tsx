@@ -179,41 +179,6 @@ export default function DashboardScreen({ token, onNavigate }: Props) {
         </div>
       )}
 
-      {/* Weight recommendations */}
-      {data.weight_recommendations.length > 0 && (
-        <>
-          <p className="label mb-2.5">{t.nextWeight}</p>
-          <div className="panel rows mb-8">
-            {data.weight_recommendations.map(w => {
-              const weightLabel = w.recommended_weight_kg > 0
-                ? `${w.recommended_weight_kg % 1 === 0 ? w.recommended_weight_kg.toFixed(0) : w.recommended_weight_kg.toFixed(1)}`
-                : null;
-              return (
-                <div key={w.exercise_id} className="flex items-center justify-between px-4 py-3.5 gap-3">
-                  <div className="min-w-0">
-                    <p className="text-[#171716] font-bold text-[15px] leading-tight">
-                      {exerciseName(w.exercise_id, w.exercise_name)}
-                    </p>
-                    <p className="text-[#a09f98] text-xs mt-0.5">
-                      {formatReason(w.reasoning_code, w.reasoning_params, w.reasoning)}
-                    </p>
-                  </div>
-                  <div className="text-end flex-shrink-0">
-                    {weightLabel ? (
-                      <p className="text-[#171716] font-black text-2xl num leading-none">
-                        {weightLabel} <span className="label">{t.kg}</span>
-                      </p>
-                    ) : (
-                      <p className="text-[#171716] font-black text-sm leading-none">{t.bodyweight}</p>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
-
       {/* Progress */}
       {data.progress_summary.length > 0 && (
         <>

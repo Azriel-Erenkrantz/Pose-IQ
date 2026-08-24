@@ -14,7 +14,6 @@ interface Dict {
   loading: string;
   logout: string;
   kg: string;
-  bodyweight: string;
   couldNotLoad: string;
 
   // Nav
@@ -78,7 +77,6 @@ interface Dict {
   noRecsHint: string;
   rateExercise: string;
   stars: string;
-  nextWeight: string;
   yourProgress: string;
   trendLabels: Record<'improving' | 'stable' | 'declining', string>;
   sessionsWord: string;
@@ -140,7 +138,6 @@ const en: Dict = {
   loading: 'Loading…',
   logout: 'Logout',
   kg: 'kg',
-  bodyweight: 'Bodyweight',
   couldNotLoad: 'Could not load data. Is the server running?',
 
   navHome: 'Home',
@@ -216,7 +213,6 @@ const en: Dict = {
   noRecsHint: 'Rate your health above and tap Save, or make sure you selected goals during registration.',
   rateExercise: 'Rate this exercise',
   stars: 'stars',
-  nextWeight: 'Next Working Weight',
   yourProgress: 'Your Progress',
   trendLabels: { improving: 'improving', stable: 'stable', declining: 'declining' },
   sessionsWord: 'sessions',
@@ -250,10 +246,6 @@ const en: Dict = {
     rated_by_you: p => `You rated this ${p.rating.toFixed(0)}/5`,
     predicted_from_ratings: () => 'Predicted from your other ratings',
     no_ratings_yet: () => "New to you — based on other users' ratings",
-    no_weight_logged: () => 'No weight logged yet — start with bodyweight or a light load and log it after each session.',
-    form_dropped: p => `Form score dropped to ${p.score.toFixed(0)} at ${num(p.weight)} kg — reduce the load and rebuild clean technique.`,
-    ready_to_increase: p => `${p.clean} sessions at ${num(p.weight)} kg with form ≥ ${p.threshold.toFixed(0)} — ready to add ${num(p.increment)} kg.`,
-    stay_here: p => `${p.clean}/${p.needed} clean sessions at ${num(p.weight)} kg (form ≥ ${p.threshold.toFixed(0)}) — stay here until the technique is consistent.`,
   },
 
   chooseExercise: 'Choose an exercise',
@@ -296,7 +288,6 @@ const he: Dict = {
   loading: 'טוען…',
   logout: 'התנתקות',
   kg: 'ק"ג',
-  bodyweight: 'משקל גוף',
   couldNotLoad: 'לא ניתן לטעון נתונים. האם השרת רץ?',
 
   navHome: 'בית',
@@ -372,7 +363,6 @@ const he: Dict = {
   noRecsHint: 'דרגו את ההרגשה למעלה ולחצו שמירה, או ודאו שבחרתם מטרות בהרשמה.',
   rateExercise: 'דרגו תרגיל זה',
   stars: 'כוכבים',
-  nextWeight: 'המשקל הבא שלך',
   yourProgress: 'ההתקדמות שלך',
   trendLabels: { improving: 'משתפר', stable: 'יציב', declining: 'יורד' },
   sessionsWord: 'אימונים',
@@ -405,10 +395,6 @@ const he: Dict = {
     rated_by_you: p => `דירגתם זאת ${p.rating.toFixed(0)}/5`,
     predicted_from_ratings: () => 'חיזוי לפי הדירוגים האחרים שלכם',
     no_ratings_yet: () => 'חדש עבורכם — מבוסס על דירוגי משתמשים אחרים',
-    no_weight_logged: () => 'עדיין לא נרשם משקל — התחילו עם משקל גוף או עומס קל ותעדו אותו אחרי כל אימון.',
-    form_dropped: p => `ציון הטכניקה ירד ל-${p.score.toFixed(0)} במשקל ${num(p.weight)} ק"ג — הפחיתו את העומס ובנו מחדש טכניקה נקייה.`,
-    ready_to_increase: p => `${p.clean} אימונים במשקל ${num(p.weight)} ק"ג עם טכניקה ≥ ${p.threshold.toFixed(0)} — מוכנים להוסיף ${num(p.increment)} ק"ג.`,
-    stay_here: p => `${p.clean}/${p.needed} אימונים נקיים במשקל ${num(p.weight)} ק"ג (טכניקה ≥ ${p.threshold.toFixed(0)}) — הישארו כאן עד שהטכניקה תתייצב.`,
   },
 
   chooseExercise: 'בחרו תרגיל',
@@ -445,9 +431,6 @@ const he: Dict = {
     spine: 'גב',
   },
 };
-
-// Matches Python's ':g' formatting used server-side for reason_params.
-function num(x: number): string { return x.toString(); }
 
 const DICTS: Record<Lang, Dict> = { en, he };
 

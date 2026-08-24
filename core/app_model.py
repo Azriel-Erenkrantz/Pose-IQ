@@ -24,7 +24,6 @@ Exercise               → exercises  (seeded, not user-generated)
 LiveSessionOutput      → workout_sessions
 RepResult              → rep_records  (FK: session_id)
 InjuryRisk             → injury_risks
-WeightRecommendation   → weight_recommendations
 ExerciseRecommendation → recommendations  (optional — can be computed on the fly)
 ProgressMetrics        → computed view, not a table
 AuthToken              → auth_tokens  (or JWT — no table needed)
@@ -271,26 +270,6 @@ class InjuryRisk:
         return self.overall_risk >= 0.4
 
 
-# ── Weight recommendation ──────────────────────────────────────────────────────
-
-@dataclass
-class WeightRecommendation:
-    """
-    Dynamic load recommendation for one exercise, based on performance analysis.
-
-    `reasoning` is a fixed English sentence (kept for backward compatibility).
-    `reasoning_code` + `reasoning_params` let a client render the same message
-    in any supported language — see i18n.tsx `formatReason`.
-    """
-    exercise_id:            str
-    exercise_name:          str
-    recommended_weight_kg:  float
-    reasoning:              str
-    confidence:             float        # 0–1
-    reasoning_code:         str = ""
-    reasoning_params:       Dict[str, float] = field(default_factory=dict)
-
-
 # ── Recommendation ─────────────────────────────────────────────────────────────
 
 @dataclass
@@ -342,4 +321,3 @@ class DashboardData:
     recent_sessions:  List[LiveSessionOutput]
     progress_summary: List[ProgressMetrics]
     injury_risk:      Optional[InjuryRisk]  = None
-    weight_recommendations: List[WeightRecommendation] = field(default_factory=list)

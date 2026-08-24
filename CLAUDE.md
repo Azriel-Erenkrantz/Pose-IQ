@@ -149,12 +149,15 @@ truth↔pred anchors matched greedily within ±0.5s; reports matched/missed/
 extra + recall/precision/F1 for raw and smoothed. This is the headline
 metric for the report's accuracy-vs-data curve.
 
-**Weight tracking + progressive overload** (2026-07-14): sessions carry
-optional `weight_kg` (pipeline 3rd CLI arg; `PUT /api/user/<id>/sessions/
-<sid>/weight`; editable in frontend session cards). Double-progression rules
-in `core/recommendation/overload.py` gated on form score (≥85 clean ×2-3
-sessions → +increment; <70 → back off), surfaced via `GET .../weights` and
-embedded in the dashboard (`weight_recommendations`).
+**Weight tracking**: sessions still carry optional `weight_kg` (`PUT /api/
+user/<id>/sessions/<sid>/weight`, editable in frontend session cards) — just
+logging, no recommendation. The progressive-overload recommender
+(`core/recommendation/overload.py`, double-progression gated on form score)
+was removed 2026-08-24: `core/recommendation/` is rating-only now, and
+overload's job (how much weight to lift) isn't a rating question at all —
+kept getting flagged as out of place next to the ranker. Deleted outright
+(API route, dashboard field, frontend display, i18n strings), not moved to
+`stale/`, since nothing about it depends on the desktop pipeline.
 
 ## Roadmap (agreed with user)
 
