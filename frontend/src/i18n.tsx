@@ -66,7 +66,6 @@ interface Dict {
   statOutOf: string;
   statExercises: string;
   statTracked: string;
-  injuryRisk: string;
   howDoYouFeel: string;
   regionLabels: Record<'upper' | 'core' | 'lower', string>;
   saveHealth: string;
@@ -203,7 +202,6 @@ const en: Dict = {
   statOutOf: '/ 100',
   statExercises: 'Exercises',
   statTracked: 'tracked',
-  injuryRisk: 'Injury risk detected',
   howDoYouFeel: 'How do you feel today?',
   regionLabels: { upper: 'Upper Body', core: 'Core', lower: 'Lower Body' },
   saveHealth: 'Save & refresh recommendations',
@@ -354,7 +352,6 @@ const he: Dict = {
   statOutOf: '/ 100',
   statExercises: 'תרגילים',
   statTracked: 'במעקב',
-  injuryRisk: 'זוהה סיכון לפציעה',
   howDoYouFeel: 'איך אתם מרגישים היום?',
   regionLabels: { upper: 'פלג גוף עליון', core: 'ליבה', lower: 'פלג גוף תחתון' },
   saveHealth: 'שמירה ורענון המלצות',

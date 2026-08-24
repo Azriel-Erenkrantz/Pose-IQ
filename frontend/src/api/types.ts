@@ -30,7 +30,6 @@ export interface RepResult {
   rep_number: number;
   form_score: number;
   error_joints: string[];
-  duration_seconds: number;
 }
 
 export interface LiveSessionOutput {
@@ -55,24 +54,10 @@ export interface ProgressMetrics {
   weak_joints: [string, number][];
 }
 
-export interface InjuryRisk {
-  user_id: string;
-  risk_areas: string[];
-  compensation_patterns: string[];
-  asymmetry_score: number;
-  overall_risk: number;
-  recommendation: string;
-  assessed_at: string;
-}
-
 export interface ExerciseInfo {
   exercise_id: string;
   name: string;
-  primary_region: BodyRegion;
-  body_regions: BodyRegion[];
-  base_difficulty: number;
   description: string;
-  tags: string[];
   equipment_required: Equipment[];
 }
 
@@ -93,7 +78,6 @@ export interface DashboardData {
   recommendations: ExerciseRecommendation[];
   recent_sessions: LiveSessionOutput[];
   progress_summary: ProgressMetrics[];
-  injury_risk: InjuryRisk | null;
 }
 
 export interface AuthToken {

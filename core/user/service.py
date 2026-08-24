@@ -215,10 +215,9 @@ def get_history(user_id: str) -> List[LiveSessionOutput]:
 def _session_to_live(session, user_id: str) -> LiveSessionOutput:
     reps = [
         RepResult(
-            rep_number       = r.rep_number,
-            form_score       = r.form_score,
-            error_joints     = r.error_joints,
-            duration_seconds = 0.0,
+            rep_number   = r.rep_number,
+            form_score   = r.form_score,
+            error_joints = r.error_joints,
         )
         for r in session.rep_records
     ]

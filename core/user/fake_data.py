@@ -16,7 +16,6 @@ from core.app_model import (
     Equipment,
     FitnessLevel,
     HealthStatus,
-    InjuryRisk,
     LiveSessionOutput,
     ProgressMetrics,
     RepResult,
@@ -81,10 +80,9 @@ def _make_session(
 ) -> LiveSessionOutput:
     reps = [
         RepResult(
-            rep_number       = i + 1,
-            form_score       = scores[i % len(scores)],
-            error_joints     = error_joints if scores[i % len(scores)] < 75 else [],
-            duration_seconds = 3.5,
+            rep_number   = i + 1,
+            form_score   = scores[i % len(scores)],
+            error_joints = error_joints if scores[i % len(scores)] < 75 else [],
         )
         for i in range(len(scores))
     ]
@@ -155,16 +153,3 @@ def fake_progress_metrics() -> List[ProgressMetrics]:
             weak_joints      = [("left_knee", 2)],
         ),
     ]
-
-
-# ── Fake injury risk ───────────────────────────────────────────────────────────
-
-def fake_injury_risk() -> InjuryRisk:
-    return InjuryRisk(
-        user_id               = FAKE_USER_ID,
-        risk_areas            = ["right_knee"],
-        compensation_patterns = ["slight hip shift right during squat"],
-        asymmetry_score       = 0.2,
-        overall_risk          = 0.3,
-        recommendation        = "Focus on hip alignment during squats. Consider adding single-leg exercises to balance strength.",
-    )

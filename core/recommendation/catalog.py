@@ -9,19 +9,11 @@ from __future__ import annotations
 
 from typing import List
 
-from ..app_model import BodyRegion, Exercise
+from ..app_model import Exercise
 
 CATALOG: List[Exercise] = [
-    Exercise("squat", "Squat",
-             BodyRegion.LOWER, [BodyRegion.LOWER, BodyRegion.CORE],
-             0.45, "Bodyweight or barbell squat", ["legs", "glutes"], []),
-    Exercise("lunge", "Lunge",
-             BodyRegion.LOWER, [BodyRegion.LOWER],
-             0.40, "Forward or reverse lunge", ["legs", "glutes"], []),
-    Exercise("biceps_curl", "Bicep Curl",
-             BodyRegion.UPPER, [BodyRegion.UPPER],
-             0.30, "Dumbbell bicep curl", ["pull", "arms"], []),
-    Exercise("shoulder_press", "Shoulder Press",
-             BodyRegion.UPPER, [BodyRegion.UPPER, BodyRegion.CORE],
-             0.60, "Overhead shoulder press", ["push", "shoulders"], []),
+    Exercise("squat", "Squat", "Bodyweight or barbell squat", []),
+    Exercise("lunge", "Lunge", "Forward or reverse lunge", []),
+    Exercise("biceps_curl", "Bicep Curl", "Dumbbell bicep curl", []),
+    Exercise("shoulder_press", "Shoulder Press", "Overhead shoulder press", []),
 ]

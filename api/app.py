@@ -360,7 +360,6 @@ def get_dashboard(user_id: str):
         recommendations  = recs,
         recent_sessions  = sessions[:5],
         progress_summary = service.get_progress(user_id),
-        injury_risk      = None,
     )
     return ok(dashboard)
 

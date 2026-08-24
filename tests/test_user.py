@@ -47,7 +47,7 @@ def _req(email='test@x.com', password='secret123', **kwargs) -> RegisterRequest:
 
 def _session(exercise_id='squat', exercise_name='Squat',
              score=80.0, days_ago=1, user_id='u1') -> LiveSessionOutput:
-    reps = [RepResult(rep_number=1, form_score=score, error_joints=[], duration_seconds=3.0)]
+    reps = [RepResult(rep_number=1, form_score=score, error_joints=[])]
     return LiveSessionOutput(
         session_id=f's-{exercise_id}-{days_ago}',
         exercise_id=exercise_id,
@@ -380,22 +380,6 @@ class TestFakeProgress(unittest.TestCase):
                 self.assertEqual(len(item), 2)
                 self.assertIsInstance(item[0], str)
                 self.assertIsInstance(item[1], int)
-
-
-class TestFakeInjuryRisk(unittest.TestCase):
-
-    def test_risk_in_range(self):
-        risk = fake_data.fake_injury_risk()
-        self.assertGreaterEqual(risk.overall_risk, 0)
-        self.assertLessEqual(risk.overall_risk, 1)
-
-    def test_has_recommendation(self):
-        self.assertTrue(fake_data.fake_injury_risk().recommendation)
-
-    def test_has_warning_property(self):
-        risk = fake_data.fake_injury_risk()
-        expected = risk.overall_risk >= 0.4
-        self.assertEqual(risk.has_warning, expected)
 
 
 # ── Progress computation tests ─────────────────────────────────────────────────

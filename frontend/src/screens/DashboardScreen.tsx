@@ -109,14 +109,6 @@ export default function DashboardScreen({ token, onNavigate }: Props) {
         <Stat value={String(data.progress_summary.length)} caption={`${t.statExercises} · ${t.statTracked}`} />
       </div>
 
-      {/* Injury risk */}
-      {data.injury_risk && data.injury_risk.overall_risk >= 0.4 && (
-        <div className="panel border-[#d92d2055] p-4 mb-8">
-          <p className="text-[#d92d20] font-bold text-sm mb-1">{t.injuryRisk}</p>
-          <p className="text-[#6f6e68] text-sm">{data.injury_risk.recommendation}</p>
-        </div>
-      )}
-
       {/* Health status */}
       <p className="label mb-2.5">{t.howDoYouFeel}</p>
       <div className="panel p-4 mb-8">

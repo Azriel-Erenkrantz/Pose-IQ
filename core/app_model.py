@@ -23,7 +23,6 @@ HealthStatus           → health_status
 Exercise               → exercises  (seeded, not user-generated)
 LiveSessionOutput      → workout_sessions
 RepResult              → rep_records  (FK: session_id)
-InjuryRisk             → injury_risks
 ExerciseRecommendation → recommendations  (optional — can be computed on the fly)
 ProgressMetrics        → computed view, not a table
 AuthToken              → auth_tokens  (or JWT — no table needed)
@@ -183,11 +182,7 @@ class Exercise:
     """
     exercise_id:        str
     name:               str
-    primary_region:     BodyRegion
-    body_regions:       List[BodyRegion]
-    base_difficulty:    float               # 0–1, inherent difficulty of the movement
     description:        str
-    tags:               List[str]           = field(default_factory=list)
     equipment_required: List[Equipment]     = field(default_factory=list)
 
 
@@ -202,7 +197,6 @@ class RepResult:
     rep_number:       int
     form_score:       float              # 0–100
     error_joints:     List[str]         # joints that violated form rules this rep
-    duration_seconds: float             = 0.0
 
 
 @dataclass
@@ -247,27 +241,6 @@ class ProgressMetrics:
     avg_score_recent:  float
     score_trend:       ScoreTrend
     weak_joints:       List[Tuple[str, int]]  # (joint_name, error_count)
-
-
-# ── Injury and safety ──────────────────────────────────────────────────────────
-
-@dataclass
-class InjuryRisk:
-    """
-    Risk assessment produced by the injury predictor component.
-    Based on compensation patterns, asymmetry, and joint stress over time.
-    """
-    user_id:                 str
-    risk_areas:              List[str]   # e.g. ["knee_right", "lower_back"]
-    compensation_patterns:   List[str]   # e.g. ["hip_shift_left"]
-    asymmetry_score:         float       # 0–1 (0 = symmetric, 1 = severe)
-    overall_risk:            float       # 0–1
-    recommendation:          str
-    assessed_at:             datetime    = field(default_factory=datetime.now)
-
-    @property
-    def has_warning(self) -> bool:
-        return self.overall_risk >= 0.4
 
 
 # ── Recommendation ─────────────────────────────────────────────────────────────
@@ -320,4 +293,3 @@ class DashboardData:
     recommendations:  List[ExerciseRecommendation]
     recent_sessions:  List[LiveSessionOutput]
     progress_summary: List[ProgressMetrics]
-    injury_risk:      Optional[InjuryRisk]  = None
