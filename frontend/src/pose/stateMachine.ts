@@ -22,8 +22,14 @@ export interface StateMachineResult {
   readiness: Record<string, ReadinessStatus>;
 }
 
-function contains(r: AngleRangeDef, value: number): boolean {
+export function contains(r: AngleRangeDef, value: number): boolean {
   return r.min <= value && value <= r.max;
+}
+
+/** null when in range, otherwise which way it's out of bounds. */
+function direction(r: AngleRangeDef, value: number): 'too low' | 'too high' | null {
+  if (contains(r, value)) return null;
+  return value < r.min ? 'too low' : 'too high';
 }
 
 export class ExerciseStateMachine {
@@ -119,10 +125,8 @@ export class ExerciseStateMachine {
         violations[joint] = 'missing (required)';
         continue;
       }
-      const value = angles[joint];
-      if (!contains(range, value)) {
-        violations[joint] = value < range.min ? 'too low' : 'too high';
-      }
+      const dir = direction(range, angles[joint]);
+      if (dir) violations[joint] = dir;
     }
     return violations;
   }
@@ -140,8 +144,7 @@ export class ExerciseStateMachine {
 
     for (const [joint, range] of Object.entries(phase.angles)) {
       if (joint in angles) {
-        const val = angles[joint];
-        status[joint] = contains(range, val) ? null : (val < range.min ? 'too low' : 'too high');
+        status[joint] = direction(range, angles[joint]);
       }
     }
     return status;

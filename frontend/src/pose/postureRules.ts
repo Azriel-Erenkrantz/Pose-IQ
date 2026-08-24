@@ -3,6 +3,7 @@
 // and extra leniency for user-reported limited joints.
 
 import type { AngleRangeDef, FitnessLevel } from '../api/types';
+import { contains } from './stateMachine';
 
 const FRAMES_TO_ALERT = 8;
 const FRAMES_TO_MISSING = 5;
@@ -70,7 +71,7 @@ export class PostureRules {
       const value = angles[joint];
       const adjusted = this.adjustRange(joint, range);
 
-      if (adjusted.min <= value && value <= adjusted.max) {
+      if (contains(adjusted, value)) {
         this.counters[joint] = 0;
         continue;
       }
