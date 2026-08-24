@@ -72,8 +72,7 @@ async function postAuth<T>(path: string, body: unknown, token: string): Promise<
 export const authApi = {
   register: (body: {
     name: string; email: string; password: string;
-    fitness_level?: string; trainer_personality?: string;
-    target_goals?: string[]; equipment?: string[]; limitations?: string[];
+    fitness_level?: string; limitations?: string[];
   }) => post<AuthToken>('/api/auth/register', body),
 
   login: (email: string, password: string) =>

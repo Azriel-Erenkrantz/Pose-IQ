@@ -3,7 +3,7 @@
 // `useI18n()` gives { lang, setLang, t, dir }; Hebrew flips the document to RTL.
 import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { Equipment, FitnessLevel, TargetGoal, TrainerPersonality } from './api/types';
+import type { FitnessLevel } from './api/types';
 
 export type Lang = 'en' | 'he';
 const LANG_KEY = 'pose_iq_lang';
@@ -35,10 +35,6 @@ interface Dict {
   stepOf: (step: number, total: number) => string;
   fitnessLabels: Record<FitnessLevel, string>;
   fitnessDesc: Record<FitnessLevel, string>;
-  goalLabels: Record<TargetGoal, string>;
-  equipmentLabels: Record<Equipment, string>;
-  trainerLabels: Record<TrainerPersonality, string>;
-  trainerDesc: Record<TrainerPersonality, string>;
   limitationLabels: Record<string, string>;
   limitationsHint: string;
   namePh: string;
@@ -48,8 +44,6 @@ interface Dict {
   errEmail: string;
   errEmailValid: string;
   errPassword: string;
-  errGoal: string;
-  errEquipment: string;
   registerFailed: string;
   back: string;
   next: string;
@@ -152,25 +146,13 @@ const en: Dict = {
   fillBothFields: 'Please fill in both fields.',
   loginFailed: 'Login failed. Check your credentials.',
 
-  stepTitles: ['Create your account', 'Fitness level', 'Training goals',
-               'Equipment', 'Coach style', 'Any limitations?'],
+  stepTitles: ['Create your account', 'Fitness level', 'Any limitations?'],
   stepOf: (s, t) => `Step ${s} of ${t}`,
   fitnessLabels: { beginner: 'Beginner', intermediate: 'Intermediate', advanced: 'Advanced' },
   fitnessDesc: {
     beginner:     'New to fitness or returning after a break',
     intermediate: 'Exercising regularly for 6+ months',
     advanced:     'Training consistently for 2+ years',
-  },
-  goalLabels: {
-    legs: 'Legs', cardio: 'Cardio', abs: 'Abs',
-    arms: 'Arms', full_body: 'Full Body', other: 'Other',
-  },
-  equipmentLabels: { dumbbells: 'Dumbbells', resistance_bands: 'Bands', none: 'No Equipment' },
-  trainerLabels: { tough: 'Tough', calm: 'Calm', motivating: 'Motivating' },
-  trainerDesc: {
-    tough:      'Direct and demanding — short commands, no fluff',
-    calm:       'Gentle and patient — smooth, reassuring cues',
-    motivating: 'Energetic and encouraging — hypes you up',
   },
   limitationLabels: {
     right_knee: 'Right Knee', left_knee: 'Left Knee', lower_back: 'Lower Back',
@@ -185,8 +167,6 @@ const en: Dict = {
   errEmail: 'Please enter your email.',
   errEmailValid: 'Please enter a valid email.',
   errPassword: 'Password must be at least 6 characters.',
-  errGoal: 'Pick at least one goal.',
-  errEquipment: 'Pick at least one equipment option.',
   registerFailed: 'Registration failed. Please try again.',
   back: '← Back',
   next: 'Next →',
@@ -302,25 +282,13 @@ const he: Dict = {
   fillBothFields: 'נא למלא את שני השדות.',
   loginFailed: 'ההתחברות נכשלה. בדקו את הפרטים.',
 
-  stepTitles: ['יצירת חשבון', 'רמת כושר', 'מטרות אימון',
-               'ציוד', 'סגנון המאמן', 'מגבלות גופניות?'],
+  stepTitles: ['יצירת חשבון', 'רמת כושר', 'מגבלות גופניות?'],
   stepOf: (s, t) => `שלב ${s} מתוך ${t}`,
   fitnessLabels: { beginner: 'מתחיל', intermediate: 'בינוני', advanced: 'מתקדם' },
   fitnessDesc: {
     beginner:     'חדש באימונים או חוזר אחרי הפסקה',
     intermediate: 'מתאמן באופן קבוע חצי שנה ומעלה',
     advanced:     'מתאמן ברציפות שנתיים ומעלה',
-  },
-  goalLabels: {
-    legs: 'רגליים', cardio: 'אירובי', abs: 'בטן',
-    arms: 'ידיים', full_body: 'כל הגוף', other: 'אחר',
-  },
-  equipmentLabels: { dumbbells: 'משקולות', resistance_bands: 'גומיות', none: 'בלי ציוד' },
-  trainerLabels: { tough: 'קשוח', calm: 'רגוע', motivating: 'מדרבן' },
-  trainerDesc: {
-    tough:      'ישיר ותובעני — פקודות קצרות, בלי קשקושים',
-    calm:       'עדין וסבלני — הנחיות רכות ומרגיעות',
-    motivating: 'אנרגטי ומעודד — מקפיץ אותך',
   },
   limitationLabels: {
     right_knee: 'ברך ימין', left_knee: 'ברך שמאל', lower_back: 'גב תחתון',
@@ -335,8 +303,6 @@ const he: Dict = {
   errEmail: 'נא להזין אימייל.',
   errEmailValid: 'נא להזין אימייל תקין.',
   errPassword: 'הסיסמה חייבת להכיל לפחות 6 תווים.',
-  errGoal: 'בחרו לפחות מטרה אחת.',
-  errEquipment: 'בחרו לפחות אפשרות ציוד אחת.',
   registerFailed: 'ההרשמה נכשלה. נסו שוב.',
   back: '→ חזרה',
   next: 'הבא ←',

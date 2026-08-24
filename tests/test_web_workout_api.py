@@ -13,11 +13,8 @@ import mongomock
 
 from api.app import app
 from core.app_model import (
-    Equipment,
     FitnessLevel,
     RegisterRequest,
-    TargetGoal,
-    TrainerPersonality,
 )
 from core.user import service
 
@@ -46,8 +43,6 @@ def _register(email='athlete@x.com'):
     return service.register(RegisterRequest(
         name='Athlete', email=email, password='secret123',
         fitness_level=FitnessLevel.INTERMEDIATE,
-        trainer_personality=TrainerPersonality.MOTIVATING,
-        target_goals=[TargetGoal.LEGS], equipment=[Equipment.NONE],
         limitations=[],
     ))
 

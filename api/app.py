@@ -27,10 +27,7 @@ from core.app_model import (
     HealthStatus,
     LoginRequest,
     RegisterRequest,
-    Equipment,
     FitnessLevel,
-    TargetGoal,
-    TrainerPersonality,
 )
 from core.user import service
 from core.recommendation.catalog import CATALOG
@@ -123,9 +120,6 @@ def register():
             email               = body["email"],
             password            = body["password"],
             fitness_level       = FitnessLevel(body.get("fitness_level", "intermediate")),
-            trainer_personality = TrainerPersonality(body.get("trainer_personality", "motivating")),
-            target_goals        = [TargetGoal(g) for g in body.get("target_goals", [])],
-            equipment           = [Equipment(e) for e in body.get("equipment", [])],
             limitations         = body.get("limitations", []),
         )
     except (KeyError, ValueError) as e:
@@ -179,12 +173,6 @@ def update_user(user_id: str):
     try:
         if "fitness_level" in body:
             user.fitness_level = FitnessLevel(body["fitness_level"])
-        if "trainer_personality" in body:
-            user.trainer_personality = TrainerPersonality(body["trainer_personality"])
-        if "target_goals" in body:
-            user.target_goals = [TargetGoal(g) for g in body["target_goals"]]
-        if "equipment" in body:
-            user.equipment = [Equipment(e) for e in body["equipment"]]
         if "limitations" in body:
             user.limitations = body["limitations"]
         if "name" in body:

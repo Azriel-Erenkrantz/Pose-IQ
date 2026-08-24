@@ -14,15 +14,12 @@ import mongomock
 
 from core.app_model import (
     BodyRegion,
-    Equipment,
     FitnessLevel,
     HealthStatus,
     LiveSessionOutput,
     LoginRequest,
     RegisterRequest,
     RepResult,
-    TargetGoal,
-    TrainerPersonality,
     User,
 )
 from core.user import fake_data, service
@@ -36,9 +33,6 @@ def _req(email='test@x.com', password='secret123', **kwargs) -> RegisterRequest:
         email=email,
         password=password,
         fitness_level=FitnessLevel.INTERMEDIATE,
-        trainer_personality=TrainerPersonality.CALM,
-        target_goals=[TargetGoal.ABS],
-        equipment=[Equipment.NONE],
         limitations=[],
     )
     defaults.update(kwargs)
@@ -106,13 +100,9 @@ class TestRegister(MongoMockMixin, unittest.TestCase):
         token = service.register(_req(
             email='alice@x.com',
             fitness_level=FitnessLevel.ADVANCED,
-            target_goals=[TargetGoal.LEGS, TargetGoal.ABS],
-            equipment=[Equipment.DUMBBELLS],
         ))
         user = service.get_user(token.user_id)
         self.assertEqual(user.fitness_level, FitnessLevel.ADVANCED)
-        self.assertIn(TargetGoal.LEGS, user.target_goals)
-        self.assertIn(Equipment.DUMBBELLS, user.equipment)
 
     def test_password_is_not_stored_in_plaintext(self):
         token = service.register(_req(email='pw@x.com', password='my_secret_pw'))
@@ -230,8 +220,7 @@ class TestUpdateUser(MongoMockMixin, unittest.TestCase):
 
     def test_unknown_user_returns_false(self):
         ghost = User(user_id='ghost', name='X', email='x@x.com',
-                     fitness_level=FitnessLevel.BEGINNER,
-                     trainer_personality=TrainerPersonality.CALM)
+                     fitness_level=FitnessLevel.BEGINNER)
         self.assertFalse(service.update_user(ghost))
 
 
@@ -301,15 +290,6 @@ class TestProfileSetupOptions(unittest.TestCase):
 
     def test_all_fitness_levels_present(self):
         self.assertEqual(set(self.opts.fitness_levels), set(FitnessLevel))
-
-    def test_all_target_goals_present(self):
-        self.assertEqual(set(self.opts.target_goals), set(TargetGoal))
-
-    def test_all_equipment_options_present(self):
-        self.assertEqual(set(self.opts.equipment_options), set(Equipment))
-
-    def test_all_trainer_personalities_present(self):
-        self.assertEqual(set(self.opts.trainer_personalities), set(TrainerPersonality))
 
     def test_limitation_options_nonempty_strings(self):
         self.assertGreater(len(self.opts.limitation_options), 0)

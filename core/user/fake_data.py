@@ -13,15 +13,12 @@ from typing import List
 from core.app_model import (
     AuthToken,
     BodyRegion,
-    Equipment,
     FitnessLevel,
     HealthStatus,
     LiveSessionOutput,
     ProgressMetrics,
     RepResult,
     ScoreTrend,
-    TargetGoal,
-    TrainerPersonality,
     User,
 )
 
@@ -38,9 +35,6 @@ def fake_user() -> User:
         name                = "Demo User",
         email               = FAKE_USER_EMAIL,
         fitness_level       = FitnessLevel.INTERMEDIATE,
-        trainer_personality = TrainerPersonality.MOTIVATING,
-        target_goals        = [TargetGoal.LEGS, TargetGoal.ABS],
-        equipment           = [Equipment.DUMBBELLS],
         limitations         = [],
         created_at          = datetime(2025, 1, 1),
     )

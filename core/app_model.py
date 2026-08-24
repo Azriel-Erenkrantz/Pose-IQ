@@ -49,26 +49,10 @@ class FitnessLevel(str, Enum):
     ADVANCED     = "advanced"
 
 
-class TrainerPersonality(str, Enum):
-    TOUGH      = "tough"       # direct and demanding
-    CALM       = "calm"        # gentle and patient
-    MOTIVATING = "motivating"  # energetic and encouraging
-
-
 class Equipment(str, Enum):
     DUMBBELLS        = "dumbbells"
     RESISTANCE_BANDS = "resistance_bands"
     NONE             = "none"
-
-
-class TargetGoal(str, Enum):
-    """High-level training goal selected during onboarding."""
-    LEGS       = "legs"
-    CARDIO     = "cardio"
-    ABS        = "abs"
-    ARMS       = "arms"
-    FULL_BODY  = "full_body"
-    OTHER      = "other"
 
 
 class ScoreTrend(str, Enum):
@@ -103,9 +87,6 @@ class User:
     name:                str
     email:               str
     fitness_level:       FitnessLevel        = FitnessLevel.INTERMEDIATE
-    trainer_personality: TrainerPersonality  = TrainerPersonality.MOTIVATING
-    target_goals:        List[TargetGoal]    = field(default_factory=list)
-    equipment:           List[Equipment]     = field(default_factory=list)
     limitations:         List[str]           = field(default_factory=list)
     created_at:          datetime            = field(default_factory=datetime.now)
 
@@ -137,9 +118,6 @@ class RegisterRequest:
     email:               str
     password:            str                 # plaintext — hashed at service layer
     fitness_level:       FitnessLevel        = FitnessLevel.INTERMEDIATE
-    trainer_personality: TrainerPersonality  = TrainerPersonality.MOTIVATING
-    target_goals:        List[TargetGoal]    = field(default_factory=list)
-    equipment:           List[Equipment]     = field(default_factory=list)
     limitations:         List[str]           = field(default_factory=list)
 
 
@@ -279,9 +257,6 @@ class ProfileSetupScreenData:
     Returned by the API; the client renders these as selectable lists.
     """
     fitness_levels:       List[FitnessLevel]
-    trainer_personalities: List[TrainerPersonality]
-    target_goals:         List[TargetGoal]
-    equipment_options:    List[Equipment]
     limitation_options:   List[str]      # free-text body part limitations
 
 

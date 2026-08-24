@@ -23,7 +23,6 @@ from typing import Dict, List, Optional
 from core.app_model import (
     AuthToken,
     BodyRegion,
-    Equipment,
     FitnessLevel,
     HealthStatus,
     LiveSessionOutput,
@@ -32,8 +31,6 @@ from core.app_model import (
     RegisterRequest,
     RepResult,
     ScoreTrend,
-    TargetGoal,
-    TrainerPersonality,
     User,
 )
 from core.db import get_db
@@ -73,9 +70,6 @@ def _doc_to_user(doc: Dict) -> User:
         name                = doc['name'],
         email               = doc['email'],
         fitness_level       = FitnessLevel(doc.get('fitness_level', 'intermediate')),
-        trainer_personality = TrainerPersonality(doc.get('trainer_personality', 'motivating')),
-        target_goals        = [TargetGoal(g) for g in doc.get('target_goals', [])],
-        equipment           = [Equipment(e) for e in doc.get('equipment', [])],
         limitations         = doc.get('limitations', []),
         created_at          = doc.get('created_at', datetime.now()),
     )
@@ -88,9 +82,6 @@ def _user_to_doc(user: User, password_hash: str) -> Dict:
         'password_hash':     password_hash,
         'name':              user.name,
         'fitness_level':     user.fitness_level.value,
-        'trainer_personality': user.trainer_personality.value,
-        'target_goals':      [g.value for g in user.target_goals],
-        'equipment':         [e.value for e in user.equipment],
         'limitations':       user.limitations,
         'created_at':        user.created_at,
     }
@@ -116,9 +107,6 @@ def register(req: RegisterRequest) -> Optional[AuthToken]:
         name                = req.name,
         email               = email,
         fitness_level       = req.fitness_level,
-        trainer_personality = req.trainer_personality,
-        target_goals        = req.target_goals,
-        equipment           = req.equipment,
         limitations         = req.limitations,
     )
     db.users.insert_one(_user_to_doc(user, _hash(req.password)))
@@ -168,9 +156,6 @@ def update_user(user: User) -> bool:
     db.users.update_one({'_id': user.user_id}, {'$set': {
         'name':              user.name,
         'fitness_level':     user.fitness_level.value,
-        'trainer_personality': user.trainer_personality.value,
-        'target_goals':      [g.value for g in user.target_goals],
-        'equipment':         [e.value for e in user.equipment],
         'limitations':       user.limitations,
     }})
     return True
@@ -332,8 +317,5 @@ def get_profile_setup_options():
     from core.app_model import ProfileSetupScreenData
     return ProfileSetupScreenData(
         fitness_levels        = list(FitnessLevel),
-        trainer_personalities = list(TrainerPersonality),
-        target_goals          = list(TargetGoal),
-        equipment_options     = list(Equipment),
         limitation_options    = LIMITATION_OPTIONS,
     )

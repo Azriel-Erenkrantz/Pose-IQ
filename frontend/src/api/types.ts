@@ -2,9 +2,7 @@
 // Keep in sync when app_model.py changes.
 
 export type FitnessLevel = 'beginner' | 'intermediate' | 'advanced';
-export type TrainerPersonality = 'tough' | 'calm' | 'motivating';
 export type Equipment = 'dumbbells' | 'resistance_bands' | 'none';
-export type TargetGoal = 'legs' | 'cardio' | 'abs' | 'arms' | 'full_body' | 'other';
 export type ScoreTrend = 'improving' | 'stable' | 'declining';
 export type BodyRegion = 'upper' | 'core' | 'lower';
 
@@ -13,9 +11,6 @@ export interface User {
   name: string;
   email: string;
   fitness_level: FitnessLevel;
-  trainer_personality: TrainerPersonality;
-  target_goals: TargetGoal[];
-  equipment: Equipment[];
   limitations: string[];
   created_at: string;
 }
@@ -133,8 +128,5 @@ export interface SavedSession {
 
 export interface ProfileSetupOptions {
   fitness_levels: FitnessLevel[];
-  trainer_personalities: TrainerPersonality[];
-  target_goals: TargetGoal[];
-  equipment_options: Equipment[];
   limitation_options: string[];
 }

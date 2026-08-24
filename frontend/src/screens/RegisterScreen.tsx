@@ -2,11 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { authApi } from '../api/client';
 import type {
   AuthToken,
-  Equipment,
   FitnessLevel,
   ProfileSetupOptions,
-  TargetGoal,
-  TrainerPersonality,
 } from '../api/types';
 import { useI18n } from '../i18n';
 
@@ -15,7 +12,7 @@ interface Props {
   onGoToLogin: () => void;
 }
 
-const TOTAL_STEPS = 6;
+const TOTAL_STEPS = 3;
 
 function toggleMulti<T>(list: T[], item: T): T[] {
   return list.includes(item) ? list.filter(i => i !== item) : [...list, item];
@@ -30,9 +27,6 @@ export default function RegisterScreen({ onRegister, onGoToLogin }: Props) {
   const [email, setEmail]       = useState('');
   const [password, setPassword] = useState('');
   const [fitnessLevel, setFitnessLevel] = useState<FitnessLevel>('intermediate');
-  const [goals, setGoals]               = useState<TargetGoal[]>([]);
-  const [equipment, setEquipment]       = useState<Equipment[]>([]);
-  const [trainer, setTrainer]           = useState<TrainerPersonality>('motivating');
   const [limitations, setLimitations]   = useState<string[]>([]);
 
   const [loading, setLoading] = useState(false);
@@ -47,8 +41,6 @@ export default function RegisterScreen({ onRegister, onGoToLogin }: Props) {
       if (!/\S+@\S+\.\S+/.test(email)) return t.errEmailValid;
       if (password.length < 6) return t.errPassword;
     }
-    if (step === 3 && goals.length === 0)     return t.errGoal;
-    if (step === 4 && equipment.length === 0) return t.errEquipment;
     return '';
   }
 
@@ -64,13 +56,10 @@ export default function RegisterScreen({ onRegister, onGoToLogin }: Props) {
     setError('');
     try {
       const token = await authApi.register({
-        name:                name.trim(),
-        email:               email.trim().toLowerCase(),
+        name:          name.trim(),
+        email:         email.trim().toLowerCase(),
         password,
-        fitness_level:       fitnessLevel,
-        trainer_personality: trainer,
-        target_goals:        goals,
-        equipment,
+        fitness_level: fitnessLevel,
         limitations,
       });
       onRegister(token);
@@ -150,47 +139,8 @@ export default function RegisterScreen({ onRegister, onGoToLogin }: Props) {
             />
           ))}
 
-          {/* Step 3 — Goals */}
+          {/* Step 3 — Limitations */}
           {step === 3 && (
-            <div className="grid grid-cols-3 gap-3">
-              {(options?.target_goals ?? Object.keys(t.goalLabels) as TargetGoal[]).map(goal => (
-                <IconTile
-                  key={goal}
-                  selected={goals.includes(goal)}
-                  onClick={() => setGoals(g => toggleMulti(g, goal))}
-                  label={t.goalLabels[goal] ?? goal}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Step 4 — Equipment */}
-          {step === 4 && (
-            <div className="grid grid-cols-3 gap-3">
-              {(options?.equipment_options ?? Object.keys(t.equipmentLabels) as Equipment[]).map(eq => (
-                <IconTile
-                  key={eq}
-                  selected={equipment.includes(eq)}
-                  onClick={() => setEquipment(e => toggleMulti(e, eq))}
-                  label={t.equipmentLabels[eq] ?? eq}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* Step 5 — Trainer */}
-          {step === 5 && (['tough', 'calm', 'motivating'] as TrainerPersonality[]).map(style => (
-            <RadioTile
-              key={style}
-              selected={trainer === style}
-              onClick={() => setTrainer(style)}
-              title={t.trainerLabels[style]}
-              desc={t.trainerDesc[style]}
-            />
-          ))}
-
-          {/* Step 6 — Limitations */}
-          {step === 6 && (
             <>
               <p className="text-[#8b87a0] text-sm">{t.limitationsHint}</p>
               <div className="grid grid-cols-3 gap-3">
