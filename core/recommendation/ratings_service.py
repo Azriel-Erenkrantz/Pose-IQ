@@ -30,11 +30,11 @@ def get_user_ratings(user_id: str) -> Dict[str, int]:
     return {doc['exercise_id']: doc['rating'] for doc in docs}
 
 
-def get_all_ratings_for_training() -> List[Dict[str, int]]:
-    """Every user's ratings, grouped one dict per user — the shape
-    ranker.train() needs."""
+def get_all_ratings_for_training() -> Dict[str, Dict[str, int]]:
+    """Every user's ratings, keyed by user_id — the shape ranker.train()
+    needs to join against each user's average scores."""
     db = get_db()
     by_user: Dict[str, Dict[str, int]] = {}
     for doc in db.ratings.find():
         by_user.setdefault(doc['user_id'], {})[doc['exercise_id']] = doc['rating']
-    return list(by_user.values())
+    return by_user

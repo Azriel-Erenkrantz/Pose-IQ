@@ -15,7 +15,7 @@ from unittest.mock import patch
 
 import mongomock
 
-from core.recommendation import ratings_service
+from core.recommendation import ratings_service, scores_service
 from core.recommendation.catalog import CATALOG
 from core.recommendation.ranker import _fit, recommend_for_user, train
 
@@ -42,11 +42,16 @@ class TestTrainOne(unittest.TestCase):
 class MongoMockMixin:
     def setUp(self):
         self._mock_db = mongomock.MongoClient()['poseiq_test']
-        self._patch = patch('core.recommendation.ratings_service.get_db', return_value=self._mock_db)
-        self._patch.start()
+        self._patches = [
+            patch('core.recommendation.ratings_service.get_db', return_value=self._mock_db),
+            patch('core.recommendation.scores_service.get_db', return_value=self._mock_db),
+        ]
+        for p in self._patches:
+            p.start()
 
     def tearDown(self):
-        self._patch.stop()
+        for p in self._patches:
+            p.stop()
 
 
 def _seed_correlated_population(rng: random.Random, n_per_group: int = 10) -> None:
@@ -69,6 +74,15 @@ def _seed_correlated_population(rng: random.Random, n_per_group: int = 10) -> No
         ratings_service.save_rating(uid, 'lunge', rng.randint(1, 3))
         ratings_service.save_rating(uid, 'biceps_curl', rng.randint(4, 5))
         ratings_service.save_rating(uid, 'shoulder_press', rng.randint(4, 5))
+
+
+def _seed_session_score(db, user_id: str, exercise_id: str, overall_score: float) -> None:
+    """Minimal session doc — just enough for scores_service to average
+    overall_score per (user, exercise)."""
+    db.sessions.insert_one({
+        '_id': f'{user_id}-{exercise_id}-{overall_score}',
+        'user_id': user_id, 'exercise_id': exercise_id, 'overall_score': overall_score,
+    })
 
 
 class TestRecommendForUser(MongoMockMixin, unittest.TestCase):
@@ -144,7 +158,34 @@ class TestNewRatingsInfluenceTraining(MongoMockMixin, unittest.TestCase):
         ratings_service.save_rating('someone', 'squat', 5)
         ratings_service.save_rating('someone', 'lunge', 4)
         pool = ratings_service.get_all_ratings_for_training()
-        self.assertIn({'squat': 5, 'lunge': 4}, pool)
+        self.assertEqual(pool['someone'], {'squat': 5, 'lunge': 4})
+
+
+class TestAvgScoreFeature(MongoMockMixin, unittest.TestCase):
+    """The ranker's second feature — a user's own average session form
+    score on a predictor exercise — must actually move predictions on its
+    own, independent of the rating feature."""
+
+    def test_predictor_avg_score_shifts_the_prediction(self):
+        biceps_curl = [e for e in CATALOG if e.exercise_id == 'biceps_curl']
+
+        # Every seeded user gives squat the SAME rating, but half perform
+        # it well and rate biceps_curl high, half perform it poorly and
+        # rate biceps_curl low — ties squat *performance* (not the rating,
+        # which is identical for everyone) to the biceps_curl rating.
+        for i in range(15):
+            performs_well = i % 2 == 0
+            ratings_service.save_rating(f'perf_{i}', 'squat', 3)
+            ratings_service.save_rating(f'perf_{i}', 'biceps_curl', 5 if performs_well else 1)
+            _seed_session_score(self._mock_db, f'perf_{i}', 'squat', 95.0 if performs_well else 20.0)
+
+        train()
+
+        # Same rating input for both — only the avg squat score differs.
+        high_performer = recommend_for_user({'squat': 3}, biceps_curl, user_scores={'squat': 95.0})[0].score
+        low_performer  = recommend_for_user({'squat': 3}, biceps_curl, user_scores={'squat': 20.0})[0].score
+
+        self.assertGreater(high_performer, low_performer)
 
 
 # ── Ratings storage ────────────────────────────────────────────────────────────
@@ -172,8 +213,8 @@ class TestRatingsService(MongoMockMixin, unittest.TestCase):
         ratings_service.save_rating('u1', 'lunge', 2)
         ratings_service.save_rating('u2', 'squat', 5)
         pool = ratings_service.get_all_ratings_for_training()
-        self.assertIn({'squat': 4, 'lunge': 2}, pool)
-        self.assertIn({'squat': 5}, pool)
+        self.assertEqual(pool['u1'], {'squat': 4, 'lunge': 2})
+        self.assertEqual(pool['u2'], {'squat': 5})
 
 
 if __name__ == '__main__':

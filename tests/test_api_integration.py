@@ -32,21 +32,23 @@ from core.user.workout_history import (
 class MongoMockMixin(unittest.TestCase):
     def setUp(self):
         self._mock_db = mongomock.MongoClient()['poseiq_test']
-        self._patch_svc = patch('core.user.service.get_db', return_value=self._mock_db)
-        self._patch_wh  = patch('core.user.workout_history.get_db', return_value=self._mock_db)
         # api/app.py's before_request trains the recommendation ranker from
-        # Mongo on the first request in this process — patch it too, or the
-        # test client's first request reaches out to a real database.
-        self._patch_rank = patch('core.recommendation.ratings_service.get_db', return_value=self._mock_db)
-        self._patch_svc.start()
-        self._patch_wh.start()
-        self._patch_rank.start()
+        # Mongo on the first request in this process — patch its data
+        # sources too, or the test client's first request reaches out to a
+        # real database.
+        self._patches = [
+            patch('core.user.service.get_db', return_value=self._mock_db),
+            patch('core.user.workout_history.get_db', return_value=self._mock_db),
+            patch('core.recommendation.ratings_service.get_db', return_value=self._mock_db),
+            patch('core.recommendation.scores_service.get_db', return_value=self._mock_db),
+        ]
+        for p in self._patches:
+            p.start()
         self.client = app.test_client()
 
     def tearDown(self):
-        self._patch_svc.stop()
-        self._patch_wh.stop()
-        self._patch_rank.stop()
+        for p in self._patches:
+            p.stop()
 
 
 def _register(email='athlete@x.com'):

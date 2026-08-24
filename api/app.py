@@ -33,7 +33,7 @@ from core.user import service
 from core.recommendation.catalog import CATALOG
 from core.recommendation.ranker import recommend_for_user
 from core.recommendation.ranker import train as train_ranker
-from core.recommendation import ratings_service
+from core.recommendation import ratings_service, scores_service
 
 app = Flask(__name__)
 
@@ -356,7 +356,8 @@ def get_dashboard(user_id: str):
 
     sessions = service.get_history(user_id)
     user_ratings = ratings_service.get_user_ratings(user_id)
-    recs = recommend_for_user(user_ratings, CATALOG)
+    user_scores = scores_service.get_user_avg_scores(user_id)
+    recs = recommend_for_user(user_ratings, CATALOG, user_scores)
 
     dashboard = DashboardData(
         user             = user,

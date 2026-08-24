@@ -29,6 +29,7 @@ class MongoMockMixin(unittest.TestCase):
             # api/app.py's before_request trains the recommendation ranker
             # from Mongo on the first request in this process.
             patch('core.recommendation.ratings_service.get_db', return_value=self._mock_db),
+            patch('core.recommendation.scores_service.get_db', return_value=self._mock_db),
         ]
         for p in self._patches:
             p.start()
