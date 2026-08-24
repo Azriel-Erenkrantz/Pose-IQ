@@ -8,7 +8,7 @@ import { useI18n } from '../i18n';
 import { computeAngles } from '../pose/angles';
 import { detectPose, loadPoseLandmarker } from '../pose/detector';
 import { ERROR_TO_LINES, JOINT_ANCHOR, SKELETON_CONNECTIONS } from '../pose/landmarks';
-import { PostureRules, repFormScore, THRESHOLD_MODIFIER } from '../pose/postureRules';
+import { PostureRules, repFormScore, THRESHOLD_MODIFIER, limitedJointsFor } from '../pose/postureRules';
 import type { PostureIssue } from '../pose/postureRules';
 import { ExerciseStateMachine } from '../pose/stateMachine';
 import type { ReadinessStatus } from '../pose/stateMachine';
@@ -146,7 +146,7 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
       smRef.current = new ExerciseStateMachine(exercise);
       rulesRef.current = new PostureRules(
         user ? THRESHOLD_MODIFIER[user.fitness_level] : 1.0,
-        [],
+        user ? limitedJointsFor(user.limitations) : [],
       );
       repErrorsRef.current = new Set();
       repsRef.current = [];

@@ -18,6 +18,24 @@ export const THRESHOLD_MODIFIER: Record<FitnessLevel, number> = {
   advanced: 0.85,
 };
 
+// Mirrors User.LIMITATION_JOINT_MAP in core/app_model.py, but with joint
+// names from this app's own angle space (angles.ts) rather than the stale
+// desktop pipeline's (which used right_arm_body/left_arm_body — a joint
+// this app never computes).
+export const LIMITATION_JOINT_MAP: Record<string, string[]> = {
+  right_knee: ['right_knee'],
+  left_knee: ['left_knee'],
+  lower_back: ['spine'],
+  right_shoulder: ['right_shoulder'],
+  left_shoulder: ['left_shoulder'],
+  right_elbow: ['right_elbow'],
+  left_elbow: ['left_elbow'],
+};
+
+export function limitedJointsFor(limitations: string[]): string[] {
+  return limitations.flatMap(l => LIMITATION_JOINT_MAP[l] ?? []);
+}
+
 export interface PostureIssue {
   joint: string;
   severity: 'high' | 'medium' | 'low';
