@@ -345,7 +345,8 @@ def train_exercise(
     y_f  = np.array(y)[mask]
 
     clf = RandomForestClassifier(
-        n_estimators=200,
+        n_estimators=90,
+        max_depth=14,
         class_weight='balanced',
         random_state=42,
         n_jobs=-1,

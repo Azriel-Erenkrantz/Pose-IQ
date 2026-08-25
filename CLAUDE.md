@@ -105,6 +105,64 @@ Demo user in the local dev DB: `demo@poseiq.dev` / `demo1234`.
 - Training videos (~190MB) are **not in git**; label JSONs reference
   `data/videos/{ex}/good/*.mp4`.
 
+## ML state (2026-08-25)
+
+**Model shrunk for browser delivery (ONNX plan — see roadmap #9).**
+`trainer.py`'s RandomForest was `n_estimators=200, max_depth=None`, producing
+7-15MB `.joblib` files per exercise (~47MB total) — too heavy to ship to a
+mobile browser. Controlled test (train on 9/10 squat clips, held out
+`person1_side1_01` the same way as the 2026-08-23 clean test): 200/unbounded
+vs 60/depth-12 vs 80/depth-14 all scored **identically** (97% boundary,
+100% rep-level) on the same held-out clip, cv_accuracy slightly *higher*
+for the smaller models — 200 trees was overkill for a 3-class problem on
+24 features, by that metric alone.
+
+**But `tests/test_ml.py::TestRealTrainedModel::test_delta_feature_is_used_by_model`
+caught something the video-based eval couldn't**: at 60 trees the squat
+model started giving identical predictions for opposite velocities at the
+same mid-range angle — the exact failure mode the 2026-08-23 shoulder_press
+tempo fix was designed to avoid, just not exercised by any real held-out
+clip. Swept `n_estimators`×`max_depth` (extracting features once, refitting
+many times) — pass/fail wasn't monotonic in depth (e.g. 100/unbounded
+failed, 90/depth-14 passed), so **`n_estimators` — vote-count diversity —
+turned out to matter more than depth for preserving velocity sensitivity**.
+Landed on **`n_estimators=90, max_depth=14`**, the smallest config that
+passed with margin. Retrained all 4 exercises; full suite (293 tests)
+passes, including the delta-sensitivity check. Final sizes: squat 4.0MB,
+lunge 6.1MB, biceps_curl 3.1MB, shoulder_press 5.5MB (was 10.4/15.5/7.2/
+14.1MB) — **~2.5x smaller, ~18.8MB total instead of ~47MB.** cv_accuracy
+per exercise: squat 0.700, lunge 0.690, biceps_curl 0.755, shoulder_press
+0.643 (was 0.703/0.685/0.764/0.643 — no meaningful change). Next: convert
+to ONNX (`skl2onnx`) + wire into the web client with `onnxruntime-web`, so
+the trained classifier actually drives the live product instead of being
+an eval-only / desktop-debug-only artifact (see "Live decision path" note
+below).
+
+**Lesson for future hyperparameter changes to this model**: video-based
+held-out eval and the synthetic unit test check different things — the
+video eval measures real-world accuracy but only exercises whatever motion
+patterns are in the held-out clip; the synthetic test pins down a specific
+property (velocity actually matters) that a single video might never
+stress-test. Don't skip `pytest` after retraining just because the eval
+numbers look fine.
+
+**Live decision path — important, don't assume the trained model drives the
+live app.** It doesn't, today. `ExerciseStateMachine`
+(`core/exercise/exercise_state_machine.py`) and its TS port
+(`frontend/src/pose/stateMachine.ts`) are 100% rule-based — they compare
+live angles against the min/max ranges in `exercise_angles` (which *are*
+derived from the labeled videos, via simple statistics in `trainer.py`, not
+by consulting the trained classifier). The trained `phase_{ex}.joblib`
+model itself is only used (a) offline in `core/ml/eval.py` for the accuracy
+numbers in this doc, and (b) in the **desktop pipeline only**, as a
+parallel debug-overlay signal (`core/pipeline.py`, toggle `d`) that never
+feeds reps/transitions/violations — explicit comment there: "the
+deterministic state machine stays the source of truth... the ML prediction
+is a parallel signal." The web client has no ONNX/TF.js port of the model
+at all. This is a legitimate reliability/latency tradeoff, not an
+oversight — but be upfront about it in the report; don't imply the RF model
+is what reacts to the user live unless the ONNX work above actually ships.
+
 ## ML state (2026-08-23)
 
 **Filming round 1 done**: user filmed 27 new good clips per
@@ -172,8 +230,10 @@ kept getting flagged as out of place next to the ranker. Deleted outright
 5. ~~Web client with in-browser pose (MediaPipe Tasks JS)~~ (done, 2026-07-17 —
    live camera → angles → state machine → reps/violations → save session;
    verified working end-to-end by the user)
-6. ~~Weight tracking + progressive-overload recommendations~~ (done,
-   overload.py + API + frontend, 2026-07-14)
+6. Weight tracking + progressive-overload recommendations (done, 2026-07-14
+   → deleted 2026-08-24 in the recommendation-engine rewrite, see item 9 →
+   **restoring 2026-08-25, user's call**: weight *logging* survived the
+   rewrite untouched; only the recommendation half needs to come back).
 7. **Cloud deploy — in progress (2026-08-23).** ~~Mongo Atlas cluster~~ (done —
    `PoseIQ` cluster, `azikrantz_db_user`, network access `0.0.0.0/0` open since
    Render's IPs are dynamic; connection string in the user's hands, not
@@ -207,7 +267,19 @@ kept getting flagged as out of place next to the ranker. Deleted outright
    scenario/community/feedback/ML-ranker system was deleted outright (not
    moved to `stale/`) since it was actively misleading in production
    (`community_score` was always fake mock data; the ML ranker could never
-   load on the deployed API at all).
+   load on the deployed API at all). **Weight recommendations
+   (`overload.py`) were deleted in the same pass and are being restored
+   (2026-08-25, user's call) — see item 6 above and the ML state note.**
+10. **ONNX phase classifier in the web client — in progress (2026-08-25).**
+    Goal: the trained RF model actually drives the live web app (mobile
+    included) instead of being eval/desktop-debug-only (see ML state note
+    above). ~~Shrink models for browser delivery~~ (done — 90 trees/depth 14,
+    ~18.8MB total for all 4 exercises, was ~47MB, no accuracy loss and full
+    test suite incl. the velocity-sensitivity check still passes). Next:
+    `skl2onnx` conversion of the 4 `.joblib` files, add `onnxruntime-web` to
+    `frontend/`, wire prediction into `stateMachine.ts` (reuse the feature
+    vector `angles.ts` already computes — no new feature code needed).
+    Motivated by the user's mobile-friendliness goal for the deployed site.
 
 `docs/pose-iq-status-he.md` is the Hebrew status doc for the advisor —
 ~~rewritten 2026-08-23~~ to match the current architecture (was describing a
