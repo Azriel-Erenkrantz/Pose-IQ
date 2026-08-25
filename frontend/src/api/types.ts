@@ -39,6 +39,16 @@ export interface LiveSessionOutput {
   weight_kg: number | null;
 }
 
+export interface WeightRecommendation {
+  exercise_id: string;
+  exercise_name: string;
+  recommended_weight_kg: number;
+  reasoning: string;
+  confidence: number;
+  reasoning_code: string;
+  reasoning_params: Record<string, number>;
+}
+
 export interface ProgressMetrics {
   exercise_id: string;
   exercise_name: string;
@@ -73,6 +83,7 @@ export interface DashboardData {
   recommendations: ExerciseRecommendation[];
   recent_sessions: LiveSessionOutput[];
   progress_summary: ProgressMetrics[];
+  weight_recommendations: WeightRecommendation[];
 }
 
 export interface AuthToken {

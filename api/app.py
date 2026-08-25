@@ -34,6 +34,7 @@ from core.recommendation.catalog import CATALOG
 from core.recommendation.ranker import recommend_for_user
 from core.recommendation.ranker import train as train_ranker
 from core.recommendation import ratings_service, scores_service
+from core.recommendation.overload import recommend_weights_for_user
 
 app = Flask(__name__)
 
@@ -325,6 +326,15 @@ def set_session_weight(user_id: str, session_id: str):
     return ok({"session_id": session_id, "weight_kg": weight})
 
 
+@app.get("/api/user/<user_id>/weights")
+@require_auth
+def get_weight_recommendations(user_id: str):
+    user = service.get_user(user_id)
+    if user is None:
+        return err("User not found", 404)
+    return ok(recommend_weights_for_user(user, service.get_history(user_id)))
+
+
 @app.put("/api/user/<user_id>/ratings/<exercise_id>")
 @require_auth
 def set_rating(user_id: str, exercise_id: str):
@@ -365,6 +375,7 @@ def get_dashboard(user_id: str):
         recommendations  = recs,
         recent_sessions  = sessions[:5],
         progress_summary = service.get_progress(user_id),
+        weight_recommendations = recommend_weights_for_user(user, sessions),
     )
     return ok(dashboard)
 

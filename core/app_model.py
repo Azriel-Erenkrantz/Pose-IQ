@@ -248,6 +248,26 @@ class Rating:
     rated_at:    datetime = field(default_factory=datetime.now)
 
 
+# ── Weight recommendation ──────────────────────────────────────────────────────
+
+@dataclass
+class WeightRecommendation:
+    """
+    Dynamic load recommendation for one exercise, based on performance analysis.
+
+    `reasoning` is a fixed English sentence (kept for backward compatibility).
+    `reasoning_code` + `reasoning_params` let a client render the same message
+    in any supported language — see i18n.tsx `formatReason`.
+    """
+    exercise_id:            str
+    exercise_name:          str
+    recommended_weight_kg:  float
+    reasoning:              str
+    confidence:             float        # 0–1
+    reasoning_code:         str = ""
+    reasoning_params:       Dict[str, float] = field(default_factory=dict)
+
+
 # ── UI screen data contracts ───────────────────────────────────────────────────
 
 @dataclass
@@ -268,3 +288,4 @@ class DashboardData:
     recommendations:  List[ExerciseRecommendation]
     recent_sessions:  List[LiveSessionOutput]
     progress_summary: List[ProgressMetrics]
+    weight_recommendations: List[WeightRecommendation] = field(default_factory=list)
