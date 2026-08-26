@@ -101,6 +101,7 @@ interface Dict {
 
   // Live workout
   chooseExercise: string;
+  targetRepsLabel: string;
   startWorkout: string;
   cameraHint: string;
   notReadyHint: string;
@@ -236,6 +237,7 @@ const en: Dict = {
   },
 
   chooseExercise: 'Choose an exercise',
+  targetRepsLabel: 'Reps planned (optional — auto-ends the set when reached)',
   startWorkout: 'Start workout',
   cameraHint: 'Allow camera access when prompted. Step back so your whole body is in frame — a side view works best.',
   notReadyHint: 'Angle ranges missing — run the trainer on the server first',
@@ -377,6 +379,7 @@ const he: Dict = {
   },
 
   chooseExercise: 'בחרו תרגיל',
+  targetRepsLabel: 'כמה חזרות מתוכננות (לא חובה — הסט ייסגר אוטומטית כשמגיעים ליעד)',
   startWorkout: 'התחלת אימון',
   cameraHint: 'אשרו גישה למצלמה כשתתבקשו. התרחקו כך שכל הגוף בפריים — מבט צד עובד הכי טוב.',
   notReadyHint: 'חסרים טווחי זוויות — יש להריץ קודם את המאמן בשרת',

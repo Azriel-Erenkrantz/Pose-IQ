@@ -18,6 +18,12 @@ numpy==2.2.5
 scikit-learn==1.6.1
 joblib==1.5.1
 
+# ONNX export (ships the trained phase classifier to the browser — see
+# core/ml/export_onnx.py). Dev-time only, never imported by api/app.py.
+skl2onnx>=1.18
+onnx>=1.17
+onnxruntime>=1.20
+
 # Voice coaching (desktop pipeline)
 pyttsx3>=2.99
 

@@ -54,6 +54,7 @@ PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 MIN_SAMPLES_PER_CLASS = 10
 DELTA_WINDOW = 5
+RANGE_TOLERANCE_DEG = 8.0   # padding on exercise_angles min/max — see write_exercise_angles
 
 
 # ---------------------------------------------------------------------------
@@ -165,12 +166,22 @@ def _process_label_file(
     lf: Path, default_skip: int,
     phase_angles: Dict[str, Dict[str, List[float]]],
     verbose: bool,
+    angle_stats: bool = True,
 ) -> Tuple[List[np.ndarray], List[str]]:
     """
     Turn one hand-labeled video into training rows: extract pose → angles →
     a feature vector per labeled frame. Also appends each frame's raw angle
-    values into `phase_angles` (mutated in place), so the caller can later
-    compute min/max/mean/std across every training file, not just this one.
+    values into `phase_angles` (mutated in place) when `angle_stats` is True,
+    so the caller can later compute min/max/mean/std across every
+    angle_stats=True file, not just this one.
+
+    `angle_stats=False` still returns X/y for model training — it only skips
+    contributing to the pooled min/max/mean/std stats. Needed because those
+    plain min/max ranges (unlike the RF model, which has enough features/
+    trees to cope) collapse to nearly the full 0-180 degree span — and stop
+    meaningfully constraining anything — if pooled across camera angles that
+    project the same physical joint position very differently (front vs.
+    side). See collect_samples_from_labels' front-only stats filter.
 
     Returns ([], []) on any failure (video not found, unreadable, no labeled
     frames) — a bad clip is skipped, not fatal to the whole training run.
@@ -212,8 +223,9 @@ def _process_label_file(
             phase = frame_labels[i]
             X_rows.append(angles_to_features(angles, rolling_deltas(per_frame, i, rate=rate)))
             y_rows.append(phase)
-            for joint, value in angles.items():
-                phase_angles[phase][joint].append(value)
+            if angle_stats:
+                for joint, value in angles.items():
+                    phase_angles[phase][joint].append(value)
 
         if verbose:
             phases = list(dict.fromkeys(frame_labels.values()))
@@ -257,12 +269,30 @@ def collect_samples_from_labels(
 
     train_files, eval_file = _split_train_eval(exercise_id, label_files, verbose)
 
+    # Angle-range stats (-> exercise_angles -> the live rule-based state
+    # machine on both web and desktop) only count "front" clips — matching
+    # how a real user actually faces a webcam. Filming protocol camera
+    # angles (front/side1/side2) or plain "side" project the same physical
+    # joint position onto very different 2D angles; pooling them makes plain
+    # min/max collapse toward 0-180 (no longer constraining anything —
+    # confirmed live 2026-08-25: shoulder_press badly overcounted reps
+    # because literally any elbow/shoulder angle satisfied every phase).
+    # The RF *model* still trains on every file — it has enough features/
+    # trees to use viewpoint-mixed data productively; only these simple
+    # pooled statistics can't.
+    front_only = [lf for lf in train_files if 'front' in lf.stem.lower()]
+    stats_files = set(front_only) if front_only else set(train_files)
+    if verbose and front_only:
+        print(f'  [{exercise_id}] angle-range stats from {len(front_only)} front-view '
+              f'file(s) only (of {len(train_files)} training files)')
+
     X_rows, y_rows = [], []
-    # phase → joint → [angle values]  accumulated across all training videos
+    # phase → joint → [angle values]  accumulated across stats_files only
     phase_angles: Dict[str, Dict[str, List[float]]] = defaultdict(lambda: defaultdict(list))
 
     for lf in train_files:
-        file_X, file_y = _process_label_file(lf, skip, phase_angles, verbose)
+        file_X, file_y = _process_label_file(lf, skip, phase_angles, verbose,
+                                              angle_stats=lf in stats_files)
         X_rows.extend(file_X)
         y_rows.extend(file_y)
 
@@ -293,9 +323,18 @@ def write_exercise_angles(
             if not values:
                 continue
             arr = np.array(values)
+            # Tolerance margin, not just the raw measured min/max: confirmed
+            # live (2026-08-26) that a front-view-only range built from just
+            # 2-3 people's clips is narrow enough that a *new* person's
+            # natural rep can miss it by under a degree — e.g. shoulder_press
+            # "start" needed right_elbow >= 49.2 and a real live user's own
+            # resting position measured 49.1, stuck the state machine on the
+            # previous phase indefinitely. The fix is more/richer training
+            # data; until there's time to film more, pad the empirically
+            # measured range instead of shipping it razor-exact.
             joint_stats[joint] = {
-                'min':      round(float(arr.min()), 1),
-                'max':      round(float(arr.max()), 1),
+                'min':      round(max(0.0, float(arr.min()) - RANGE_TOLERANCE_DEG), 1),
+                'max':      round(min(180.0, float(arr.max()) + RANGE_TOLERANCE_DEG), 1),
                 'mean':     round(float(arr.mean()), 1),
                 'std':      round(float(arr.std()), 1),
                 'n_frames': len(values),

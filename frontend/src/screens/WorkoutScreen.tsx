@@ -6,8 +6,11 @@ import PoseFigure from '../components/PoseFigure';
 import ScoreRing from '../components/ScoreRing';
 import { useI18n } from '../i18n';
 import { computeAngles } from '../pose/angles';
+import { DeltaTracker } from '../pose/deltaTracker';
 import { detectPose, loadPoseLandmarker } from '../pose/detector';
 import { ERROR_TO_LINES, JOINT_ANCHOR, SKELETON_CONNECTIONS } from '../pose/landmarks';
+import { MlRepCounter } from '../pose/mlRepCounter';
+import { classifyPhase, preloadPhaseModel } from '../pose/phaseClassifier';
 import { PostureRules, repFormScore, THRESHOLD_MODIFIER, limitedJointsFor } from '../pose/postureRules';
 import type { PostureIssue } from '../pose/postureRules';
 import { ExerciseStateMachine } from '../pose/stateMachine';
@@ -23,18 +26,26 @@ interface Hud {
   instruction: string;
   phaseIndex: number;
   phaseCount: number;
+  // Driven by the ML classifier (mlRepCounter.ts), not the rule engine —
+  // see the live loop's comment on why, confirmed 2026-08-26.
   reps: number;
   liveForm: number;
   elapsed: number;
   issues: PostureIssue[];
   readiness: Record<string, ReadinessStatus>;
   tracking: boolean;
+  // Per-tick ML phase call, shown so it can be eyeballed against the
+  // rule-based phase (which still owns phase/instruction text above).
+  mlDebug: { phase: string; confidence: number | null; agrees: boolean } | null;
 }
 
 const EMPTY_HUD: Hud = {
   started: false, phase: '', instruction: '', phaseIndex: 0, phaseCount: 1,
   reps: 0, liveForm: 100, elapsed: 0, issues: [], readiness: {}, tracking: false,
+  mlDebug: null,
 };
+
+const ML_DEBUG_INTERVAL_MS = 250;   // model comparison doesn't need 30fps
 
 interface Props {
   token: AuthToken;
@@ -88,6 +99,7 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [summaryWeight, setSummaryWeight] = useState('');
+  const [targetReps, setTargetReps] = useState('');
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -95,6 +107,13 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
   const streamRef = useRef<MediaStream | null>(null);
   const smRef = useRef<ExerciseStateMachine | null>(null);
   const rulesRef = useRef<PostureRules | null>(null);
+  const deltaTrackerRef = useRef<DeltaTracker | null>(null);
+  const lastMlRunRef = useRef(0);
+  const mlBusyRef = useRef(false);
+  const mlDebugRef = useRef<Hud['mlDebug']>(null);
+  const mlCounterRef = useRef<MlRepCounter | null>(null);
+  const mlRepsRef = useRef(0);
+  const targetRepsRef = useRef(0);
   const repErrorsRef = useRef<Set<string>>(new Set());
   const repsRef = useRef<RepPayload[]>([]);
   const startTimeRef = useRef(0);
@@ -102,7 +121,7 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
   const lastDetectRef = useRef(0);
   const wasStartedRef = useRef(false);
   const flashTimerRef = useRef(0);
-  const lastSpokenRef = useRef<Record<string, number>>({});
+  const lastSpokenAtRef = useRef(0);
   const voiceOnRef = useRef(true);
   voiceOnRef.current = voiceOn;
 
@@ -116,11 +135,18 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
       .catch(() => setSetupError(t.couldNotLoad));
   }, [token, t]);
 
+  // Start fetching the phase-classifier ONNX model as soon as the user picks
+  // an exercise — in parallel with camera setup, not serially after it, so
+  // it's (likely) already cached by the time the live loop needs it.
+  useEffect(() => {
+    if (selected) preloadPhaseModel(selected.id);
+  }, [selected]);
+
   const speak = useCallback((text: string) => {
     if (!voiceOnRef.current || !('speechSynthesis' in window)) return;
     const u = new SpeechSynthesisUtterance(text);
     u.lang = lang === 'he' ? 'he-IL' : 'en-US';
-    u.rate = 1.1;
+    u.rate = 0.92;
     window.speechSynthesis.speak(u);
   }, [lang]);
 
@@ -141,18 +167,22 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
     flashTimerRef.current = window.setTimeout(() => setFlash(''), 1200);
   }
 
-  /** Track every joint that's had a form issue this rep, and speak the
-   * high-severity ones out loud — but not more than once per 4s per joint,
-   * so a sustained issue doesn't spam the voice coach every frame. */
+  /** Track every joint that's had a form issue this rep, and speak *one*
+   * high-severity issue at a time, at most once per 6s total (not per
+   * joint) — several joints going out of frame at once (e.g. while the
+   * user is still repositioning the camera) used to fire one utterance
+   * per joint in the same tick, queuing up a rapid-fire burst. A single
+   * global cooldown gives the user real time to react before the next
+   * correction, and always speaks one coherent issue instead of several
+   * queued ones stepping on each other. */
   function handlePostureIssues(issues: PostureIssue[], now: number) {
-    for (const issue of issues) {
-      repErrorsRef.current.add(issue.joint);
-      if (issue.severity !== 'high') continue;
-      const lastSpoken = lastSpokenRef.current[issue.joint] ?? 0;
-      if (now - lastSpoken <= 4000) continue;
-      lastSpokenRef.current[issue.joint] = now;
-      speak(issue.message);
-    }
+    for (const issue of issues) repErrorsRef.current.add(issue.joint);
+
+    if (now - lastSpokenAtRef.current <= 6000) return;
+    const top = issues.find(i => i.severity === 'high');
+    if (!top) return;
+    lastSpokenAtRef.current = now;
+    speak(top.message);
   }
 
   /** Log a finished rep (with whichever joints had issues during it) and
@@ -194,6 +224,11 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
 
     try {
       smRef.current = new ExerciseStateMachine(exercise);
+      deltaTrackerRef.current = new DeltaTracker();
+      mlDebugRef.current = null;
+      mlCounterRef.current = new MlRepCounter(exercise);
+      mlRepsRef.current = 0;
+      targetRepsRef.current = Math.max(0, parseInt(targetReps, 10) || 0);
       rulesRef.current = new PostureRules(
         user ? THRESHOLD_MODIFIER[user.fitness_level] : 1.0,
         user ? limitedJointsFor(user.limitations) : [],
@@ -201,7 +236,7 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
       repErrorsRef.current = new Set();
       repsRef.current = [];
       wasStartedRef.current = false;
-      lastSpokenRef.current = {};
+      lastSpokenAtRef.current = 0;
       startTimeRef.current = performance.now();
       setHud(EMPTY_HUD);
       setSaved(false);
@@ -229,9 +264,65 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
         const angles = detection ? computeAngles(detection.named, vw, vh) : {};
         const result = sm.update(angles);
 
+        // Rep counting/recording is driven by the ML classifier now, not the
+        // rule engine — confirmed live 2026-08-26 across repeated 10-rep
+        // sets: the rule engine's angle-range transitions kept getting
+        // stuck at the "lowering"->"start" boundary (~40% of real reps
+        // missed), while the ML majority-vote counter matched the true rep
+        // count almost exactly. The rule engine (`sm`/`result`) still owns
+        // the readiness/started gate below, but NOT posture-issue rules
+        // (see the ML-phase lookup a few lines down) — a stuck `sm` phase
+        // poisons those too: it flags real, correct motion as a form error
+        // because it's comparing your actual (already-moved-on) angles
+        // against the WRONG, stale phase's expected range. Confirmed live
+        // 2026-08-26: a whole set of legitimate reps ended with "weak
+        // points: both shoulders, both elbows, spine" — every joint that
+        // moves, because the reference phase never caught up.
+        if (detection && result.started && now - lastMlRunRef.current >= ML_DEBUG_INTERVAL_MS && !mlBusyRef.current) {
+          lastMlRunRef.current = now;
+          mlBusyRef.current = true;
+          const deltas = deltaTrackerRef.current!.update(angles, now);
+          const sourcePhase = result.phase;
+          classifyPhase(exercise.id, angles, deltas)
+            .then(pred => {
+              if (pred) {
+                mlDebugRef.current = { phase: pred.phase, confidence: pred.confidence, agrees: pred.phase === sourcePhase };
+                const maxMotion = Object.values(deltas).reduce((m, v) => Math.max(m, Math.abs(v)), 0);
+                const mlResult = mlCounterRef.current!.update(pred.phase, pred.confidence, now, maxMotion);
+                mlRepsRef.current = mlResult.repCount;
+                if (mlResult.completedRep) {
+                  recordCompletedRep(mlResult.repCount);
+                  // Auto-end the instant the target is hit — confirmed live
+                  // 2026-08-26: leaving the camera running while the user
+                  // then moves toward the device to close the workout
+                  // manually risks that motion itself getting classified as
+                  // one more rep (no "idle" class exists — see
+                  // mlRepCounter.ts). Ending immediately removes that window.
+                  if (targetRepsRef.current > 0 && mlResult.repCount >= targetRepsRef.current) {
+                    endWorkout();
+                  }
+                }
+              }
+            })
+            .catch(err => console.error('[phaseClassifier] inference failed:', err))
+            .finally(() => { mlBusyRef.current = false; });
+        }
+
+        // Which phase's angle ranges to hold the user to right now — prefer
+        // the ML's own last raw phase call over `sm.currentPhase` for this,
+        // since `sm`'s phase pointer is the thing that gets stuck (see the
+        // comment above). Falls back to `sm` only before the first ML tick
+        // has run (e.g. the very start of the set).
+        const posturePhase = mlDebugRef.current
+          ? exercise.phases.find(p => p.name === mlDebugRef.current!.phase)
+          : null;
+        const activeRules = posturePhase
+          ? { ...exercise.global_constraints, ...posturePhase.angles }
+          : sm.activeRules();
+
         let issues: PostureIssue[] = [];
         if (detection && result.started) {
-          issues = rules.analyze(angles, sm.activeRules());
+          issues = rules.analyze(angles, activeRules);
           handlePostureIssues(issues, now);
 
           if (!wasStartedRef.current) {
@@ -239,14 +330,10 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
             showFlash(t.goFlash);
             speak(t.goFlash);
           }
-
-          if (result.completedRep) {
-            recordCompletedRep(result.repCount);
-          }
         }
 
         drawOverlay(canvasRef.current, detection?.raw ?? null, vw, vh, issues,
-                    result.started ? sm.currentPhase.diagnostic_joints : [], angles);
+                    result.started ? (posturePhase ?? sm.currentPhase).diagnostic_joints : [], angles);
 
         setHud({
           started: result.started,
@@ -254,12 +341,13 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
           instruction: result.instruction,
           phaseIndex: result.phaseIndex,
           phaseCount: result.phaseCount,
-          reps: result.repCount,
+          reps: mlRepsRef.current,
           liveForm: repFormScore([...repErrorsRef.current]),
           elapsed: (now - startTimeRef.current) / 1000,
           issues,
           readiness: result.readiness,
           tracking: detection !== null,
+          mlDebug: mlDebugRef.current,
         });
       };
       rafRef.current = requestAnimationFrame(loop);
@@ -271,7 +359,7 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
     } finally {
       setStarting(false);
     }
-  }, [user, speak, stopCamera, t]);
+  }, [user, speak, stopCamera, t, targetReps]);
 
   function endWorkout() {
     endTimeRef.current = performance.now();
@@ -307,8 +395,10 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
   if (mode === 'live') {
     const mins = Math.floor(hud.elapsed / 60), secs = Math.floor(hud.elapsed % 60);
     return (
-      <div className="max-w-2xl w-full mx-auto px-5 py-5 pb-16">
-        <div className="relative rounded-xl overflow-hidden bg-black" style={{ minHeight: 240 }}>
+      <div className="max-w-4xl w-full mx-auto px-5 py-5 pb-16">
+        {/* Bigger than the app's usual max-w-2xl column — this screen's whole
+            point is seeing yourself clearly enough to check full-body framing. */}
+        <div className="relative rounded-xl overflow-hidden bg-black" style={{ minHeight: 320 }}>
           <video ref={videoRef} playsInline muted
                  className="block w-full" style={{ transform: 'scaleX(-1)' }} />
           <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
@@ -324,6 +414,13 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
                   ? `${hud.phase} (${hud.phaseIndex + 1}/${hud.phaseCount})${hud.instruction ? ' — ' + hud.instruction : ''}`
                   : t.getIntoPosition}
               </p>
+              {hud.mlDebug && (
+                <p className={`text-[10px] mt-0.5 ${hud.mlDebug.agrees ? 'text-[#7ee2a8]/70' : 'text-[#ff9a7a]'}`}>
+                  ML: {hud.mlDebug.phase}
+                  {hud.mlDebug.confidence !== null ? ` (${Math.round(hud.mlDebug.confidence * 100)}%)` : ''}
+                  {hud.mlDebug.agrees ? ' ✓' : ' ≠ rules'}
+                </p>
+              )}
             </div>
             <div className="bg-black/60 rounded-lg px-3 py-1.5 text-end" dir="ltr">
               <p className="text-white font-black text-lg num leading-tight">
@@ -427,7 +524,23 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
   if (mode === 'summary') {
     const scores = repsRef.current.map(r => r.form_score);
     const avg = scores.length ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
-    const weakJoints = [...new Set(repsRef.current.flatMap(r => r.error_joints))];
+
+    // A joint counts as a real "weak point" only if it recurs across a real
+    // share of the reps, not just once — a single flagged rep (tracking
+    // blip, one awkward moment) isn't a pattern. Requires both a minimum
+    // count and a minimum fraction so short sets don't flag on one rep, but
+    // longer sets still catch something that's only occasionally off.
+    const jointRepCounts = new Map<string, number>();
+    for (const r of repsRef.current) {
+      for (const joint of r.error_joints) {
+        jointRepCounts.set(joint, (jointRepCounts.get(joint) ?? 0) + 1);
+      }
+    }
+    const weakThreshold = Math.max(2, Math.ceil(repsRef.current.length * 0.3));
+    const weakJoints = [...jointRepCounts.entries()]
+      .filter(([, count]) => count >= weakThreshold)
+      .sort((a, b) => b[1] - a[1]);
+
     const duration = (endTimeRef.current - startTimeRef.current) / 1000;
     const mins = Math.floor(duration / 60), secs = Math.floor(duration % 60);
 
@@ -450,7 +563,9 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
 
           {weakJoints.length > 0 && (
             <p className="text-[#b45309] text-sm mb-4">
-              {t.weakPrefix}: {weakJoints.map(j => t.jointLabels[j] ?? j).join(', ')}
+              {t.weakPrefix}: {weakJoints
+                .map(([joint, count]) => `${t.jointLabels[joint] ?? joint} (${count}/${repsRef.current.length})`)
+                .join(', ')}
             </p>
           )}
 
@@ -519,6 +634,14 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
       )}
 
       <p className="text-[#a09f98] text-xs mb-4">{t.cameraHint}</p>
+
+      <label className="label block mb-1.5">{t.targetRepsLabel}</label>
+      <input
+        type="number" min={0} max={50} step={1} dir="ltr"
+        className="field max-w-[120px] mb-6"
+        value={targetReps}
+        onChange={e => setTargetReps(e.target.value)}
+      />
 
       <button
         onClick={() => selected && startWorkout(selected)}

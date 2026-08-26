@@ -56,6 +56,10 @@ code, comments, and commits are in English.
   of the Python pipeline logic, driven by the same Mongo ranges served by
   `GET /api/exercises`; sessions saved via `POST /api/user/<id>/sessions`.
   Camera/model failures surface distinct errors; video is mirrored (selfie).
+  **Rep counting/recording and posture-check phase lookup are ML-driven**
+  (`phaseClassifier.ts` + `mlRepCounter.ts`, ONNX via `onnxruntime-web`) —
+  `stateMachine.ts` only gates the pre-start readiness check now; see "Rep-
+  counting: rule engine retired" below for why.
 
 ## Commands
 
@@ -105,6 +109,177 @@ Demo user in the local dev DB: `demo@poseiq.dev` / `demo1234`.
 - Training videos (~190MB) are **not in git**; label JSONs reference
   `data/videos/{ex}/good/*.mp4`.
 
+## Live rule-engine bugs found + fixed during real camera testing (2026-08-25)
+
+Found while the user tested the ONNX parallel signal live (see roadmap #10)
+— none of these are ML-related, all are `frontend/src/pose/` rule-engine /
+UX issues, found in this order:
+
+1. **Voice coaching burst**: `WorkoutScreen.tsx`'s `handlePostureIssues` spoke
+   every flagged issue independently (each on its own 4s per-*joint*
+   cooldown) — several joints going out of frame at once (e.g. mid-reposition)
+   queued a rapid-fire burst of utterances. Fixed: one global 6s cooldown,
+   speaks one issue at a time; also slowed `rate` 1.1→0.92.
+2. **`started` flipped on a single noisy frame**: unlike phase transitions
+   (which already required `FRAMES_TO_TRANSITION` consecutive frames),
+   `stateMachine.ts`'s pre-workout readiness check flipped `started=true` on
+   one lucky/noisy frame — incidental movement while still positioning the
+   camera could count as a real workout starting. Fixed: same
+   consecutive-frame requirement now applies to the `started` flip too
+   (`startReadyCounter`).
+3. **Overcounting persisted even after #2** — root cause turned out to be in
+   `trainer.py`, not the frame-stability logic: **`exercise_angles` ranges
+   were computed by pooling every camera angle together** (front + side1 +
+   side2 + old mixed-angle clips). The same physical joint position projects
+   to a very different 2D angle from the front vs. the side — pooled
+   min/max for shoulder_press's `lowering`/`pressing` phases had collapsed
+   to ~0-180° (measured), i.e. barely constraining anything, so almost any
+   arm position satisfied "next phase" and reps over-triggered constantly.
+   **Fixed**: `collect_samples_from_labels` now computes the pooled
+   min/max/mean/std stats from **front-view files only** (filename contains
+   "front" — matches how a real user actually faces a webcam), while the RF
+   *model* still trains on every file (its many features/trees handle
+   viewpoint-mixed data fine; only plain min/max can't). Verified: front-only
+   shoulder_press `start` elbow range went from [0.2°, 179.9°] to
+   [42.3°, 92.7°]. Retrained all 4 exercises; also found and deleted 3 stale
+   `exercise_angles` docs under `exercise_id: squat` with `shoulder_press`'s
+   phase names — leftover from the 2026-08-23 mislabeling incident, fixed at
+   the label level then but never cleaned up in Mongo (harmless — squat's
+   real phase list never looked them up — but confusing clutter).
+4. Also switched `transitionCounter`/`startReadyCounter` from "decay by 1 on
+   a miss" to a hard reset to 0 — decay let noisy oscillation *during real
+   movement* (not just brief dropouts) slowly net-accumulate toward the
+   threshold without ever being truly stable.
+5. Widened the live-workout screen (`max-w-2xl` → `max-w-4xl`) — too narrow
+   to comfortably check full-body camera framing.
+
+Fix #3 was re-verified live and held up for normal continuous reps — but
+testing kept going the next day and surfaced enough more (including the
+final decision to stop patching this rule engine at all for rep-counting)
+that it gets its own section below.
+
+## Rep-counting: rule engine retired in favor of the ML classifier (2026-08-26)
+
+Continued live testing after 2026-08-25's fixes surfaced a chain of
+follow-on bugs, each fixed with real evidence (Mongo range dumps, or
+`[SM-DEBUG]`/`[ML-DEBUG]` console logging added specifically to stop
+guessing blind) rather than another guess-and-check cycle:
+
+1. **Readiness gate over-applied a fix meant for transitions only.** Tried
+   requiring the *core* (middle 40%) of a phase's range, not just any value
+   technically inside it, to confirm a transition — meant to stop a static
+   mid-pause sitting in the overlap between two adjacent phases from
+   free-wheeling into a fake rep. Mistakenly applied the same core-range
+   check to the **pre-start readiness gate** too. Result: the HUD's per-joint
+   readiness indicator (checked against the full range) showed 4/4 green the
+   whole time, while the hidden core-range check silently failed on ordinary
+   standing sway/pose-tracking jitter — `started` never latched at all. The
+   user diagnosed this exact mistake by reasoning alone before it was found
+   in logs: depth-into-a-range only means something for a phase that *is* a
+   range of motion (ascending/descending), not a static hold like "start."
+   Fixed: readiness gate back to plain full-range matching.
+2. **Symmetric core-range trim broke real full-effort reps.** Even
+   restricted to transitions only, trimming both edges toward the center
+   made a *wide* measured phase (e.g. shoulder_press "pressing", elbow
+   39-178° — the label covers the whole upward sweep, not just its top) cap
+   its own "core" around the middle (~80-136°) — pressing all the way up to
+   genuine full extension (~170°) *overshot* the core's own ceiling and
+   never confirmed the transition. Tried a direction-aware fix next
+   (`motion_direction` from the data model: trim only the entry edge shared
+   with the previous phase, leave the far edge — genuine full extension —
+   untouched). That fixed the overshoot case but the underlying ranges were
+   still too thin/noisy (2-3 training clips) for *any* stricter geometric
+   threshold to net-help rather than hurt — confirmed by two repeated live
+   10-rep sets where the reverted-to-plain rule engine only caught 3-4 of 10
+   real reps (stuck at the "lowering"->"start" boundary almost every time:
+   `right_elbow: got 40.4, need [41.2, 100.7]` — off by a fraction of a
+   degree, not a real miss). **Reverted core-range entirely** — back to
+   plain full-range matching + the hard-reset consecutive-frame requirement
+   from 2026-08-25's fix #4. See `stateMachine.ts`'s comment above `contains`
+   for the full account.
+3. **The ML classifier, tested as a replacement, won decisively.** Built
+   `frontend/src/pose/mlRepCounter.ts` — counts reps from
+   `phaseClassifier.ts`'s live predictions alone, entirely independent of
+   `stateMachine.ts`. Two design fixes along the way, both confirmed live
+   before landing:
+   - *Majority vote, not consecutive-frame agreement.* The classifier
+     reliably nails phase transitions with real motion behind them (clean
+     2-in-a-row), but right at the same "lowering"->"start" boundary the
+     rule engine struggles with, it genuinely flickers tick-to-tick between
+     two classes for a few ticks before settling — a single hard reset there
+     (mirroring `stateMachine.ts`'s own design) threw away real progress
+     every time and the rep never counted. Switched to "3 of the last 5
+     ticks" — tolerates the flicker, still requires real sustained evidence.
+   - *Stable ("start") phases excluded from the tracked cycle entirely.*
+     Mid-set, the model essentially never top-predicts "start" again once
+     real reps are underway — likely the same start/pressing label ambiguity
+     the user flagged earlier this session (labeling "start" a little late,
+     already inside the next phase, to avoid skipping it). Physically, a rep
+     is complete once you're pressing again after lowering — no need to
+     have paused at a fully-rested "start" pose mid-set. The rule engine's
+     (already-fixed) readiness gate still confirms the user starts *from*
+     "start" before tracking begins at all.
+   - **Result, two repeated live 10-rep shoulder_press sets**: ML counter 9
+     and 11 vs. the rule engine's 3-4 (the discrepancy in the 11 case was one
+     genuine over-count from the user moving toward the camera to end the
+     set manually — see next item). The rule engine's 2025-08-25 fixes made
+     it *stable*, not *accurate* — it reliably avoids wild overcounting, but
+     under-counts badly by getting stuck at ambiguous boundaries.
+   **Decision: the ML classifier is now the rep-counting/recording
+   authority** — `WorkoutScreen.tsx`'s displayed/spoken/saved rep count comes
+   from `mlRepCounter`, not `stateMachine.ts`. The rule engine
+   (`ExerciseStateMachine`) still owns the pre-start readiness gate (proven
+   reliable) — see the next two items for where its phase pointer being
+   unreliable still mattered even after this change.
+4. **No "idle" class exists, so idle motion could still get counted.** None
+   of an exercise's trained classes represent "not exercising" — the
+   classifier always picks one of start/pressing/lowering even when the user
+   has simply stopped. Confirmed live: after a real set, sitting still (or a
+   small unrelated movement, e.g. reaching for the laptop to end the
+   workout) occasionally produced one stray extra rep. Two mitigations, not
+   a full fix: (a) a motion-magnitude gate in `mlRepCounter.ts` (skip ticks
+   with near-zero recent angular velocity — reuses the same `deltas` already
+   computed as model input features; doesn't help when the stray motion
+   *is* real motion, just not exercise motion); (b) a **target-reps** field
+   on the setup screen (`WorkoutScreen.tsx`) — when set, the workout
+   auto-ends the instant the ML counter reaches it, removing the window
+   where post-set motion could get miscounted at all. Confirmed live: with a
+   target set, the auto-end fired correctly and the tail-end miscount
+   stopped recurring.
+5. **Posture/weak-point checks were still silently keyed off the (unreliable)
+   rule-engine phase pointer, even after rep-counting moved to ML.** User
+   caught it from the *symptom*, not the code: a set of genuinely good reps
+   ended with "weak points: both shoulders, both elbows, spine" — every
+   joint that moves. Root cause: `rules.analyze(angles, sm.activeRules())`
+   used `sm.currentPhase`, which — per items 1-3 above — gets stuck on a
+   stale phase for long stretches. While stuck, the user's *correct, already
+   -moved-on* angles were being compared against the *wrong* phase's
+   expected range, flagging real motion as a form error on every joint that
+   moves. Fixed: posture checks now look up the phase by the ML's last raw
+   per-tick phase call (`mlDebugRef.current.phase`) instead of
+   `sm.currentPhase`, falling back to the rule engine only before the first
+   ML tick of the set.
+6. **"Weak points" in the session summary had no frequency threshold.** A
+   joint flagged even once across an entire set (e.g. one tracking blip)
+   was listed as a weak point forever, same as one that recurred on most
+   reps. User caught this too: "if I went out of range once with one elbow
+   that's not really a weakness." Fixed: a joint now needs to recur in at
+   least `max(2, 30% of reps)` reps to be listed, and the summary shows the
+   actual count (e.g. "Right elbow (3/10)") instead of a bare name.
+
+**Net effect**: the deterministic rule engine (`stateMachine.ts`/
+`exercise_state_machine.py`) is demoted from "reps/posture decision-maker"
+to "readiness gate only" for the parts of the pipeline that were live-tested
+this session. It's unclear whether this generalizes past shoulder_press —
+all of today's live testing happened on that one exercise (laptop-camera
+framing made the others impractical to test at a desk); squat/lunge/
+biceps_curl have the same phase-metadata shape (`motion_direction`/
+`is_initial` checked directly in Mongo — all well-formed) so the code path
+is exercise-agnostic, but their `exercise_angles`/model training data is
+thinner in places (e.g. `standing`'s `n_frames` is 22 for biceps_curl, 55
+for lunge, vs. shoulder_press's 117) and genuinely untested live. Plan: test
+all 4 exercises at a real gym before submission.
+
 ## ML state (2026-08-25)
 
 **Model shrunk for browser delivery (ONNX plan — see roadmap #9).**
@@ -146,22 +321,19 @@ property (velocity actually matters) that a single video might never
 stress-test. Don't skip `pytest` after retraining just because the eval
 numbers look fine.
 
-**Live decision path — important, don't assume the trained model drives the
-live app.** It doesn't, today. `ExerciseStateMachine`
-(`core/exercise/exercise_state_machine.py`) and its TS port
-(`frontend/src/pose/stateMachine.ts`) are 100% rule-based — they compare
-live angles against the min/max ranges in `exercise_angles` (which *are*
-derived from the labeled videos, via simple statistics in `trainer.py`, not
-by consulting the trained classifier). The trained `phase_{ex}.joblib`
-model itself is only used (a) offline in `core/ml/eval.py` for the accuracy
-numbers in this doc, and (b) in the **desktop pipeline only**, as a
-parallel debug-overlay signal (`core/pipeline.py`, toggle `d`) that never
-feeds reps/transitions/violations — explicit comment there: "the
-deterministic state machine stays the source of truth... the ML prediction
-is a parallel signal." The web client has no ONNX/TF.js port of the model
-at all. This is a legitimate reliability/latency tradeoff, not an
-oversight — but be upfront about it in the report; don't imply the RF model
-is what reacts to the user live unless the ONNX work above actually ships.
+**Live decision path — updated 2026-08-26, this changed.** In the **web
+client**, the ONNX-exported model (via `onnxruntime-web`,
+`frontend/src/pose/phaseClassifier.ts`) now drives rep counting/recording
+(`mlRepCounter.ts`) and posture-check phase lookup — see "Rep-counting:
+rule engine retired" above for the full story and why. `stateMachine.ts`
+(the TS rule engine) still owns only the pre-start readiness gate there.
+In the **desktop pipeline** (`stale/`, not part of the deployed app) and
+the **offline eval** (`core/ml/eval.py`), nothing changed: `core/pipeline.py`
+still runs the trained model as a parallel debug-overlay signal only
+(toggle `d`), and `ExerciseStateMachine`
+(`core/exercise/exercise_state_machine.py`) is still the one driving reps/
+transitions/violations there — that codepath is stale/reference-only, not
+worth re-doing this migration for.
 
 ## ML state (2026-08-23)
 
@@ -270,16 +442,70 @@ kept getting flagged as out of place next to the ranker. Deleted outright
    load on the deployed API at all). **Weight recommendations
    (`overload.py`) were deleted in the same pass and are being restored
    (2026-08-25, user's call) — see item 6 above and the ML state note.**
-10. **ONNX phase classifier in the web client — in progress (2026-08-25).**
-    Goal: the trained RF model actually drives the live web app (mobile
-    included) instead of being eval/desktop-debug-only (see ML state note
-    above). ~~Shrink models for browser delivery~~ (done — 90 trees/depth 14,
-    ~18.8MB total for all 4 exercises, was ~47MB, no accuracy loss and full
-    test suite incl. the velocity-sensitivity check still passes). Next:
-    `skl2onnx` conversion of the 4 `.joblib` files, add `onnxruntime-web` to
-    `frontend/`, wire prediction into `stateMachine.ts` (reuse the feature
-    vector `angles.ts` already computes — no new feature code needed).
+10. **ONNX phase classifier in the web client (2026-08-25).** Goal: the
+    trained RF model actually participates in the live web app instead of
+    being eval/desktop-debug-only (see ML state note above).
+    ~~Shrink models for browser delivery~~ (done — 90 trees/depth 14,
+    ~18.8MB total for all 4 exercises, was ~47MB, no accuracy loss).
+    ~~Export to ONNX~~ (done — `core/ml/export_onnx.py`, 100% prediction
+    parity vs sklearn on 500 random samples per exercise; ONNX files ~10MB
+    total, smaller than the joblib source). ~~Wire into the web client~~
+    (done — `frontend/src/pose/{deltaTracker,phaseClassifier}.ts` +
+    `onnxruntime-web`; `WorkoutScreen.tsx` runs it throttled (250ms),
+    initially wired as a **parallel signal only** shown in the HUD next to
+    the rule-based phase — deliberately staged that way to validate real
+    browser behavior first). ~~Confidence-gated fallback / making it the
+    actual decision-maker~~ (done, 2026-08-26 — not confidence-gated in the
+    end, just switched outright after live A/B testing showed the ML
+    counter far more accurate than the rule engine; see "Rep-counting: rule
+    engine retired" above).
+
+    **Verified working end-to-end in a real browser**, not just Python:
+    fed the live `classifyPhase()` opposite-sign knee velocities at the
+    same mid-range angle through the actual production bundle — correctly
+    predicted `descending` vs `ascending` respectively, the same
+    velocity-sensitivity property `test_delta_feature_is_used_by_model`
+    checks in Python. Two real integration snags found and fixed along
+    the way (both `frontend/vite.config.ts` / `phaseClassifier.ts`
+    comments explain why):
+    - Importing bare `'onnxruntime-web'` pulls its WebGPU (jsep) wasm
+      variant into the production build via Rollup's static asset
+      scanning (+27MB, unused) — fixed by importing the `'onnxruntime-web/wasm'`
+      subpath instead (CPU-only, ~14MB). A same-named file still gets
+      redundantly double-bundled (`dist/assets/` *and* our own
+      `public/ort/` copy that's actually fetched) — cosmetic, not worth
+      more time; never downloaded by users since nothing references the
+      `dist/assets/` copy's URL.
+    - `onnxruntime-web`'s WASM backend can't marshal a ZipMap
+      (`sequence<map<string,float>>`) output — `session.run()` throws for
+      the *whole call* if `output_probability` (skl2onnx's default
+      `predict_proba` export) is in the fetch list. **Fixed** (same
+      session, not deferred): `export_onnx.py` now passes skl2onnx
+      `options={id(clf): {'zipmap': False}}`, which renames the outputs
+      to `label` (unchanged behavior) and `probabilities` — a plain
+      `[1, n_classes]` float tensor instead. `confidence` = max of that
+      tensor (order-independent — works without also shipping each
+      exercise's `classes_` column ordering to the frontend). Verified
+      live in the browser (build+preview, real inference call): real
+      confidence values (62-90%) across all 4 exercises, correct phase
+      unaffected. Per-class `probs` breakdown is still `null` (would need
+      shipping the column order too) — not needed for a scalar
+      confidence-gated fallback, only for showing "70% descending, 20%
+      standing, 10% ascending" in a UI, which nothing needs yet.
+    - Also dev-server-only (doesn't affect the real deployment): the ONNX
+      path 404s/throws under plain `npm run dev` — Vite's dev middleware
+      intercepts onnxruntime-web's dynamic `import()` of its own
+      wasm-loader `.mjs` and fails to serve it. Confirmed fine under
+      `vite build && vite preview` (and will be fine on Vercel — same
+      static-file-serving model). Test the ONNX path via build+preview,
+      not dev, until/unless someone finds the dev-server fix.
+
     Motivated by the user's mobile-friendliness goal for the deployed site.
+
+`docs/challenges-and-solutions-he.md` — Hebrew writeup of difficulties hit
+and how they were solved, for project-defense prep (not the advisor status
+doc below). Keep it updated alongside this file when a real bug-hunt/
+decision happens; it's meant to be read, not just written once.
 
 `docs/pose-iq-status-he.md` is the Hebrew status doc for the advisor —
 ~~rewritten 2026-08-23~~ to match the current architecture (was describing a
