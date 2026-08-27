@@ -1,11 +1,14 @@
 // Runs the trained per-exercise RandomForest phase classifier (exported to
 // ONNX by core/ml/export_onnx.py) client-side via onnxruntime-web.
 //
-// This is intentionally a PARALLEL signal for now, not the decision-maker —
-// see CLAUDE.md roadmap #10. It mirrors what the (now-stale) desktop
-// pipeline's debug overlay did: run the real trained model next to the
-// deterministic state machine and compare, before trusting it to drive
-// reps/violations. Exercise picks its own model lazily on first use.
+// Originally wired up as a parallel signal only (shown in the HUD next to
+// the rule-based phase, not trusted to drive anything) — see CLAUDE.md
+// roadmap #10. That changed 2026-08-26: live A/B testing showed the ML
+// counter far more accurate than the rule engine at rep counting, so
+// mlRepCounter.ts now owns rep counting outright (see the comment in
+// WorkoutScreen.tsx's live loop). This module itself is unchanged by that —
+// it just classifies a phase per call — but it's no longer a side-channel:
+// its output is load-bearing. Exercise picks its own model lazily on first use.
 
 // The '/wasm' subpath entry (CPU-only, no WebGPU/WebGL) — importing the bare
 // 'onnxruntime-web' package pulls its WebGPU (jsep) backend's wasm variant

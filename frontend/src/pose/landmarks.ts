@@ -23,14 +23,14 @@ export interface Point {
 
 export type Landmarks = Partial<Record<LandmarkName, Point>>;
 
-/** Skeleton segments to draw, as landmark index pairs (mirrors core/pipeline.py). */
+/** Skeleton segments to draw, as landmark index pairs (mirrors stale/core/pipeline.py). */
 export const SKELETON_CONNECTIONS: [number, number][] = [
   [11, 12], [11, 13], [13, 15], [12, 14], [14, 16],
   [11, 23], [12, 24], [23, 24],
   [23, 25], [25, 27], [24, 26], [26, 28],
 ];
 
-/** Violating joint → skeleton segments to paint red (mirrors core/pipeline.py). */
+/** Violating joint → skeleton segments to paint red (mirrors stale/core/pipeline.py). */
 export const ERROR_TO_LINES: Record<string, [number, number][]> = {
   spine:          [[11, 23], [12, 24], [23, 24]],
   right_knee:     [[24, 26], [26, 28]],

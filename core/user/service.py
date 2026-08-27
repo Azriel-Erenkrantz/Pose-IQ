@@ -236,7 +236,7 @@ def save_workout_session(
     reps: List[Dict],
 ) -> Optional['WorkoutSession']:  # noqa: F821 — forward ref, imported lazily
     """Persist a completed workout reported by a client (the web live-workout
-    screen). Mirrors what core/pipeline.py saves at the end of a session.
+    screen). Mirrors what stale/core/pipeline.py saves at the end of a session.
     Returns the saved session (with computed overall score), or None if the
     user doesn't exist."""
     db = get_db()

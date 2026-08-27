@@ -414,6 +414,13 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
                   ? `${hud.phase} (${hud.phaseIndex + 1}/${hud.phaseCount})${hud.instruction ? ' — ' + hud.instruction : ''}`
                   : t.getIntoPosition}
               </p>
+              {/* Leftover from validating the ONNX classifier against the rule
+                  engine live (see phaseClassifier.ts) — shown to every user
+                  unconditionally, not gated behind a dev flag. Harmless (it's
+                  informational, not interactive) but was meant as a temporary
+                  comparison view, not permanent UI; worth hiding or removing
+                  now that mlRepCounter.ts is the real decision-maker and
+                  there's nothing left to compare it against for the user. */}
               {hud.mlDebug && (
                 <p className={`text-[10px] mt-0.5 ${hud.mlDebug.agrees ? 'text-[#7ee2a8]/70' : 'text-[#ff9a7a]'}`}>
                   ML: {hud.mlDebug.phase}

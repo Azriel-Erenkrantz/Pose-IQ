@@ -1,6 +1,6 @@
 // PoseLandmarker (MediaPipe Tasks JS) wrapper — loads the WASM runtime and
 // the lite pose model once, then detects landmarks per video frame.
-// This is the browser counterpart of core/detection/pose_detector.py.
+// This is the browser counterpart of stale/core/detection/pose_detector.py.
 
 import { FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision';
 import { LM } from './landmarks';

@@ -1,8 +1,8 @@
 // Pose landmarks → joint angles (degrees).
 // Faithful port of core/ml/angles.py (the 10 normalized-2D angles the models
 // and the Mongo ranges were measured in) plus the legacy spine angle from
-// core/detection/angle_calculator.py (pixel-space 3D, needed for the global
-// back-straightness constraint).
+// stale/core/detection/angle_calculator.py (pixel-space 3D, needed for the
+// global back-straightness constraint).
 
 import type { Landmarks, LandmarkName } from './landmarks';
 

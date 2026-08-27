@@ -1,6 +1,10 @@
-// Deterministic phase state machine — faithful port of
-// core/exercise/exercise_state_machine.py. The same Mongo-measured angle
-// ranges drive both the desktop pipeline and this browser version.
+// Deterministic phase state machine — faithful port of the (now-stale, not
+// part of the deployed app) desktop pipeline's stale/core/exercise/
+// exercise_state_machine.py. Still owns phase text/instructions and the
+// pre-workout readiness gate; mlRepCounter.ts owns rep counting itself
+// (see the comment above `contains` and WorkoutScreen.tsx's live loop).
+// The angle ranges driving it are the same Mongo-measured ones the ONNX
+// model was trained from.
 
 import type { AngleRangeDef, ExerciseDef, PhaseDef } from '../api/types';
 
@@ -39,10 +43,12 @@ export function contains(r: AngleRangeDef, value: number): boolean {
 // completely stuck, because the underlying measured ranges are just too
 // noisy/overlapping (2-3 training clips per exercise) for any stricter
 // geometric threshold to reliably help rather than hurt. Reverted to plain
-// full-range matching below. The actual fix in progress is
-// mlRepCounter.ts — an ML-classifier-driven rep counter running in
-// parallel, to see whether it's more robust than any variant of this
-// threshold-based approach can be.
+// full-range matching below. The actual fix was mlRepCounter.ts — an
+// ML-classifier-driven rep counter, confirmed 2026-08-26 to be far more
+// robust than any variant of this threshold-based approach, and now the
+// real rep-counting authority (see WorkoutScreen.tsx's live loop). This
+// state machine still owns phase text/instructions and the readiness gate,
+// just not rep counting anymore.
 
 /** null when in range, otherwise which way it's out of bounds. */
 function direction(r: AngleRangeDef, value: number): 'too low' | 'too high' | null {

@@ -1,6 +1,6 @@
 // Form-violation detection with per-joint debounce — faithful port of
-// core/exercise/posture_rules.py, including fitness-level threshold widening
-// and extra leniency for user-reported limited joints.
+// stale/core/exercise/posture_rules.py, including fitness-level threshold
+// widening and extra leniency for user-reported limited joints.
 
 import type { AngleRangeDef, FitnessLevel } from '../api/types';
 import { contains } from './stateMachine';

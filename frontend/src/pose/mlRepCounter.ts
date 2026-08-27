@@ -1,12 +1,16 @@
-// Experimental: counts reps from the ONNX phase classifier's predictions
-// alone, independent of the angle-range rule engine — to see live whether
-// the trained model's phase calls are accurate/stable enough to eventually
-// replace stateMachine.ts's decisions (see CLAUDE.md roadmap #10, and the
-// live rule-engine boundary-jitter issues documented 2026-08-26 that
-// motivated trying this). Still gated by the rule engine's (now-fixed)
-// readiness check for *when* to start tracking — this only replaces the
-// mid-workout phase-transition/rep-counting decision, not "are you in
-// frame in a valid starting posture."
+// Counts reps from the ONNX phase classifier's predictions alone,
+// independent of the angle-range rule engine (see CLAUDE.md roadmap #10).
+// Started as a live trial against stateMachine.ts's own rep-counting, to
+// see whether the trained model's phase calls were accurate/stable enough
+// to replace it — the rule engine kept getting stuck on overlapping
+// boundary ranges (documented 2026-08-25/26) and badly under/over-counted
+// real reps. Confirmed 2026-08-26 across repeated 10-rep sets: this ML
+// counter matched the true count almost exactly where the rule engine
+// missed ~40% of reps — so this is now the actual rep-counting authority,
+// not a parallel experiment (see WorkoutScreen.tsx's live loop). Still
+// gated by the rule engine's (now-fixed) readiness check for *when* to
+// start tracking — this only replaces the mid-workout phase-transition/
+// rep-counting decision, not "are you in frame in a valid starting posture."
 
 import type { ExerciseDef } from '../api/types';
 
