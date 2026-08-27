@@ -22,6 +22,19 @@ const ANGLE_DEFS: Record<string, [LandmarkName, LandmarkName, LandmarkName]> = {
 
 const MIN_VISIBILITY = 0.4;
 
+// Spine needs a stricter bar than the 3-point joint angles above: it's
+// computed from just two landmarks (shoulder+hip) against a synthetic
+// "straight up" reference point, with no third real landmark to anchor it —
+// far more sensitive to a landmark's *position* being unreliable even while
+// its visibility score still clears 0.4. Confirmed live 2026-08-27: as a
+// user nears the frame edge, one side's shoulder/hip stayed just above 0.4
+// while its estimated position was already distorted by perspective, so
+// `spine` spiked and false-triggered the (global, high-severity, spoken)
+// "don't arch your back" correction on every frame exit, not on real
+// posture. Applies only to spine's own two landmarks, not the shared
+// MIN_VISIBILITY gate other angles use.
+const MIN_VISIBILITY_SPINE = 0.6;
+
 function angle2d(
   a: { x: number; y: number }, b: { x: number; y: number }, c: { x: number; y: number },
 ): number {
@@ -70,7 +83,7 @@ export function computeAngles(lms: Landmarks, width: number, height: number): Re
     const shoulder = lms[`${side}_shoulder`];
     const hip = lms[`${side}_hip`];
     if (!shoulder || !hip) continue;
-    if (shoulder.visibility < MIN_VISIBILITY || hip.visibility < MIN_VISIBILITY) continue;
+    if (shoulder.visibility < MIN_VISIBILITY_SPINE || hip.visibility < MIN_VISIBILITY_SPINE) continue;
     const sPx = { x: shoulder.x * width, y: shoulder.y * height, z: shoulder.z * width };
     const hPx = { x: hip.x * width, y: hip.y * height, z: hip.z * width };
     const vertical = { x: hPx.x, y: hPx.y - 50, z: hPx.z };
