@@ -37,7 +37,6 @@ const JOINTS = [
 export interface PhasePrediction {
   phase: string;
   confidence: number | null;   // null if the probability output couldn't be read
-  probs: Record<string, number> | null;
 }
 
 /** Same layout as core.ml.trainer.angles_to_features(): 12 angles then 12
@@ -104,5 +103,5 @@ export async function classifyPhase(
   const probsData = outputs.probabilities.data as Float32Array;
   const confidence = probsData.length ? Math.max(...probsData) : null;
 
-  return { phase, confidence, probs: null };
+  return { phase, confidence };
 }

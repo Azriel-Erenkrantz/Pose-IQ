@@ -12,9 +12,7 @@ from typing import List
 
 from core.app_model import (
     AuthToken,
-    BodyRegion,
     FitnessLevel,
-    HealthStatus,
     LiveSessionOutput,
     ProgressMetrics,
     RepResult,
@@ -45,20 +43,6 @@ def fake_auth_token() -> AuthToken:
         user_id    = FAKE_USER_ID,
         token      = FAKE_USER_TOKEN,
         expires_at = datetime(2099, 12, 31),
-    )
-
-
-# ── Fake health ────────────────────────────────────────────────────────────────
-
-def fake_health_status() -> HealthStatus:
-    return HealthStatus(
-        user_id  = FAKE_USER_ID,
-        ratings  = {
-            BodyRegion.UPPER: 5,
-            BodyRegion.CORE:  4,
-            BodyRegion.LOWER: 3,
-        },
-        recorded_at = datetime.now(),
     )
 
 

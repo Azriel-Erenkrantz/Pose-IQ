@@ -185,12 +185,6 @@ def update_user(user_id: str):
     return ok(user)
 
 
-@app.get("/api/user/<user_id>/health")
-@require_auth
-def get_health(user_id: str):
-    return ok(service.get_health_status(user_id))
-
-
 @app.put("/api/user/<user_id>/health")
 @require_auth
 def update_health(user_id: str):

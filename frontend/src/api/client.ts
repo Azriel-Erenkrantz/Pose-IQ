@@ -85,8 +85,6 @@ export const authApi = {
 
 export const userApi = {
   getUser:    (id: string, token: string) => get<User>(`/api/user/${id}`, token),
-  updateUser: (id: string, body: Partial<User>, token: string) =>
-    put<User>(`/api/user/${id}`, body, token),
   getDashboard: (id: string, token: string) =>
     get<DashboardData>(`/api/dashboard/${id}`, token),
   getHistory: (id: string, token: string) =>

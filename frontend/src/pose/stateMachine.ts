@@ -14,16 +14,6 @@ import type { AngleRangeDef, ExerciseDef, PhaseDef } from '../api/types';
 const FRAMES_TO_TRANSITION = 14;
 const FRAMES_TO_DISCONNECT = 90;   // ~3s at 30fps before auto-recovery kicks in
 
-// Safety net, not a real fix: with only 2-3 front-view training clips per
-// exercise, adjacent phases' measured angle ranges genuinely overlap a lot
-// (confirmed live 2026-08-25 — shoulder_press's start/pressing/lowering
-// elbow ranges overlap almost entirely) — a single continuous real
-// repetition's motion can satisfy several phases' criteria in sequence
-// within it, over-counting reps even with zero tracking noise at all. The
-// real fix is more/richer training data narrowing those ranges. Until then,
-// just refuse to count a rep faster than a human plausibly reps.
-const MIN_FRAMES_BETWEEN_REPS = 30;   // ~1s at the ~30fps live loop target
-
 export type ReadinessStatus = 'missing' | 'too low' | 'too high' | null;
 
 export interface StateMachineResult {
@@ -31,9 +21,6 @@ export interface StateMachineResult {
   phaseIndex: number;
   phaseCount: number;
   instruction: string;
-  repCount: number;
-  transitioned: boolean;
-  completedRep: boolean;
   started: boolean;
   readiness: Record<string, ReadinessStatus>;
 }
@@ -66,12 +53,10 @@ function direction(r: AngleRangeDef, value: number): 'too low' | 'too high' | nu
 export class ExerciseStateMachine {
   private exercise: ExerciseDef;
   private currentPhaseIndex = 0;
-  repCount = 0;
   private transitionCounter = 0;
   started = false;
   private missingFramesCounter = 0;
   private startReadyCounter = 0;
-  private framesSinceLastRep = MIN_FRAMES_BETWEEN_REPS;   // don't gate the very first rep
   private _dbgWasOk = false;   // TEMP (2026-08-26) — see console.log calls below, remove after diagnosis
 
   constructor(exercise: ExerciseDef) {
@@ -94,7 +79,7 @@ export class ExerciseStateMachine {
   update(angles: Record<string, number>): StateMachineResult {
     if (Object.keys(angles).length === 0) {
       this.missingFramesCounter += 1;
-      return this.result(false);
+      return this.result();
     }
 
     // Auto-recovery: user was lost for a while and is back — re-sync to the
@@ -105,7 +90,6 @@ export class ExerciseStateMachine {
       this.transitionCounter = 0;
     }
     this.missingFramesCounter = 0;
-    this.framesSinceLastRep += 1;
 
     // Pre-workout: wait until the user is in the starting position — held for
     // several CONSECUTIVE frames, same stability requirement as phase
@@ -136,7 +120,7 @@ export class ExerciseStateMachine {
         this.startReadyCounter = 0;
       }
       this._dbgWasOk = ok;
-      return this.result(false, false, readiness);
+      return this.result(readiness);
     }
 
     // Transition when the NEXT phase's requirements hold for several
@@ -177,26 +161,17 @@ export class ExerciseStateMachine {
       this.transitionCounter = 0;
     }
 
-    return this.result(false);
+    return this.result();
   }
 
   private advance(): StateMachineResult {
     const fromPhase = this.currentPhase.name;
     this.transitionCounter = 0;
     this.currentPhaseIndex = (this.currentPhaseIndex + 1) % this.exercise.phases.length;
-    const wrapped = this.currentPhaseIndex === 0;
     // eslint-disable-next-line no-console
     console.log(`[SM-DEBUG] advance ${fromPhase} -> ${this.currentPhase.name}`,
-      `wrapped=${wrapped}`, `framesSinceLastRep=${this.framesSinceLastRep}`);
-    // Phase still cycles normally either way (so the UI/instruction stays
-    // live and the machine doesn't stall) — only the *count* is gated, so a
-    // too-fast wrap silently doesn't score, rather than blocking anything.
-    const completedRep = wrapped && this.framesSinceLastRep >= MIN_FRAMES_BETWEEN_REPS;
-    if (completedRep) {
-      this.repCount += 1;
-      this.framesSinceLastRep = 0;
-    }
-    return this.result(true, completedRep);
+      `wrapped=${this.currentPhaseIndex === 0}`);
+    return this.result();
   }
 
   private anglesMatchPhase(angles: Record<string, number>, phase: PhaseDef): boolean {
@@ -255,31 +230,14 @@ export class ExerciseStateMachine {
     return bestIndex;
   }
 
-  private result(
-    transitioned: boolean,
-    completedRep = false,
-    readiness: Record<string, ReadinessStatus> = {},
-  ): StateMachineResult {
+  private result(readiness: Record<string, ReadinessStatus> = {}): StateMachineResult {
     return {
       phase: this.currentPhase.name,
       phaseIndex: this.currentPhaseIndex,
       phaseCount: this.exercise.phases.length,
       instruction: this.currentPhase.instruction,
-      repCount: this.repCount,
-      transitioned,
-      completedRep,
       started: this.started,
       readiness,
     };
-  }
-
-  reset(): void {
-    this.currentPhaseIndex = 0;
-    this.repCount = 0;
-    this.transitionCounter = 0;
-    this.started = false;
-    this.missingFramesCounter = 0;
-    this.startReadyCounter = 0;
-    this.framesSinceLastRep = MIN_FRAMES_BETWEEN_REPS;
   }
 }

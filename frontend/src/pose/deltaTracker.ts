@@ -36,10 +36,4 @@ export class DeltaTracker {
     }
     return out;
   }
-
-  reset(): void {
-    this.prev = null;
-    this.prevT = null;
-    this.history = {};
-  }
 }

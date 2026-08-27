@@ -101,10 +101,6 @@ class WorkoutHistory:
             cursor = cursor.limit(limit)
         return [self._doc_to_session(doc) for doc in cursor]
 
-    @property
-    def sessions(self) -> List[WorkoutSession]:
-        return self.get_sessions()
-
     def get_progress_metrics(self, exercise_id: str) -> dict:
         sessions = self.get_sessions(exercise_id)
         if not sessions:

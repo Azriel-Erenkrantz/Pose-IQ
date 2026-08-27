@@ -133,11 +133,4 @@ export class MlRepCounter {
       completedRep,
     };
   }
-
-  reset(): void {
-    this.currentIndex = 0;
-    this.repCount = 0;
-    this.history = [];
-    this.lastRepAt = 0;
-  }
 }
