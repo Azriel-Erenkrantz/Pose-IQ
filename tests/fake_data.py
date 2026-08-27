@@ -1,9 +1,9 @@
 """
-Fake data for the user module.
+Fake data for testing the user module.
 
-Used by the test suite — no real user, no files needed. Every function
-returns a valid app_model instance so the user/API layer can be tested
-without a real user or DB.
+No real user, no files needed. Every function returns a valid app_model
+instance so the user/API layer can be tested without a real user or DB.
+Used by test_user.py.
 """
 from __future__ import annotations
 

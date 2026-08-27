@@ -22,7 +22,9 @@ from core.app_model import (
     RepResult,
     User,
 )
-from core.user import fake_data, service
+from core.user import service
+
+import fake_data
 
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
