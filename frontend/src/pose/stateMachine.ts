@@ -5,6 +5,20 @@
 // (see the comment above `contains` and WorkoutScreen.tsx's live loop).
 // The angle ranges driving it are the same Mongo-measured ones the ONNX
 // model was trained from.
+//
+// This is the *other* decision path — pure angle-range math, no model, no
+// training. Every phase has its own `angles: Record<joint, {min, max}>`
+// (fetched from Mongo via `GET /api/exercises`); `anglesMatchPhase()` is
+// the entire "decision": every joint the phase cares about must currently
+// sit inside its measured range, nothing fuzzier than that. What this file
+// still actually decides for the live app: (1) `started` — the one-time
+// gate that confirms the user is in a valid starting posture before
+// anything else begins (`checkReadiness()`), and (2) `phase`/`instruction`
+// — the text shown in the HUD, and the angle ranges `postureRules.ts` checks
+// form against (as a fallback before the ML has produced its first call —
+// see WorkoutScreen.tsx). `contains()` is exported and reused by
+// postureRules.ts, since both files need the identical "is this value in
+// [min, max]" check.
 
 import type { AngleRangeDef, ExerciseDef, PhaseDef } from '../api/types';
 

@@ -11,6 +11,14 @@
 // gated by the rule engine's (now-fixed) readiness check for *when* to
 // start tracking — this only replaces the mid-workout phase-transition/
 // rep-counting decision, not "are you in frame in a valid starting posture."
+//
+// Fourth (last) stage of the ML path: phaseClassifier.ts calls in every
+// ~250ms with one raw phase guess; this class is the only thing that turns
+// a noisy stream of those guesses into a trustworthy rep count, via the
+// majority-vote window below plus the motion-phase cycle (`motionPhases`) —
+// conceptually the same job core/ml/smoother.py's PhaseSmoother does
+// offline, independently reimplemented here since Python can't run in a
+// browser (see core/ml/smoother.py's own docstring for the shared concept).
 
 import type { ExerciseDef } from '../api/types';
 

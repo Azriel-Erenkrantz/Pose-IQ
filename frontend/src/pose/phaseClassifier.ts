@@ -9,6 +9,13 @@
 // WorkoutScreen.tsx's live loop). This module itself is unchanged by that —
 // it just classifies a phase per call — but it's no longer a side-channel:
 // its output is load-bearing. Exercise picks its own model lazily on first use.
+//
+// Third stage of the pipeline: takes angles.ts's angles + deltaTracker.ts's
+// velocities, runs them through the actual trained RandomForest (as ONNX,
+// via onnxruntime-web — literally the same model file core/ml/trainer.py
+// produced, not a re-implementation), and hands the raw per-call phase guess
+// to mlRepCounter.ts, which smooths a sequence of these into stable
+// transitions and an actual rep count.
 
 // The '/wasm' subpath entry (CPU-only, no WebGPU/WebGL) — importing the bare
 // 'onnxruntime-web' package pulls its WebGPU (jsep) backend's wasm variant
