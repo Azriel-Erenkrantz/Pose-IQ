@@ -1,21 +1,7 @@
 // Runs the trained per-exercise RandomForest phase classifier (exported to
-// ONNX by core/ml/export_onnx.py) client-side via onnxruntime-web.
-//
-// Originally wired up as a parallel signal only (shown in the HUD next to
-// the rule-based phase, not trusted to drive anything) — see CLAUDE.md
-// roadmap #10. That changed 2026-08-26: live A/B testing showed the ML
-// counter far more accurate than the rule engine at rep counting, so
-// mlRepCounter.ts now owns rep counting outright (see the comment in
-// WorkoutScreen.tsx's live loop). This module itself is unchanged by that —
-// it just classifies a phase per call — but it's no longer a side-channel:
-// its output is load-bearing. Exercise picks its own model lazily on first use.
-//
-// Third stage of the pipeline: takes angles.ts's angles + deltaTracker.ts's
-// velocities, runs them through the actual trained RandomForest (as ONNX,
-// via onnxruntime-web — literally the same model file core/ml/trainer.py
-// produced, not a re-implementation), and hands the raw per-call phase guess
-// to mlRepCounter.ts, which smooths a sequence of these into stable
-// transitions and an actual rep count.
+// ONNX by core/ml/export_onnx.py) client-side via onnxruntime-web. Its
+// output feeds mlRepCounter.ts, which is the actual rep-counting authority
+// (see CLAUDE.md roadmap #10) — this file just classifies one phase per call.
 
 // The '/wasm' subpath entry (CPU-only, no WebGPU/WebGL) — importing the bare
 // 'onnxruntime-web' package pulls its WebGPU (jsep) backend's wasm variant
@@ -61,6 +47,8 @@ export function buildFeatures(
   return out;
 }
 
+// One ONNX session per exercise, cached — switching exercises mid-visit
+// (or preloading, below) never re-fetches a model already loaded.
 const sessions = new Map<string, Promise<ort.InferenceSession>>();
 
 function loadSession(exerciseId: string): Promise<ort.InferenceSession> {

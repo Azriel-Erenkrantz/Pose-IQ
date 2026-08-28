@@ -1,20 +1,6 @@
 // Form-violation detection with per-joint debounce — faithful port of
 // stale/core/exercise/posture_rules.py, including fitness-level threshold
 // widening and extra leniency for user-reported limited joints.
-//
-// Last stage of the whole pipeline, and the one the user actually sees/
-// hears: given the current angles and a set of "active rules" (an angle
-// range per joint — see `activeRules()` on the state machine, though
-// WorkoutScreen.tsx actually sources this from whichever phase the ML last
-// called, falling back to the rule engine only before the first ML tick),
-// decides which joints are currently a form problem. Two independent
-// concerns share one `analyze()` call: is a required joint even visible
-// (`missingJointIssue`), and if visible, is it outside its allowed range
-// (`outOfRangeIssue`) — each with its own per-joint debounce counter so one
-// noisy frame doesn't trigger a correction. `adjustRange()` is where a
-// user's fitness level and self-reported limitations actually take effect —
-// it widens the raw Mongo-measured range before comparing, rather than
-// changing the comparison logic itself.
 
 import type { AngleRangeDef, FitnessLevel } from '../api/types';
 import { contains } from './stateMachine';
@@ -70,8 +56,11 @@ export class PostureRules {
     this.limitedJoints = limitedJoints;
   }
 
+  // Widens the raw Mongo-measured range around its own midpoint — beginners
+  // (modifier > 1) get more slack, advanced (modifier < 1) get stricter, and
+  // a self-reported limited joint gets an extra 1.4x on top of that.
   private adjustRange(joint: string, r: AngleRangeDef): AngleRangeDef {
-    if (this.modifier === 1.0 && !this.limitedJoints.includes(joint)) return r;
+    if (this.modifier === 1.0 && !this.limitedJoints.includes(joint)) return r;   // nothing to adjust
 
     const mid = (r.min + r.max) / 2;
     let half = ((r.max - r.min) / 2) * this.modifier;

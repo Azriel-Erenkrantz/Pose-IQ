@@ -3,22 +3,6 @@
 // and the Mongo ranges were measured in) plus the legacy spine angle from
 // stale/core/detection/angle_calculator.py (pixel-space 3D, needed for the
 // global back-straightness constraint).
-//
-// Second stage of the pipeline: turns detector.ts's raw landmark positions
-// into the actual numbers everything else reasons about. Two genuinely
-// different computations live in this one file, which is worth keeping
-// straight: `ANGLE_DEFS`' 10 joint angles (knees/hips/elbows/shoulders/
-// ankles) are each a clean 3-point angle (A-vertex-C) in normalized 0-1
-// screen space — this is the *only* angle space the ONNX model and the
-// Mongo-measured ranges understand, so nothing downstream ever mixes it
-// with a different coordinate system. `spine` is the odd one out: only 2
-// real landmarks (shoulder+hip) against a synthetic straight-up reference
-// point, computed in pixel space — a legacy carryover kept exactly as the
-// original desktop pipeline measured it, since the seed angle range for
-// "don't arch your back" was calibrated in that space. `computeAngles()`'s
-// output feeds both stateMachine.ts/postureRules.ts (the rule engine) and,
-// via deltaTracker.ts, phaseClassifier.ts (the ML model) — it's the one
-// shared input both decision paths branch from.
 
 import type { Landmarks, LandmarkName } from './landmarks';
 
@@ -51,6 +35,8 @@ const MIN_VISIBILITY = 0.4;
 // MIN_VISIBILITY gate other angles use.
 const MIN_VISIBILITY_SPINE = 0.6;
 
+// Angle at b in the A-B-C triangle, using x/y only (normalized 0-1 screen
+// space) — the space all 10 joint angles below are measured in.
 function angle2d(
   a: { x: number; y: number }, b: { x: number; y: number }, c: { x: number; y: number },
 ): number {
@@ -62,6 +48,8 @@ function angle2d(
   return (Math.acos(cos) * 180) / Math.PI;
 }
 
+// Same idea as angle2d but including z — only spine uses this, in pixel
+// space, matching the legacy desktop pipeline's calculation exactly.
 function angle3d(
   a: { x: number; y: number; z: number },
   b: { x: number; y: number; z: number },
@@ -86,9 +74,9 @@ export function computeAngles(lms: Landmarks, width: number, height: number): Re
 
   for (const [name, [a, b, c]] of Object.entries(ANGLE_DEFS)) {
     const pa = lms[a], pb = lms[b], pc = lms[c];
-    if (!pa || !pb || !pc) continue;
+    if (!pa || !pb || !pc) continue;   // joint off-frame this tick — just skip it
     if (pa.visibility < MIN_VISIBILITY || pb.visibility < MIN_VISIBILITY ||
-        pc.visibility < MIN_VISIBILITY) continue;
+        pc.visibility < MIN_VISIBILITY) continue;   // MediaPipe isn't confident enough
     out[name] = angle2d(pa, pb, pc);
   }
 

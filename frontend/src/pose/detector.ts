@@ -1,17 +1,6 @@
 // PoseLandmarker (MediaPipe Tasks JS) wrapper — loads the WASM runtime and
 // the lite pose model once, then detects landmarks per video frame.
 // This is the browser counterpart of stale/core/detection/pose_detector.py.
-//
-// First stage of the whole live pipeline: WorkoutScreen.tsx's frame loop
-// calls `loadPoseLandmarker()` once (a module-level singleton — `landmarker`/
-// `loading` cache the result so every exercise reuses the same downloaded
-// model instead of re-fetching it) and then `detectPose()` on every frame.
-// Its output (`DetectionResult`) is the raw material everything downstream
-// consumes: `named` (landmarks keyed by name, using landmarks.ts's `LM`
-// table) feeds angles.ts's `computeAngles()`, while `raw` (all 33 points by
-// index, unfiltered) feeds the canvas skeleton drawing in WorkoutScreen.tsx.
-// A `null` return means no person was detected this frame — every caller
-// downstream has to handle that (an empty angles object, effectively).
 
 import { FilesetResolver, PoseLandmarker } from '@mediapipe/tasks-vision';
 import { LM } from './landmarks';
@@ -22,9 +11,13 @@ const WASM_URL =
 const MODEL_URL =
   'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task';
 
+// Module-level singleton — `landmarker`/`loading` cache the loaded model so
+// switching exercises reuses it instead of re-downloading.
 let landmarker: PoseLandmarker | null = null;
 let loading: Promise<PoseLandmarker> | null = null;
 
+// Call once before the live loop starts; safe to call again later, returns
+// the cached instance/in-flight promise instead of loading twice.
 export function loadPoseLandmarker(): Promise<PoseLandmarker> {
   if (landmarker) return Promise.resolve(landmarker);
   if (loading) return loading;
@@ -47,13 +40,17 @@ export interface DetectionResult {
   raw: { x: number; y: number; z: number; visibility: number }[];
 }
 
+// Runs MediaPipe on one video frame. Returns null when no person is
+// detected — callers treat that as "no angles this frame", not an error.
 export function detectPose(
   lm: PoseLandmarker, video: HTMLVideoElement, timestampMs: number,
 ): DetectionResult | null {
   const result = lm.detectForVideo(video, timestampMs);
-  const pose = result.landmarks?.[0];
+  const pose = result.landmarks?.[0];   // numPoses: 1, so only index 0 is ever populated
   if (!pose || pose.length === 0) return null;
 
+  // Named view: only the joints this app actually tracks (via LM), keyed by
+  // name — what angles.ts consumes.
   const named: Landmarks = {};
   for (const [name, idx] of Object.entries(LM)) {
     const p = pose[idx];
@@ -64,6 +61,8 @@ export function detectPose(
   }
   return {
     named,
+    // Raw view: all 33 points, unfiltered, indexed positionally — what the
+    // canvas skeleton overlay draws from.
     raw: pose.map(p => ({ x: p.x, y: p.y, z: p.z ?? 0, visibility: p.visibility ?? 1 })),
   };
 }

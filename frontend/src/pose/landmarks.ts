@@ -1,17 +1,8 @@
 // MediaPipe Pose landmark indices (33-point model) — the subset the app uses.
 // Mirrors core/ml/extractor.LANDMARK_NAMES and core/pipeline skeleton maps.
-//
-// This is the foundation file everything else in pose/ is built on: MediaPipe
-// numbers its 33 body points 0-32 with no inherent meaning attached (point 11
-// is "just index 11" as far as the model is concerned). `LM` is the lookup
-// table that gives those indices names (`left_shoulder`, `right_knee`, ...),
-// and `LandmarkName`/`Point`/`Landmarks` are the shared types every other
-// file in this folder imports to talk about a pose without re-deriving what
-// index means what. The three exported maps below (`SKELETON_CONNECTIONS`,
-// `ERROR_TO_LINES`, `JOINT_ANCHOR`) exist purely for drawing the on-screen
-// overlay — they're consumed by WorkoutScreen.tsx's canvas code, not by any
-// of the angle/phase/rep logic elsewhere in this folder.
 
+// Index -> name lookup — MediaPipe's raw output is just numbered points (11,
+// 12, 23...), this gives them meaning.
 export const LM = {
   nose: 0,
   left_shoulder: 11, right_shoulder: 12,

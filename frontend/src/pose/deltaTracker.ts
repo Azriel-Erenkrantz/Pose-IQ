@@ -4,16 +4,10 @@
 // inference sees the same feature distribution the model trained on,
 // regardless of the browser's actual frame rate.
 //
-// Only exists for the ML path — the rule engine (stateMachine.ts) never
-// looks at velocity at all, only the current angle value. The reason
-// velocity matters here: a squat's "descending" and "ascending" phases can
-// sit at the *exact same knee angle* mid-rep — the angle alone can't tell
-// them apart, only which way the knee is currently moving can. That's why
-// phaseClassifier.ts's feature vector is 24 numbers, not 12: the second half
-// is this file's output. Wall-clock-normalized (uses real elapsed ms between
-// calls, not a frame count) specifically so a browser tab that's dropped to
-// 15fps under load still reports the same °/sec the model was trained to
-// expect, rather than half the value.
+// Why this exists: a squat's "descending" and "ascending" phases can sit at
+// the exact same knee angle mid-rep — only which way the knee is currently
+// moving tells them apart. Only the ML path needs this; the rule engine
+// (stateMachine.ts) never looks at velocity.
 
 const WINDOW = 5;
 
@@ -27,13 +21,15 @@ export class DeltaTracker {
   update(angles: Record<string, number>, nowMs: number): Record<string, number> {
     if (this.prev !== null) {
       let dt = 1.0;
+      // Real elapsed time, not a frame count — so a tab that drops to 15fps
+      // under load still reports the same °/sec, not half the value.
       if (this.prevT !== null) dt = (nowMs - this.prevT) / 1000;
       if (dt > 0) {
         for (const [joint, value] of Object.entries(angles)) {
-          if (joint in this.prev) {
+          if (joint in this.prev) {   // need a previous reading for this joint to diff against
             const arr = this.history[joint] ?? (this.history[joint] = []);
             arr.push((value - this.prev[joint]) / dt);
-            if (arr.length > WINDOW) arr.shift();
+            if (arr.length > WINDOW) arr.shift();   // keep only the last WINDOW readings
           }
         }
       }
@@ -41,6 +37,8 @@ export class DeltaTracker {
     this.prev = { ...angles };
     this.prevT = nowMs;
 
+    // Report the rolling mean per joint, not the single latest delta —
+    // smooths out per-frame tracking jitter.
     const out: Record<string, number> = {};
     for (const [joint, arr] of Object.entries(this.history)) {
       if (arr.length > 0) out[joint] = arr.reduce((a, b) => a + b, 0) / arr.length;

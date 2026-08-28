@@ -1,24 +1,9 @@
 // Counts reps from the ONNX phase classifier's predictions alone,
 // independent of the angle-range rule engine (see CLAUDE.md roadmap #10).
-// Started as a live trial against stateMachine.ts's own rep-counting, to
-// see whether the trained model's phase calls were accurate/stable enough
-// to replace it — the rule engine kept getting stuck on overlapping
-// boundary ranges (documented 2026-08-25/26) and badly under/over-counted
-// real reps. Confirmed 2026-08-26 across repeated 10-rep sets: this ML
-// counter matched the true count almost exactly where the rule engine
-// missed ~40% of reps — so this is now the actual rep-counting authority,
-// not a parallel experiment (see WorkoutScreen.tsx's live loop). Still
-// gated by the rule engine's (now-fixed) readiness check for *when* to
-// start tracking — this only replaces the mid-workout phase-transition/
-// rep-counting decision, not "are you in frame in a valid starting posture."
-//
-// Fourth (last) stage of the ML path: phaseClassifier.ts calls in every
-// ~250ms with one raw phase guess; this class is the only thing that turns
-// a noisy stream of those guesses into a trustworthy rep count, via the
-// majority-vote window below plus the motion-phase cycle (`motionPhases`) —
-// conceptually the same job core/ml/smoother.py's PhaseSmoother does
-// offline, independently reimplemented here since Python can't run in a
-// browser (see core/ml/smoother.py's own docstring for the shared concept).
+// Confirmed 2026-08-26 (repeated 10-rep sets) far more accurate than the
+// rule engine, which kept getting stuck on overlapping boundary ranges —
+// this is now the real rep-counting authority, not an experiment. Still
+// gated by the rule engine's readiness check for *when* to start tracking.
 
 import type { ExerciseDef } from '../api/types';
 
@@ -70,17 +55,9 @@ export interface MlCountResult {
 }
 
 export class MlRepCounter {
-  // Deliberately excludes 'stable' (is_initial) phases like "start" from the
-  // tracked cycle — confirmed live 2026-08-26: mid-set, the model basically
-  // never top-predicts "start" again once real reps are underway (it
-  // flickers only between the two motion phases either side of it), likely
-  // the same start/pressing labeling ambiguity noted earlier this session.
-  // Physically, a rep is complete once you're pressing again after
-  // lowering — you don't need to have paused at a fully-rested "start"
-  // pose in between, especially mid-set. The rule engine's readiness gate
-  // (unaffected by this — see stateMachine.ts) already confirms the user
-  // starts *from* "start" before tracking begins at all, so this cycle only
-  // needs to detect the repeating motion, not that one-time starting pose.
+  // Excludes 'stable' (is_initial) phases like "start" from the tracked
+  // cycle — mid-set, the model rarely predicts "start" again (see below),
+  // and a rep is complete once you're pressing again after lowering anyway.
   private motionPhases: string[];
   private currentIndex = 0;
   repCount = 0;
@@ -104,15 +81,17 @@ export class MlRepCounter {
 
   update(predictedPhase: string, confidence: number | null, now: number, maxMotion: number): MlCountResult {
     if (confidence !== null && confidence < MIN_CONFIDENCE) {
-      return this.result(false);
+      return this.result(false);   // too unsure — ignore this tick, don't reset progress either
     }
     if (maxMotion < MIN_MOTION_DEG_PER_SEC) {
-      return this.result(false);
+      return this.result(false);   // basically motionless — filters idle drift, not a real rep
     }
 
     this.history.push(predictedPhase);
     if (this.history.length > WINDOW_SIZE) this.history.shift();
 
+    // Majority vote: has the *next* phase in the cycle won most of the
+    // recent window, not just this one tick?
     const nextVotes = this.history.filter(p => p === this.nextPhaseName).length;
     // eslint-disable-next-line no-console
     console.log(`[ML-DEBUG] "${this.currentPhaseName}" -> "${this.nextPhaseName}"? votes ${nextVotes}/${MAJORITY_NEEDED} (last tick: "${predictedPhase}")`);
@@ -123,6 +102,8 @@ export class MlRepCounter {
     return this.result(false);
   }
 
+  // Moves to the next phase in the cycle; only counts a rep if that move
+  // wraps back to the start AND enough real time passed since the last one.
   private advance(now: number): MlCountResult {
     this.history = [];
     this.currentIndex = (this.currentIndex + 1) % this.motionPhases.length;
