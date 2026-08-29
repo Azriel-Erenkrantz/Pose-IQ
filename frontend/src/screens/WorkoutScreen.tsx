@@ -55,11 +55,15 @@ interface Props {
 // ── Camera acquisition ───────────────────────────────────────────────────────
 
 /** Try the ideal resolution first; some cameras reject those constraints, so
- * fall back to a bare video request before giving up. */
-async function acquireCamera(): Promise<MediaStream> {
+ * fall back to a bare video request before giving up. `facing` lets phone
+ * users pick the rear/main camera instead of the default front/selfie one —
+ * requested live at the gym: propping a phone up facing away from the user
+ * (e.g. against a bag, at floor level for a better angle) needs the rear
+ * camera, which 'user' can never select. */
+async function acquireCamera(facing: 'user' | 'environment'): Promise<MediaStream> {
   try {
     return await navigator.mediaDevices.getUserMedia({
-      video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' },
+      video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: facing },
       audio: false,
     });
   } catch (first: any) {
@@ -100,6 +104,7 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
   const [saveError, setSaveError] = useState('');
   const [summaryWeight, setSummaryWeight] = useState('');
   const [targetReps, setTargetReps] = useState('');
+  const [cameraFacing, setCameraFacing] = useState<'user' | 'environment'>('user');
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -215,7 +220,7 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
 
     let stream: MediaStream;
     try {
-      stream = await acquireCamera();
+      stream = await acquireCamera(cameraFacing);
     } catch (e: any) {
       setSetupError(`${t.cameraError} (${e.message})`);
       setStarting(false);
@@ -333,7 +338,8 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
         }
 
         drawOverlay(canvasRef.current, detection?.raw ?? null, vw, vh, issues,
-                    result.started ? (posturePhase ?? sm.currentPhase).diagnostic_joints : [], angles);
+                    result.started ? (posturePhase ?? sm.currentPhase).diagnostic_joints : [], angles,
+                    cameraFacing === 'user');
 
         setHud({
           started: result.started,
@@ -359,7 +365,7 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
     } finally {
       setStarting(false);
     }
-  }, [user, speak, stopCamera, t, targetReps]);
+  }, [user, speak, stopCamera, t, targetReps, cameraFacing]);
 
   function endWorkout() {
     endTimeRef.current = performance.now();
@@ -400,7 +406,8 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
             point is seeing yourself clearly enough to check full-body framing. */}
         <div className="relative rounded-xl overflow-hidden bg-black" style={{ minHeight: 320 }}>
           <video ref={videoRef} playsInline muted
-                 className="block w-full" style={{ transform: 'scaleX(-1)' }} />
+                 className="block w-full"
+                 style={cameraFacing === 'user' ? { transform: 'scaleX(-1)' } : undefined} />
           <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
 
           {/* Top HUD */}
@@ -642,6 +649,22 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
 
       <p className="text-[#a09f98] text-xs mb-4">{t.cameraHint}</p>
 
+      <label className="label block mb-1.5">{t.cameraFacingLabel}</label>
+      <div className="flex gap-2 mb-6">
+        <button
+          onClick={() => setCameraFacing('user')}
+          className={`btn-ghost text-sm px-4 py-2 ${cameraFacing === 'user' ? 'text-accent' : ''}`}
+        >
+          {t.cameraFront}
+        </button>
+        <button
+          onClick={() => setCameraFacing('environment')}
+          className={`btn-ghost text-sm px-4 py-2 ${cameraFacing === 'environment' ? 'text-accent' : ''}`}
+        >
+          {t.cameraRear}
+        </button>
+      </div>
+
       <label className="label block mb-1.5">{t.targetRepsLabel}</label>
       <input
         type="number" min={0} max={50} step={1} dir="ltr"
@@ -762,6 +785,7 @@ function drawOverlay(
   issues: PostureIssue[],
   diagnosticJoints: string[],
   angles: Record<string, number>,
+  mirrored: boolean,
 ) {
   if (!canvas) return;
   if (canvas.width !== vw || canvas.height !== vh) {
@@ -773,7 +797,9 @@ function drawOverlay(
   ctx.clearRect(0, 0, vw, vh);
   if (!raw) return;
 
-  const mx: MirrorFn = (x) => (1 - x) * vw;   // mirror to match scaleX(-1) video
+  // Must match the video element's own CSS mirroring (front camera only —
+  // see cameraFacing) or the skeleton overlay renders offset from the body.
+  const mx: MirrorFn = mirrored ? (x) => (1 - x) * vw : (x) => x * vw;
   const my: MirrorFn = (y) => y * vh;
 
   const { redLines, badJoints } = issueHighlights(issues);

@@ -98,7 +98,7 @@
       "mandatory_start_joints": ["right_elbow", "left_elbow", "right_shoulder", "left_shoulder"],
       "global_constraints": {
         "spine": {
-          "min": 0, "max": 15,
+          "min": 0, "max": 25,
           "corrections": { "too_high": "Don't lean back — keep your core tight", "severity": "high" }
         }
       },
@@ -145,7 +145,7 @@
       "mandatory_start_joints": ["right_elbow", "left_elbow", "right_shoulder", "left_shoulder"],
       "global_constraints": {
         "spine": {
-          "min": 0, "max": 15,
+          "min": 0, "max": 25,
           "corrections": { "too_high": "Don't arch your lower back — brace your core", "severity": "high" }
         }
       },
