@@ -332,8 +332,16 @@ def write_exercise_angles(
             # previous phase indefinitely. The fix is more/richer training
             # data; until there's time to film more, pad the empirically
             # measured range instead of shipping it razor-exact.
+            # spine has no 'too_low' correction anywhere in exercises_seed.json
+            # — being *more* upright than the training subjects happened to be
+            # is never a form issue, unlike every other joint (where both
+            # directions are real biomechanical limits). Forcing min=0
+            # preserves that (matches every hand-set value spine ever had)
+            # instead of flagging perfect posture as "too low" with a generic
+            # fallback message just because measured min - tolerance > 0.
+            measured_min = 0.0 if joint == 'spine' else max(0.0, float(arr.min()) - RANGE_TOLERANCE_DEG)
             joint_stats[joint] = {
-                'min':      round(max(0.0, float(arr.min()) - RANGE_TOLERANCE_DEG), 1),
+                'min':      round(measured_min, 1),
                 'max':      round(min(180.0, float(arr.max()) + RANGE_TOLERANCE_DEG), 1),
                 'mean':     round(float(arr.mean()), 1),
                 'std':      round(float(arr.std()), 1),

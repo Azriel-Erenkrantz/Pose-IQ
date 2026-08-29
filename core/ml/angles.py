@@ -28,6 +28,19 @@ ANGLE_DEFS: Dict[str, tuple[str, str, str]] = {
 
 MIN_VISIBILITY = 0.4  # ignore joints the model isn't confident about
 
+# Spine needs a stricter bar than the 3-point angles above: it's computed
+# from just two real landmarks (shoulder+hip) against a synthetic reference
+# point, with no third real landmark to anchor it — more sensitive to a
+# landmark's *position* being unreliable even while visibility still clears
+# 0.4 (confirmed live 2026-08-27 in the TS port, frontend/src/pose/angles.ts).
+MIN_VISIBILITY_SPINE = 0.6
+
+# How far "up" (in normalized image-space y) the synthetic vertical
+# reference point sits above the hip. The exact magnitude doesn't affect the
+# resulting angle at all — _angle_deg only uses vector *direction*, not
+# length — so this just needs to be a small positive number.
+SPINE_UP_DELTA = 0.1
+
 
 def _angle_deg(a: tuple, b: tuple, c: tuple) -> float:
     """Angle at b in the A-B-C triangle, using only x/y (2D)."""
@@ -52,6 +65,22 @@ def compute_angles(frame: PoseFrame) -> Dict[str, float]:
     for name, (a, b, c) in ANGLE_DEFS.items():
         if all(vis.get(j, 0.0) >= MIN_VISIBILITY for j in (a, b, c)):
             result[name] = _angle_deg(lm[a], lm[b], lm[c])
+
+    # Spine: angle at the hip between the shoulder and a synthetic
+    # straight-up reference point — normalized 2D, like every other angle
+    # above (added 2026-08-30; previously computed only in the TS live path,
+    # in pixel-space 3D against the original desktop pipeline's fixed-50px
+    # reference — never measured from training data, just a hand-picked
+    # threshold, which turned out too tight for real bodies on two exercises
+    # live at the gym). Ported here so it can finally get a real measured
+    # range the same way every other joint does, via write_exercise_angles.
+    for side in ('right', 'left'):
+        shoulder, hip = f'{side}_shoulder', f'{side}_hip'
+        if vis.get(shoulder, 0.0) >= MIN_VISIBILITY_SPINE and vis.get(hip, 0.0) >= MIN_VISIBILITY_SPINE:
+            hx, hy = lm[hip][0], lm[hip][1]
+            vertical = (hx, hy - SPINE_UP_DELTA, 0.0)
+            result['spine'] = _angle_deg(lm[shoulder], lm[hip], vertical)
+            break
 
     return result
 

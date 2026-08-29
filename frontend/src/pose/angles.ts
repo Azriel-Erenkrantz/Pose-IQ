@@ -1,8 +1,6 @@
 // Pose landmarks → joint angles (degrees).
-// Faithful port of core/ml/angles.py (the 10 normalized-2D angles the models
-// and the Mongo ranges were measured in) plus the legacy spine angle from
-// stale/core/detection/angle_calculator.py (pixel-space 3D, needed for the
-// global back-straightness constraint).
+// Faithful port of core/ml/angles.py — all 11 angles (10 joints + spine) are
+// normalized-2D, the space the models and the Mongo ranges are measured in.
 
 import type { Landmarks, LandmarkName } from './landmarks';
 
@@ -35,6 +33,12 @@ const MIN_VISIBILITY = 0.4;
 // MIN_VISIBILITY gate other angles use.
 const MIN_VISIBILITY_SPINE = 0.6;
 
+// How far "up" (normalized image-space y) the synthetic vertical reference
+// point sits above the hip. Doesn't affect the resulting angle at all —
+// angle2d only uses vector *direction*, not length — just needs to be a
+// small positive number. Mirrors core/ml/angles.py exactly.
+const SPINE_UP_DELTA = 0.1;
+
 // Angle at b in the A-B-C triangle, using x/y only (normalized 0-1 screen
 // space) — the space all 10 joint angles below are measured in.
 function angle2d(
@@ -48,28 +52,8 @@ function angle2d(
   return (Math.acos(cos) * 180) / Math.PI;
 }
 
-// Same idea as angle2d but including z — only spine uses this, in pixel
-// space, matching the legacy desktop pipeline's calculation exactly.
-function angle3d(
-  a: { x: number; y: number; z: number },
-  b: { x: number; y: number; z: number },
-  c: { x: number; y: number; z: number },
-): number {
-  const ba = [a.x - b.x, a.y - b.y, a.z - b.z];
-  const bc = [c.x - b.x, c.y - b.y, c.z - b.z];
-  const norm = Math.hypot(...ba) * Math.hypot(...bc);
-  if (norm < 1e-9) return 0;
-  const dot = ba[0] * bc[0] + ba[1] * bc[1] + ba[2] * bc[2];
-  const cos = Math.min(1, Math.max(-1, dot / norm));
-  return (Math.acos(cos) * 180) / Math.PI;
-}
-
-/**
- * All joint angles visible in this frame, keyed by angle name.
- * `width`/`height` are the video dimensions — only the spine angle needs
- * them (it replicates the legacy pixel-space computation exactly).
- */
-export function computeAngles(lms: Landmarks, width: number, height: number): Record<string, number> {
+/** All joint angles visible in this frame, keyed by angle name. */
+export function computeAngles(lms: Landmarks): Record<string, number> {
   const out: Record<string, number> = {};
 
   for (const [name, [a, b, c]] of Object.entries(ANGLE_DEFS)) {
@@ -80,18 +64,19 @@ export function computeAngles(lms: Landmarks, width: number, height: number): Re
     out[name] = angle2d(pa, pb, pc);
   }
 
-  // Spine: angle at the hip between the shoulder and a straight-up reference
-  // point 50px above the hip — computed in pixel space with z scaled by width,
-  // exactly like AngleCalculator (the seed spine range was set in that space).
+  // Spine: angle at the hip between the shoulder and a synthetic straight-up
+  // reference point — normalized 2D like everything else above (changed
+  // 2026-08-30 from pixel-space 3D against a fixed-50px reference; see
+  // core/ml/angles.py's mirror of this for why: that version could never be
+  // measured from training data at all, since the training pipeline only
+  // ever sees normalized landmark coordinates, no pixel dimensions).
   for (const side of ['right', 'left'] as const) {
     const shoulder = lms[`${side}_shoulder`];
     const hip = lms[`${side}_hip`];
     if (!shoulder || !hip) continue;
     if (shoulder.visibility < MIN_VISIBILITY_SPINE || hip.visibility < MIN_VISIBILITY_SPINE) continue;
-    const sPx = { x: shoulder.x * width, y: shoulder.y * height, z: shoulder.z * width };
-    const hPx = { x: hip.x * width, y: hip.y * height, z: hip.z * width };
-    const vertical = { x: hPx.x, y: hPx.y - 50, z: hPx.z };
-    out.spine = angle3d(sPx, hPx, vertical);
+    const vertical = { x: hip.x, y: hip.y - SPINE_UP_DELTA };
+    out.spine = angle2d(shoulder, hip, vertical);
     break;
   }
 

@@ -266,7 +266,7 @@ export default function WorkoutScreen({ token, onNavigate }: Props) {
         const detection = detectPose(landmarker, video, now);
         const vw = video.videoWidth, vh = video.videoHeight;
 
-        const angles = detection ? computeAngles(detection.named, vw, vh) : {};
+        const angles = detection ? computeAngles(detection.named) : {};
         const result = sm.update(angles);
 
         // Rep counting/recording is driven by the ML classifier now, not the

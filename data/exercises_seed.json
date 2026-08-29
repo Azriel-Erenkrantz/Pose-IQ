@@ -6,12 +6,6 @@
       "description": "A lower-body compound exercise targeting quads, glutes, and hamstrings",
       "muscle_groups": ["quadriceps", "glutes", "hamstrings", "core"],
       "mandatory_start_joints": ["right_knee", "left_knee", "right_hip", "left_hip"],
-      "global_constraints": {
-        "spine": {
-          "min": 0, "max": 30,
-          "corrections": { "too_high": "Keep your back straight — don't lean forward!", "severity": "high" }
-        }
-      },
       "phases": [
         {
           "order": 1, "name": "standing", "is_initial": true,
@@ -20,7 +14,8 @@
           "diagnostic_joints": ["right_knee", "left_knee"],
           "joints": {
             "right_knee": { "corrections": { "too_low": "Straighten your knees before starting", "severity": "medium" } },
-            "left_knee":  { "corrections": { "too_low": "Straighten your knees before starting", "severity": "medium" } }
+            "left_knee":  { "corrections": { "too_low": "Straighten your knees before starting", "severity": "medium" } },
+            "spine":      { "corrections": { "too_high": "Keep your back straight — don't lean forward!", "severity": "high" } }
           }
         },
         {
@@ -30,7 +25,8 @@
           "diagnostic_joints": ["right_knee", "left_knee"],
           "joints": {
             "right_knee": { "corrections": { "too_low": "Control the descent", "too_high": "Bend your knees more", "severity": "high" } },
-            "left_knee":  { "corrections": { "too_low": "Control the descent", "too_high": "Bend your knees more", "severity": "high" } }
+            "left_knee":  { "corrections": { "too_low": "Control the descent", "too_high": "Bend your knees more", "severity": "high" } },
+            "spine":      { "corrections": { "too_high": "Keep your back straight — don't lean forward!", "severity": "high" } }
           }
         },
         {
@@ -40,7 +36,8 @@
           "diagnostic_joints": ["right_knee", "left_knee"],
           "joints": {
             "right_knee": { "corrections": { "too_low": "Keep pushing — drive through your heels", "severity": "high" } },
-            "left_knee":  { "corrections": { "too_low": "Keep pushing — drive through your heels", "severity": "high" } }
+            "left_knee":  { "corrections": { "too_low": "Keep pushing — drive through your heels", "severity": "high" } },
+            "spine":      { "corrections": { "too_high": "Keep your back straight — don't lean forward!", "severity": "high" } }
           }
         }
       ]
@@ -51,12 +48,6 @@
       "description": "A unilateral lower-body exercise for quads, glutes, and balance",
       "muscle_groups": ["quadriceps", "glutes", "hamstrings", "core"],
       "mandatory_start_joints": ["right_knee", "left_knee", "right_hip", "left_hip"],
-      "global_constraints": {
-        "spine": {
-          "min": 0, "max": 20,
-          "corrections": { "too_high": "Keep your torso upright — don't lean forward!", "severity": "high" }
-        }
-      },
       "phases": [
         {
           "order": 1, "name": "standing", "is_initial": true,
@@ -65,7 +56,8 @@
           "diagnostic_joints": ["right_knee", "left_knee"],
           "joints": {
             "right_knee": { "corrections": { "too_low": "Fully straighten your right knee before stepping", "severity": "low" } },
-            "left_knee":  { "corrections": { "too_low": "Fully straighten your left knee before stepping",  "severity": "low" } }
+            "left_knee":  { "corrections": { "too_low": "Fully straighten your left knee before stepping",  "severity": "low" } },
+            "spine":      { "corrections": { "too_high": "Keep your torso upright — don't lean forward!", "severity": "high" } }
           }
         },
         {
@@ -75,7 +67,8 @@
           "diagnostic_joints": ["right_knee", "left_knee"],
           "joints": {
             "right_knee": { "corrections": { "too_low": "Right knee went past 90° — control your descent", "too_high": "Lower your hips more as you step", "severity": "high" } },
-            "left_knee":  { "corrections": { "too_low": "Left knee went past 90° — control your descent",  "too_high": "Lower your hips more as you step", "severity": "high" } }
+            "left_knee":  { "corrections": { "too_low": "Left knee went past 90° — control your descent",  "too_high": "Lower your hips more as you step", "severity": "high" } },
+            "spine":      { "corrections": { "too_high": "Keep your torso upright — don't lean forward!", "severity": "high" } }
           }
         },
         {
@@ -85,7 +78,8 @@
           "diagnostic_joints": ["right_knee", "left_knee"],
           "joints": {
             "right_knee": { "corrections": { "too_low": "Push harder through your front heel to rise", "severity": "medium" } },
-            "left_knee":  { "corrections": { "too_low": "Extend your back leg as you stand up", "severity": "medium" } }
+            "left_knee":  { "corrections": { "too_low": "Extend your back leg as you stand up", "severity": "medium" } },
+            "spine":      { "corrections": { "too_high": "Keep your torso upright — don't lean forward!", "severity": "high" } }
           }
         }
       ]
@@ -96,12 +90,6 @@
       "description": "An isolation exercise for the biceps using arm flexion",
       "muscle_groups": ["biceps", "forearms"],
       "mandatory_start_joints": ["right_elbow", "left_elbow", "right_shoulder", "left_shoulder"],
-      "global_constraints": {
-        "spine": {
-          "min": 0, "max": 25,
-          "corrections": { "too_high": "Don't lean back — keep your core tight", "severity": "high" }
-        }
-      },
       "phases": [
         {
           "order": 1, "name": "standing", "is_initial": true,
@@ -110,7 +98,8 @@
           "diagnostic_joints": ["right_elbow", "left_elbow"],
           "joints": {
             "right_elbow": { "corrections": { "too_low": "Fully lower your right arm before curling again", "severity": "medium" } },
-            "left_elbow":  { "corrections": { "too_low": "Fully lower your left arm before curling again",  "severity": "medium" } }
+            "left_elbow":  { "corrections": { "too_low": "Fully lower your left arm before curling again",  "severity": "medium" } },
+            "spine":       { "corrections": { "too_high": "Don't lean back — keep your core tight", "severity": "high" } }
           }
         },
         {
@@ -122,7 +111,8 @@
             "right_elbow":    { "corrections": { "too_high": "Curl your right arm higher", "severity": "medium" } },
             "left_elbow":     { "corrections": { "too_high": "Curl your left arm higher",  "severity": "medium" } },
             "right_shoulder": { "corrections": { "too_high": "Keep your right elbow close to your body — don't swing", "severity": "high" } },
-            "left_shoulder":  { "corrections": { "too_high": "Keep your left elbow close to your body — don't swing",  "severity": "high" } }
+            "left_shoulder":  { "corrections": { "too_high": "Keep your left elbow close to your body — don't swing",  "severity": "high" } },
+            "spine":          { "corrections": { "too_high": "Don't lean back — keep your core tight", "severity": "high" } }
           }
         },
         {
@@ -132,7 +122,8 @@
           "diagnostic_joints": ["right_elbow", "left_elbow"],
           "joints": {
             "right_elbow": { "corrections": { "too_low": "Lower your right arm fully — don't stop halfway", "severity": "medium" } },
-            "left_elbow":  { "corrections": { "too_low": "Lower your left arm fully — don't stop halfway",  "severity": "medium" } }
+            "left_elbow":  { "corrections": { "too_low": "Lower your left arm fully — don't stop halfway",  "severity": "medium" } },
+            "spine":       { "corrections": { "too_high": "Don't lean back — keep your core tight", "severity": "high" } }
           }
         }
       ]
@@ -143,12 +134,6 @@
       "description": "An upper-body pressing exercise for shoulder and tricep development",
       "muscle_groups": ["deltoids", "triceps", "upper_back"],
       "mandatory_start_joints": ["right_elbow", "left_elbow", "right_shoulder", "left_shoulder"],
-      "global_constraints": {
-        "spine": {
-          "min": 0, "max": 25,
-          "corrections": { "too_high": "Don't arch your lower back — brace your core", "severity": "high" }
-        }
-      },
       "phases": [
         {
           "order": 1, "name": "start", "is_initial": true,
@@ -159,7 +144,8 @@
             "right_elbow":    { "corrections": { "too_low": "Raise your right arm to shoulder height first", "too_high": "Bend your right elbow to 90° before pressing", "severity": "medium" } },
             "left_elbow":     { "corrections": { "too_low": "Raise your left arm to shoulder height first",  "too_high": "Bend your left elbow to 90° before pressing",  "severity": "medium" } },
             "right_shoulder": { "corrections": { "too_low": "Raise your right arm to shoulder level", "severity": "medium" } },
-            "left_shoulder":  { "corrections": { "too_low": "Raise your left arm to shoulder level",  "severity": "medium" } }
+            "left_shoulder":  { "corrections": { "too_low": "Raise your left arm to shoulder level",  "severity": "medium" } },
+            "spine":          { "corrections": { "too_high": "Don't arch your lower back — brace your core", "severity": "high" } }
           }
         },
         {
@@ -171,7 +157,8 @@
             "right_elbow":    { "corrections": { "too_low": "Keep pressing — extend your right arm overhead", "severity": "medium" } },
             "left_elbow":     { "corrections": { "too_low": "Keep pressing — extend your left arm overhead",  "severity": "medium" } },
             "right_shoulder": { "corrections": { "too_low": "Press your right arm higher", "too_high": "Don't flare your right arm outward", "severity": "medium" } },
-            "left_shoulder":  { "corrections": { "too_low": "Press your left arm higher",  "too_high": "Don't flare your left arm outward",  "severity": "medium" } }
+            "left_shoulder":  { "corrections": { "too_low": "Press your left arm higher",  "too_high": "Don't flare your left arm outward",  "severity": "medium" } },
+            "spine":          { "corrections": { "too_high": "Don't arch your lower back — brace your core", "severity": "high" } }
           }
         },
         {
@@ -181,7 +168,8 @@
           "diagnostic_joints": ["right_elbow", "left_elbow"],
           "joints": {
             "right_elbow": { "corrections": { "too_low": "Don't drop past 90° — control the lowering", "severity": "medium" } },
-            "left_elbow":  { "corrections": { "too_low": "Don't drop past 90° — control the lowering", "severity": "medium" } }
+            "left_elbow":  { "corrections": { "too_low": "Don't drop past 90° — control the lowering", "severity": "medium" } },
+            "spine":       { "corrections": { "too_high": "Don't arch your lower back — brace your core", "severity": "high" } }
           }
         }
       ]

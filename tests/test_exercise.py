@@ -157,11 +157,20 @@ class TestExerciseModelLoad(unittest.TestCase):
         self.assertIsNotNone(standing)
         self.assertEqual(standing.name, 'standing')
 
-    def test_global_constraints_have_corrections(self):
-        ex = self.model.get_exercise('squat')
-        self.assertIn('spine', ex.global_constraints)
-        spine = ex.global_constraints['spine']
-        self.assertIn('too_high', spine.corrections)
+    def test_spine_correction_defined_per_phase(self):
+        # spine moved from a hand-set global_constraint to a per-phase joint
+        # (2026-08-30) — measured from training data the same way as every
+        # other joint, once core.ml.trainer has run. Pre-training, the seed
+        # loader skips joints with no numbers yet (same as elbow/knee), so
+        # this checks the raw seed JSON directly rather than ex.phases[].angles.
+        import json
+        from pathlib import Path
+        seed_path = Path(__file__).parent.parent / 'data' / 'exercises_seed.json'
+        data = json.loads(seed_path.read_text(encoding='utf-8'))
+        squat = next(ex for ex in data['exercises'] if ex['id'] == 'squat')
+        for phase in squat['phases']:
+            self.assertIn('spine', phase['joints'], f'{phase["name"]} missing a spine correction')
+            self.assertIn('too_high', phase['joints']['spine']['corrections'])
 
     def test_primary_joints_set(self):
         ex = self.model.get_exercise('squat')
