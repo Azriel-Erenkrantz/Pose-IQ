@@ -280,6 +280,61 @@ thinner in places (e.g. `standing`'s `n_frames` is 22 for biceps_curl, 55
 for lunge, vs. shoulder_press's 117) and genuinely untested live. Plan: test
 all 4 exercises at a real gym before submission.
 
+## Deployed to production + gym-tested (2026-08-27 to 2026-08-30)
+
+**Live now**: backend on Render (`https://pose-iq-api.onrender.com`,
+free tier — spins down on inactivity, first request after idle takes
+~50s), frontend on Vercel (`https://pose-iq.vercel.app`, auto-deploys on
+push to `main`), Mongo Atlas (`PoseIQ` cluster). **Local dev and
+production use different databases** — local defaults to localhost Mongo
+unless `MONGODB_URI` is set, Atlas is separate. Learned this the hard way:
+`core.exercise.seed`/`core.ml.trainer` had only ever been run against
+local Mongo, so Atlas was missing `exercise_angles` for `biceps_curl`
+entirely (showed as "not ready" on the deployed site) until re-run against
+Atlas directly (`$env:MONGODB_URI`/`$env:MONGODB_DB` set to Atlas's values
+before running either command). University WiFi blocks outbound port
+27017 (MongoDB's) while allowing normal HTTPS — connecting to Atlas
+directly (not through the deployed API) requires a phone hotspot instead.
+
+Gym-tested all 4 exercises live (with another person, not just solo) after
+deploy. Two real bugs found and fixed:
+
+1. **Camera was selfie-only** (`facingMode: 'user'` hardcoded) — no way to
+   use a phone's rear camera (e.g. propping it up facing away, better
+   angle/distance for squat/lunge). Fixed: `WorkoutScreen.tsx` now has a
+   front/rear picker; `acquireCamera()` takes the facing mode; video +
+   skeleton-overlay mirroring (`scaleX(-1)`) only applies for the front
+   camera — mirroring a rear-camera view (showing someone else, not a
+   selfie) would be wrong.
+2. **`spine`'s posture correction fired almost constantly** on
+   `biceps_curl` and `shoulder_press` (`"don't lean back"` /
+   `"don't arch your back"`) even with good form. Root cause: `spine` was
+   the *only* hand-set threshold left in the whole system — global
+   (`data/exercises_seed.json`'s now-removed `global_constraints`), never
+   measured from training data like every other joint, because its old
+   formula needed pixel-space 3D against a fixed-50px reference point,
+   while the training pipeline only ever sees normalized [0,1] landmark
+   coordinates (no pixel dimensions available). Two rounds of manually
+   widening it (15°→25°) still misfired — confirming the problem was the
+   *guessing*, not the specific number. **Fixed properly**: ported spine to
+   a normalized-2D formula (shoulder-hip vs. a synthetic straight-up
+   point, same `angle2d`/`_angle_deg` used by every other joint) in both
+   `core/ml/angles.py` and `frontend/src/pose/angles.ts` (training/serving
+   parity — see the note on this above), moved it from a flat
+   per-exercise `global_constraint` to a per-phase joint (same shape as
+   elbow/knee), and let it flow through the *already-generic*
+   `phase_angles` stats pipeline in `trainer.py` — required zero changes
+   there beyond the new angle itself, since front-view-only filtering and
+   tolerance padding already applied automatically to whatever joints show
+   up in the data. One real bug caught mid-implementation: spine has no
+   `too_low` correction anywhere (unlike every other joint, *less* lean is
+   never a form issue) — the measured `min` was nonzero, which would have
+   flagged perfectly straight posture as "too low" with a generic fallback
+   message. `write_exercise_angles` now forces `min=0.0` for spine
+   specifically. Real measured maxes (all phases, all exercises): squat
+   ~21°, lunge ~28-33°, biceps_curl ~26-30°, shoulder_press ~23-24° —
+   phase-specific, not one guessed number for the whole exercise.
+
 ## ML state (2026-08-25)
 
 **Model shrunk for browser delivery (ONNX plan — see roadmap #9).**
